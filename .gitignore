@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+slack-channels.env
+
+# Runtime data
+sessions.json
+.last-startup
+
+# Generated / ephemeral
+analytics/
+logs/
+daily/
+inbox/
+outbox/
+tasks/
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# Backups
+*.bak
