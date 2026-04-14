@@ -268,13 +268,14 @@
 - [x] Initialize git repo
 - [x] Create .gitignore
 - [x] Initial commit
-- [ ] **Fix path references in service/index.js** — ANTON_ROOT and PROJECT_ROOT
-- [ ] **Update src/\*.js files** — sessions, analytics, logger, scheduler, taskqueue, orchestrator, memory, vision
-- [ ] **Fix noel-sim-150.js and tests/runner.js** — old paths
+- [x] **Restructure project** — flattened service/ to root, created src/, config/, data/
+- [x] **Fix path references in index.js** — ANTON_ROOT = \_\_dirname, DATA_DIR for runtime
+- [x] **Update all src/\*.js files** — sessions, analytics, logger, scheduler, taskqueue, orchestrator, memory
+- [x] **Fix simulations and test runner** — updated imports and paths
+- [x] **Update ecosystem.config.cjs** — PM2 paths point to root
+- [x] **Verify 576 unit tests pass** (was 288 — test count grew)
 - [ ] **Create CLAUDE.md** for standalone project
-- [ ] **Update ecosystem.config.cjs** — PM2 paths
-- [ ] **Test npm run dev** from new location
-- [ ] **Verify 288 unit tests pass**
+- [ ] **Test npm run dev** from new location (needs Slack tokens)
 
 ---
 
@@ -304,12 +305,15 @@ Phase 8: Rich Interface         ← stretch goals
 
 ## Progress Log
 
-| Date       | What                                              | Phase    |
-| ---------- | ------------------------------------------------- | -------- |
-| 2026-04-14 | Initial commit on main, branch created            | Setup    |
-| 2026-04-14 | Cross-dept handoffs expanded (27 entries)         | Pre-work |
-| 2026-04-14 | Session health + retry/backoff                    | Pre-work |
-| 2026-04-14 | Memory module + nightly consolidation             | Pre-work |
-| 2026-04-14 | DM routing to Anton, text-parse handoffs disabled | Pre-work |
-| 2026-04-14 | TODO.md created with full JARVIS gap plan         | Setup    |
-|            |                                                   |          |
+| Date       | What                                                  | Phase     |
+| ---------- | ----------------------------------------------------- | --------- |
+| 2026-04-14 | Initial commit on main, branch created                | Setup     |
+| 2026-04-14 | Cross-dept handoffs expanded (27 entries)             | Pre-work  |
+| 2026-04-14 | Session health + retry/backoff                        | Pre-work  |
+| 2026-04-14 | Memory module + nightly consolidation                 | Pre-work  |
+| 2026-04-14 | DM routing to Anton, text-parse handoffs disabled     | Pre-work  |
+| 2026-04-14 | TODO.md created with full JARVIS gap plan             | Setup     |
+| 2026-04-14 | Project restructured: service/ → root, data/, config/ | Migration |
+| 2026-04-14 | All path refs updated, 576 tests passing              | Migration |
+| 2026-04-14 | Research doc saved: docs/research/jarvis-upgrade      | Research  |
+|            |                                                       |           |
