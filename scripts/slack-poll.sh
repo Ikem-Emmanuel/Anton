@@ -1,7 +1,7 @@
 #!/bin/bash
 # Poll a Slack channel for new commands directed at agents.
-# Writes new commands to data/inbox/
-# Usage: bash scripts/slack-poll.sh [channel-name]
+# Writes new commands to .anton/inbox/
+# Usage: bash .anton/scripts/slack-poll.sh [channel-name]
 # Default: polls anton-engineering
 #
 # Requires SLACK_BOT_TOKEN in environment.
@@ -9,14 +9,14 @@
 set -euo pipefail
 
 CHANNEL_NAME="${1:-anton-engineering}"
-CHANNEL_MAP="slack-channels.env"
-INBOX="data/inbox"
-LAST_TS_FILE="data/inbox/.last-ts-${CHANNEL_NAME}"
+CHANNEL_MAP=".anton/slack-channels.env"
+INBOX=".anton/inbox"
+LAST_TS_FILE=".anton/inbox/.last-ts-${CHANNEL_NAME}"
 
 mkdir -p "$INBOX"
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
-  [ -f ".env" ] && source .env
+  [ -f ".anton/.env" ] && source .anton/.env
   if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
     echo "Error: SLACK_BOT_TOKEN not set"
     exit 1

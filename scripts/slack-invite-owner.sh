@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # Invites the workspace owner to all anton-* channels.
-# Usage: bash scripts/slack-invite-owner.sh
-# Requires SLACK_BOT_TOKEN in environment or .env
+# Usage: bash .anton/scripts/slack-invite-owner.sh
+# Requires SLACK_BOT_TOKEN in environment or .anton/.env
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
-  [ -f ".env" ] && source .env
+  [ -f ".anton/.env" ] && source .anton/.env
 fi
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
@@ -51,7 +51,7 @@ while IFS='=' read -r NAME ID; do
     ERROR=$(echo "$RESULT" | grep -o '"error":"[^"]*"' | cut -d'"' -f4)
     echo "  Failed #$NAME: $ERROR"
   fi
-done < slack-channels.env
+done < .anton/slack-channels.env
 
 echo ""
 echo "Done! Check your Slack sidebar — all channels should appear."
