@@ -1,0 +1,23 @@
+{
+  "name": "anton-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Anton — Slack Socket Mode listener for AI agent organization",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "vitest run --reporter=verbose"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.101",
+    "@slack/bolt": "3.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.4"
+  }
+}
