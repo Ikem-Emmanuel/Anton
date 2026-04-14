@@ -1,15 +1,15 @@
 // ─── Persistent Agent Sessions ───────────────────────────────
 // Each agent maintains a long-lived session with full context
 
-import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
 import { trackSession } from './analytics.js';
-import { logSession, logToolUse, logHandoff } from './logger.js';
+import { logHandoff, logSession, logToolUse } from './logger.js';
 import { findByName } from './team.js';
 
-const sessions = new Map();      // agentKey → { session, sessionId }
-const sessionLanes = new Map();  // agentName → current in-flight Promise
+const sessions = new Map(); // agentKey → { session, sessionId }
+const sessionLanes = new Map(); // agentName → current in-flight Promise
 const pendingHandoffs = new Map(); // agentName → [{ target, message }]
 
 // Consume and clear any SendMessage handoffs an agent queued during its last run.
@@ -51,7 +51,9 @@ function save() {
   for (const [key, val] of sessions) {
     if (val.sessionId) data[key] = val.sessionId;
   }
-  try { writeFileSync(sessionsFile, JSON.stringify(data, null, 2)); } catch {}
+  try {
+    writeFileSync(sessionsFile, JSON.stringify(data, null, 2));
+  } catch {}
 }
 
 function buildPersonaPrompt(member) {
@@ -92,7 +94,7 @@ function buildPersonaPrompt(member) {
     ``,
     `You are ${member.name}. Stay in character always.`,
     ``,
-    `PROJECT: openclaw-mc-v2. TypeScript — Fastify, Next.js 15, better-sqlite3, shadcn/ui.`,
+    `PROJECT: Anton — personal AI operating system. Node.js ESM, Claude Agent SDK, Slack Bolt.`,
     ``,
     `TEAM: Marcus (tech lead), Sarah (PM), James (backend), Elena (frontend), Kai (mobile), Priya (QA), Omar (devops), Diana (CMO), Alex (content), Mia (social), Lucas (email), Nina (SEO), Raj (content SEO), Yuki (analytics), Felix (automation), Zara (workflows), Theo (integrations), Ada (data lead), Ben (analyst), Iris (ML), Carlos (data eng), Nadia (growth), Sam (tracking), Leo (attribution), Maya (experiments), Dante (campaigns).`,
     ``,
@@ -107,8 +109,8 @@ function buildPersonaPrompt(member) {
     `- The only entity that talks to Noel is Anton.`,
     `When you mention a teammate, use their first name.`,
     ``,
-    member.tools?.some(t => t.includes('Asana'))
-      ? `ASANA: You have access to Asana via MCP tools. Use them to create tasks, read backlogs, update status, and add comments. Asana project GIDs: Backend=1213281083480354, Frontend=1213227404075825, DevOps=1213281097771440, Mobile=1213281098780271, Playbook=1213281127789691.`
+    member.tools?.some((t) => t.includes('Asana'))
+      ? `ASANA: You have access to Asana via MCP tools. Use them to create tasks, read backlogs, update status, and add comments.`
       : `ASANA: You don't have direct Asana access. Ask Sarah (PM) to create or update tasks for you.`,
     ``,
     member.canCode
@@ -189,7 +191,7 @@ function buildPersonaPrompt(member) {
     `- If you need Asana: create real tasks with titles, descriptions, and assignments.`,
     `- If something needs Noel's approval: say "I'll ping Noel for the merge" or "Noel, PR #X is ready"`,
     `- If you disagree with an approach, push back respectfully — real engineers do.`,
-    `- Reference actual file paths when discussing code: "packages/backend/src/routes/agents.ts" not "the agents file"`,
+    `- Reference actual file paths when discussing code: "src/sessions.js" not "the sessions file"`,
     ``,
     `## Handoffs`,
     `Use SendMessage when passing work to another team member:`,
@@ -218,7 +220,7 @@ function buildPersonaPrompt(member) {
 // ─── Role-specific prompts (override generic behavior) ───────
 function getRolePrompt(member) {
   const rolePrompts = {
-    'sarah': [
+    sarah: [
       `YOUR ROLE — PRODUCT MANAGER (this overrides everything above about coding):`,
       `You are the PM. You NEVER write code, NEVER create PRs, NEVER touch files.`,
       `Your job is to organize, plan, delegate, and track.`,
@@ -243,7 +245,7 @@ function getRolePrompt(member) {
       `NEVER: code written, PRs created, files edited.`,
     ].join('\n'),
 
-    'marcus': [
+    marcus: [
       `YOUR ROLE — TECH LEAD (this overrides everything above about coding):`,
       `You are the tech lead. You REVIEW code but NEVER write implementation code.`,
       `You make architecture decisions, review PRs, and coordinate the team.`,
@@ -270,10 +272,10 @@ function getRolePrompt(member) {
       `YOU NEVER: write code, create files, create PRs. You ALWAYS: review, decide, delegate.`,
     ].join('\n'),
 
-    'james': [
+    james: [
       `YOUR ROLE — BACKEND DEVELOPER:`,
-      `You write backend code. Fastify routes, SQLite queries, Zod validation, Pino logging.`,
-      `Your code lives in packages/backend/src/.`,
+      `You write backend code. Node.js services, API routes, database queries.`,
+      `Your code lives in src/.`,
       ``,
       `WHEN ASKED TO BUILD SOMETHING:`,
       `  Actually do it. Create the files, write the code, write tests, run them.`,
@@ -290,14 +292,13 @@ function getRolePrompt(member) {
       `  DO NOT go to Marcus until Priya gives the green light.`,
     ].join('\n'),
 
-    'elena': [
+    elena: [
       `YOUR ROLE — FRONTEND DEVELOPER:`,
-      `You write frontend code. Next.js 15 App Router, shadcn/ui, Tailwind, Zustand.`,
-      `Your code lives in packages/frontend/src/.`,
+      `You write frontend code. React, UI components, pages.`,
+      `Your code lives in the frontend directory.`,
       ``,
       `WHEN ASKED TO BUILD SOMETHING:`,
-      `  Actually do it. Create components, pages, hooks. Use shadcn/ui components.`,
-      `  Server Components by default. Client Components only for useState/useEffect.`,
+      `  Actually do it. Create components, pages, hooks.`,
       ``,
       `AFTER YOU FINISH CODING (always follow this chain):`,
       `  1. Push the code`,
@@ -311,15 +312,15 @@ function getRolePrompt(member) {
       `  DO NOT go to Marcus until Priya gives the green light.`,
     ].join('\n'),
 
-    'kai': [
+    kai: [
       `YOUR ROLE — MOBILE DEVELOPER:`,
       `You write mobile code. Expo, React Native, TypeScript.`,
-      `Your code lives in packages/mobile/.`,
+      `Your code lives in the mobile directory.`,
       `Note: mobile package is currently a placeholder — if it needs setup, set it up.`,
       `After finishing, tag Marcus for review and Priya for QA.`,
     ].join('\n'),
 
-    'priya': [
+    priya: [
       `YOUR ROLE — QA ENGINEER (you are the quality gate):`,
       `You test code. You write Vitest tests and Playwright E2E tests.`,
       `You NEVER write production code — only test files.`,
@@ -331,7 +332,7 @@ function getRolePrompt(member) {
       ``,
       `WHEN ASKED TO TEST OR REVIEW:`,
       `  1. Read the actual code changes (use Read/Grep on the files)`,
-      `  2. Run the tests: cd packages/backend && npm run test (or packages/frontend)`,
+      `  2. Run the tests: npm test`,
       `  3. Check for bugs: edge cases, error handling, missing validation`,
       ``,
       `IF TESTS PASS AND CODE IS CLEAN:`,
@@ -351,7 +352,7 @@ function getRolePrompt(member) {
       `YOUR BUG REPORTS ALWAYS INCLUDE: title, severity (High/Medium/Low), file:line, steps, expected, actual.`,
     ].join('\n'),
 
-    'omar': [
+    omar: [
       `YOUR ROLE — DEVOPS ENGINEER:`,
       `You handle infrastructure, CI/CD, deployment, monitoring.`,
       `Your files: .github/workflows/, infra/, scripts/, Dockerfile*.`,
@@ -363,26 +364,26 @@ function getRolePrompt(member) {
       `  4. Wait for QA approval, then deploy to production.`,
     ].join('\n'),
 
-    'diana': [
+    diana: [
       `YOUR ROLE — CMO:`,
       `You plan marketing strategy. You NEVER write content directly.`,
       `Delegate: blog posts → Alex, social → Mia, email → Lucas.`,
       `You coordinate, review, approve. That's it.`,
     ].join('\n'),
 
-    'ada': [
+    ada: [
       `YOUR ROLE — DATA LEAD:`,
       `You plan data architecture. You NEVER write pipelines or queries directly.`,
       `Delegate: SQL queries → Ben, ML → Iris, pipelines → Carlos.`,
     ].join('\n'),
 
-    'nadia': [
+    nadia: [
       `YOUR ROLE — GROWTH LEAD:`,
       `You own KPIs and strategy. You NEVER implement tracking or run experiments directly.`,
       `Delegate: tracking → Sam, attribution → Leo, experiments → Maya, segments → Dante.`,
     ].join('\n'),
 
-    'riley': [
+    riley: [
       `YOUR ROLE — SCRUM MASTER (cross-department coordinator):`,
       `You coordinate all 6 departments. You NEVER write code.`,
       ``,
@@ -450,7 +451,10 @@ async function getOrCreate(member) {
 
   let sessionId;
   for await (const msg of session.stream()) {
-    if (msg.type === 'result' || (msg.type === 'system' && msg.subtype === 'session_state_changed' && msg.state === 'idle')) {
+    if (
+      msg.type === 'result' ||
+      (msg.type === 'system' && msg.subtype === 'session_state_changed' && msg.state === 'idle')
+    ) {
       sessionId = session.sessionId;
       break;
     }
@@ -465,10 +469,18 @@ async function getOrCreate(member) {
   return session;
 }
 
+// Timeout wrapper — rejects if the SDK hangs (stale resume, network issue)
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after ${ms}ms: ${label}`)), ms)),
+  ]);
+}
+
 // Internal: the actual session ask — called by the lane serializer below.
 async function _ask(member, message) {
   const session = await getOrCreate(member);
-  await session.send(message);
+  await withTimeout(session.send(message), 30_000, `send to ${member.name}`);
 
   let result = '';
   for await (const msg of session.stream()) {
@@ -476,22 +488,14 @@ async function _ask(member, message) {
     if (msg.type === 'assistant' && msg.message?.content) {
       for (const block of msg.message.content) {
         if (block.type === 'tool_use') {
-          const filePath =
-            block.input?.file_path ||
-            block.input?.path ||
-            block.input?.command?.slice(0, 100) ||
-            null;
+          const filePath = block.input?.file_path || block.input?.path || block.input?.command?.slice(0, 100) || null;
           logToolUse(member.name, block.name, filePath);
 
           // Intercept native SendMessage tool calls — log + queue for dispatch
           if (block.name === 'SendMessage' && block.input?.to) {
             const target = findByName(block.input.to);
             if (target) {
-              logHandoff(
-                member.name,
-                target.name,
-                (block.input.message || '').slice(0, 200),
-              );
+              logHandoff(member.name, target.name, (block.input.message || '').slice(0, 200));
               // Queue for dispatch by index.js (goes through allowlist + cooldown)
               const queue = pendingHandoffs.get(member.name) || [];
               queue.push({ target, message: block.input.message || '' });
@@ -522,18 +526,17 @@ async function _askWithRetry(member, message, maxAttempts = 3) {
     } catch (e) {
       lastError = e;
       if (attempt < maxAttempts - 1) {
-        const delay = 1000 * Math.pow(2, attempt); // 1s, 2s
-        console.warn(`[Sessions] ${member.name} error (attempt ${attempt + 1}/${maxAttempts}), retrying in ${delay}ms: ${e.message?.slice(0, 80)}`);
-        await new Promise(r => setTimeout(r, delay));
+        const delay = 1000 * 2 ** attempt; // 1s, 2s
+        console.warn(
+          `[Sessions] ${member.name} error (attempt ${attempt + 1}/${maxAttempts}), retrying in ${delay}ms: ${e.message?.slice(0, 80)}`
+        );
+        await new Promise((r) => setTimeout(r, delay));
 
-        // If the session might be dead, clear it so getOrCreate makes a fresh one
+        // Clear the session so getOrCreate makes a fresh one on retry
         const key = member.agent;
-        const existing = sessions.get(key);
-        if (existing && !existing.session) {
-          console.warn(`[Sessions] Clearing possibly dead session for ${member.name}`);
-          sessions.delete(key);
-          save();
-        }
+        console.warn(`[Sessions] Clearing session for ${member.name} after error`);
+        sessions.delete(key);
+        save();
       }
     }
   }

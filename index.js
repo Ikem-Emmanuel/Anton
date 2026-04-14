@@ -27,6 +27,7 @@ import { openDM, postAs, postTyping, replaceTyping } from './src/slack.js';
 import { getBoardReport, initTaskQueue } from './src/taskqueue.js';
 import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/team.js';
 import { describeImages, initVision } from './src/vision.js';
+import { initWeb } from './src/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -142,7 +143,8 @@ async function askAnton(prompt, fallback = '') {
   try {
     const result = await ask(ANTON_AGENT, prompt);
     return result || fallback;
-  } catch {
+  } catch (e) {
+    console.error('[Anton] askAnton failed:', e.message, e.stack?.split('\n').slice(0, 3).join('\n'));
     return fallback;
   }
 }
@@ -990,6 +992,20 @@ slackApp
 
     // Nightly consolidation — DREAMS.md + DAILY-INTEL at 23:30
     initNightlyConsolidation(runNightlyConsolidation);
+
+    // Web chat interface at localhost:3000
+    initWeb({
+      askAgent: async (agentName, text) => {
+        // Route to specific agent or default to Anton
+        const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
+        try {
+          return await trackedAsk(member, text, 'web-chat');
+        } catch {
+          return 'Having trouble right now. Try again.';
+        }
+      },
+      port: 3000,
+    });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const standupChannel = nameToId.get('anton-standup');
