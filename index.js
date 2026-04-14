@@ -9,7 +9,7 @@ import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analyti
 import { initAudit } from './src/v1-archive/audit.js';
 import { initBriefing } from './src/v1-archive/briefing.js';
 import { initContext } from './src/v1-archive/context.js';
-import { classifyIntent } from './src/v1-archive/handle.js';
+// V1 handle.js removed — brain handles classification now
 import { initLogger, logError, logMessage, logResponse } from './src/v1-archive/logger.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/v1-archive/memory.js';
 import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/v1-archive/notify.js';
@@ -22,7 +22,8 @@ import {
   teamStatus,
 } from './src/v1-archive/orchestrator.js';
 import { initPriority } from './src/v1-archive/priority.js';
-import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/v1-archive/router.js';
+import { channelToDept } from './src/v1-archive/router.js';
+// V1 route, isEveryoneRequest, detectCollaboration removed — brain handles routing
 import {
   cancelJob,
   formatTime,
@@ -534,38 +535,44 @@ async function runNightlyConsolidation() {
   }
 }
 
-// ─── Main message handler ────────────────────────────────────
+// ─── Main message handler (V2 — brain-powered) ─────────────
+// The brain handles ALL routing, classification, and communication.
+// No regex. The LLM decides everything.
+let _slackBrain = null;
+
 async function handle(text, channelId, channelName, ts, userId, client) {
   try {
     await client.reactions.add({ channel: channelId, timestamp: ts, name: 'eyes' });
   } catch {}
 
-  // ── Security: only process messages from Noel or bots ──
-  // (bots = other Anton agents posting via postAs)
-  // userId 'unknown' is allowed for backwards compat with older Bolt paths
+  // Security: only process messages from Noel
   if (NOEL_USER_ID && userId !== NOEL_USER_ID && userId !== 'unknown') {
-    // Allow messages from any channel handler — the Bolt app.message filter
-    // already blocks bot_id messages, so this catches only non-Noel humans
     console.log(`[Anton] Ignoring message from non-Noel user: ${userId}`);
     return;
   }
 
-  // ── 0. System commands (analytics, admin, orchestrator) ──
-
-  if (/\b(kill all|shut(ting)?\s*down|go (to )?sleep|goodnight|stop everything|shutdown)\b/i.test(text)) {
-    await postAs(client, { name: 'Anton' }, channelId, ts, `Shutting down. Goodnight.`);
+  // Load brain once (lazy init for Slack path)
+  if (!_slackBrain) {
     try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
+      const brainModule = await import('./src/brain/brain.js');
+      await brainModule.initBrain();
+      _slackBrain = brainModule;
+    } catch (e) {
+      console.warn(`[Slack] Brain not available: ${e.message?.slice(0, 60)}`);
+    }
+  }
+
+  // ── System commands (shutdown, restart) — infrastructure, not conversation ──
+  if (/\b(kill all|shut(ting)?\s*down|go (to )?sleep|goodnight|stop everything|shutdown)\b/i.test(text)) {
+    await postAs(client, { name: 'Anton' }, channelId, ts, 'Shutting down. Goodnight.');
     setTimeout(() => process.exit(0), 2000);
     return;
   }
-
   if (
     /\b(restart|reboot|wake up|come back)\b/i.test(text) &&
     !/\b(the|a|this)\s+(server|app|service|backend)\b/i.test(text)
   ) {
-    await postAs(client, { name: 'Anton' }, channelId, ts, `Restarting...`);
+    await postAs(client, { name: 'Anton' }, channelId, ts, 'Restarting...');
     try {
       writeFileSync(join(DATA_DIR, 'sessions.json'), '{}');
     } catch {}
@@ -573,58 +580,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     return;
   }
 
-  if (
-    /\b(analytics|daily report|agent stats|token usage|how efficient|agent performance)\b/i.test(text) &&
-    !/\b(build|create|fix|implement)\b/i.test(text)
-  ) {
-    await postAs(client, { name: 'Anton' }, channelId, ts, getReport());
-    try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
-    return;
-  }
-
-  if (/\b(board|sprint board|task board|sprint status|what.?s the board|show board)\b/i.test(text)) {
-    await postAs(client, { name: 'Anton' }, channelId, ts, getBoardReport());
-    try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
-    return;
-  }
-
-  const createChannelMatch = text.match(
-    /create\s+(?:a\s+)?(?:new\s+)?(?:slack\s+)?channel\s+(?:called|named)?\s*#?(\S+)/i
-  );
-  if (createChannelMatch) {
-    const newName = createChannelMatch[1].toLowerCase().replace(/^#/, '');
-    try {
-      const result = await client.conversations.create({ name: newName, is_private: false });
-      if (result.ok) {
-        const newId = result.channel.id;
-        try {
-          await client.conversations.invite({ channel: newId, users: userId });
-        } catch {}
-        await postAs(client, { name: 'Anton' }, channelId, ts, `Created #${newName} and invited you.`);
-        idToName.set(newId, newName);
-        nameToId.set(newName, newId);
-      }
-    } catch (e) {
-      const err = e.data?.error || e.message;
-      await postAs(
-        client,
-        { name: 'Anton' },
-        channelId,
-        ts,
-        err === 'name_taken' ? `#${newName} already exists.` : `Couldn't create: ${err}`
-      );
-    }
-    try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
-    return;
-  }
-
-  // ── Schedule commands (before orchestrator so "set standup" doesn't hit orchestrator) ──
+  // ── Schedule commands ──
   if (await handleScheduleCommand(text, channelId, ts, client)) {
     try {
       await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -632,7 +588,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     return;
   }
 
-  // ── Orchestrator commands (start team, run sprint, status, stop) ──
+  // ── Orchestrator commands ──
   const cmd = detectCommand(text);
   if (cmd) {
     if (cmd.type === 'start') return startTeam(cmd.dept, channelId, ts, client);
@@ -641,191 +597,77 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     if (cmd.type === 'stop') return stopTeam(cmd.dept, channelId, ts, client);
   }
 
-  // ── 1. Intent classification ──
-  const intent = classifyIntent(text);
+  // ── BRAIN HANDLES EVERYTHING ELSE — no regex routing ──
+  if (_slackBrain) {
+    const result = await _slackBrain.process(text, { context: `Channel: ${channelName}` });
+    const c = result.classification;
 
-  // Status queries → always go to Riley (cross-dept visibility)
-  if (intent === 'status_query') {
-    const h = await postTyping(client, TEAM.riley, channelId, ts);
-    try {
-      const r = await trackedAsk(TEAM.riley, text, 'status-query');
-      await replaceTyping(client, TEAM.riley, h, r || 'checking...');
-    } catch (_e) {
-      await replaceTyping(client, TEAM.riley, h, 'trouble pulling status right now, try again');
-    }
-    try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
-    return;
-  }
+    console.log(
+      `[Brain/Slack] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
+    );
 
-  // DMs → Anton handles everything unless explicitly addressed to a specific agent.
-  // Anton is Noel's PA — all DMs are conversations with Anton.
-  // If Noel says "Marcus, review this" in DM, it routes to Marcus.
-  // If Noel says "what's going on" — Anton answers directly.
-  if (channelName === 'dm') {
-    // Check if explicitly addressed to a specific agent (e.g. "Marcus, do X")
-    const directAddress = Object.values(TEAM).find((m) => new RegExp(`^(?:hey\\s+)?${m.name}[,!:\\s]`, 'i').test(text));
-    if (directAddress) {
-      // Explicitly addressed — route to that agent, not Anton
-      console.log(`[Anton] DM explicitly addressed to ${directAddress.name}`);
-    } else {
-      // Everything else in DMs → Anton
-      const h = await postTyping(client, { name: 'Anton' }, channelId, ts);
-      const r = await askAnton(text, 'Let me think about that.');
-      await replaceTyping(client, { name: 'Anton' }, h, r);
+    // LOCAL — brain handled it (free)
+    if (result.handledLocally && result.text) {
+      console.log(`[Brain/Slack] LOCAL (${result.tokensOut} tokens, $0)`);
+      await postAs(client, { name: 'Anton' }, channelId, ts, result.text);
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
       } catch {}
 
-      // Process native SendMessage handoffs from Anton
-      if (r) {
-        await handleAgentAction(ANTON_AGENT, r, channelId, ts, client, 0);
+      // Brain-detected handoffs
+      if (c.handoffs?.length > 0) {
+        for (const h of c.handoffs) {
+          const target = findByName(h.agent);
+          if (!target) continue;
+          console.log(`[Brain/Slack] Handoff -> ${h.agent}`);
+          const typing = await postTyping(client, target, channelId, ts);
+          try {
+            const resp = await trackedAsk(target, h.message, 'brain-handoff');
+            await replaceTyping(client, target, typing, resp || 'Got it.');
+          } catch (e) {
+            await replaceTyping(client, target, typing, 'hit a snag');
+          }
+        }
+      }
 
-        // Anton PA delegation — if Anton mentions agent names with delegation intent,
-        // dispatch to them with FULL CONTEXT (Noel's request + Anton's strategy).
-        // This creates a real conversation: Noel → Anton (strategy) → Marcus (architecture).
-        const delegationSignal = /\b(routing to|pulling in|asking|let me get|getting|cc'ing|bringing in|looping in)\b/i;
-        if (delegationSignal.test(r)) {
-          for (const teamMember of Object.values(TEAM)) {
-            const nameMatch = new RegExp(`\\b${teamMember.name}\\b`, 'i').exec(r);
-            if (!nameMatch) continue;
-
-            // Rate limit
-            const dk = `Anton→${teamMember.name}`;
-            if (recentDispatches.has(dk) && Date.now() - recentDispatches.get(dk) < 60_000) continue;
-            recentDispatches.set(dk, Date.now());
-
-            console.log(`[Anton] PA delegation: Anton → ${teamMember.name}`);
-            const handle_ = await postTyping(client, teamMember, channelId, ts);
-
-            // Give the agent FULL context: what Noel asked + what Anton said
-            const contextPrompt = [
-              `Noel asked Anton: "${text.slice(0, 500)}"`,
-              ``,
-              `Anton responded with this strategy/direction:`,
-              `"${r.slice(0, 1000)}"`,
-              ``,
-              `Anton is pulling you in for your expertise. Respond to Noel through this thread.`,
-              `Build on Anton's strategy — add your domain-specific perspective.`,
-              `If you need input from another team member, use SendMessage to reach them.`,
-            ].join('\n');
-
-            try {
-              const agentResponse = await trackedAsk(teamMember, contextPrompt, 'anton-delegation');
-              await replaceTyping(client, teamMember, handle_, agentResponse || 'looking into it');
-              // Process any further handoffs from this agent (e.g. Marcus → James)
-              if (agentResponse) {
-                await handleAgentAction(teamMember, agentResponse, channelId, ts, client, 1);
-                const nativeHandoffs = consumeHandoffs(teamMember.name);
-                for (const { target, message: hMsg } of nativeHandoffs) {
-                  const permitted = HANDOFF_RULES[teamMember.name] || [];
-                  if (!permitted.includes(target.name)) continue;
-                  const hdk = `${teamMember.name}→${target.name}`;
-                  if (recentDispatches.has(hdk) && Date.now() - recentDispatches.get(hdk) < 60_000) continue;
-                  if (!canDispatch(channelId)) continue;
-                  recentDispatches.set(hdk, Date.now());
-                  console.log(`[Anton] Chain: ${teamMember.name} → ${target.name}`);
-                  const h2 = await postTyping(client, target, channelId, ts);
-                  trackedAsk(target, hMsg, 'chain-handoff')
-                    .then((resp) => replaceTyping(client, target, h2, resp || 'on it'))
-                    .catch((e) => console.error(`[Anton] Chain to ${target.name} failed:`, e.message?.slice(0, 80)));
-                }
-              }
-            } catch (e) {
-              await replaceTyping(client, teamMember, handle_, 'hit a snag, try again?');
-              console.error(`[Anton] PA delegation to ${teamMember.name} failed:`, e.message?.slice(0, 100));
-            }
+      // Brain routed to a specific agent
+      if (c.agent && c.agent !== 'Anton') {
+        const target = findByName(c.agent);
+        if (target) {
+          console.log(`[Brain/Slack] Routing to ${c.agent} via Claude`);
+          const typing = await postTyping(client, target, channelId, ts);
+          try {
+            const resp = await trackedAsk(target, text, 'brain-route');
+            await replaceTyping(client, target, typing, resp || 'On it.');
+          } catch (e) {
+            await replaceTyping(client, target, typing, 'hit a snag');
           }
         }
       }
       return;
     }
-  }
 
-  // ── 2. Everyone ──
-  if (isEveryoneRequest(text)) {
-    return handleEveryone(text, channelId, channelName, ts, client);
-  }
-
-  // ── 3. Collaboration ──
-  const collab = detectCollaboration(text);
-  if (collab) {
-    return handleCollab(collab, channelId, ts, client);
-  }
-
-  // ── 4. Single agent routing ──
-  const member = route(text, channelName);
-
-  // Ambiguous (multiple names, no direct address) → ask Noel to clarify
-  if (!member) {
-    const mentioned = Object.values(TEAM)
-      .filter((m) => new RegExp(`\\b${m.name}\\b`, 'i').test(text))
-      .map((m) => m.name);
-    const names = mentioned.join(' or ');
-    await postAs(client, { name: 'Anton' }, channelId, ts, `Who do you want — ${names}? Address them directly.`);
+    // CLAUDE — brain says this needs Claude
+    console.log(`[Brain/Slack] CLAUDE needed -> ${c.agent || 'Anton'}`);
+    const agent = c.agent ? findByName(c.agent) || ANTON_AGENT : ANTON_AGENT;
+    const typing = await postTyping(client, agent, channelId, ts);
     try {
-      await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-    } catch {}
-    return;
-  }
-
-  // Rate limit check for the full dispatch
-  if (!canDispatch(channelId)) {
-    await postAs(client, { name: 'Anton' }, channelId, ts, `Too many requests right now. Wait a moment.`);
-    return;
-  }
-
-  console.log(`[Anton] Routed "${text.slice(0, 40)}..." → ${member.name} (${member.title})`);
-  const handle_ = await postTyping(client, member, channelId, ts);
-
-  try {
-    const response = await trackedAsk(member, text, channelName);
-
-    // NO_REPLY: agent opted out — remove typing indicator, silent ack
-    if (response && NO_REPLY_RE.test(response.trim())) {
-      await replaceTyping(client, member, handle_, null);
-      console.log(`[Anton] ${member.name} → NO_REPLY`);
-      try {
-        await client.reactions.add({ channel: channelId, timestamp: ts, name: 'eyes' });
-      } catch {}
-      return;
-    }
-
-    await replaceTyping(client, member, handle_, response || 'sorry, having trouble — try again or ask Marcus');
-    if (response) {
+      const response = await trackedAsk(agent, text, 'brain-to-claude');
+      await replaceTyping(client, agent, typing, response || 'working on it...');
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
       } catch {}
-      await handleAgentAction(member, response, channelId, ts, client, 0);
-
-      // Process native SendMessage handoffs the agent queued via the tool
-      // (goes through the same allowlist + cooldown path as text-parse handoffs)
-      const nativeHandoffs = consumeHandoffs(member.name);
-      for (const { target, message: hMsg } of nativeHandoffs) {
-        const permitted = HANDOFF_RULES[member.name] || [];
-        if (!permitted.includes(target.name)) {
-          console.log(`[Anton] Blocked native handoff: ${member.name} → ${target.name} (not in allowlist)`);
-          continue;
-        }
-        const dispatchKey = `${member.name}→${target.name}`;
-        if (recentDispatches.has(dispatchKey) && Date.now() - recentDispatches.get(dispatchKey) < 60_000) {
-          console.log(`[Anton] Cooldown active (native): ${dispatchKey}`);
-          continue;
-        }
-        if (!canDispatch(channelId)) continue;
-        recentDispatches.set(dispatchKey, Date.now());
-        console.log(`[Anton] Native SendMessage: ${member.name} → ${target.name}`);
-        const h = await postTyping(client, target, channelId, ts);
-        trackedAsk(target, hMsg, 'sendmessage-handoff')
-          .then((r) => replaceTyping(client, target, h, r || 'got it'))
-          .catch((e) => console.error(`[Anton] Native handoff to ${target.name} failed:`, e.message?.slice(0, 100)));
-      }
+    } catch (e) {
+      await replaceTyping(client, agent, typing, 'hit a snag, try again?');
     }
-  } catch (e) {
-    console.error(`[Anton] ${member.name} error:`, e.message?.slice(0, 200));
-    await replaceTyping(client, member, handle_, 'hit a snag, try again?');
+    return;
   }
+
+  // No brain — Claude fallback
+  console.log(`[Slack] No brain — Claude-only`);
+  const typing = await postTyping(client, { name: 'Anton' }, channelId, ts);
+  const r = await askAnton(text, 'Let me think about that.');
+  await replaceTyping(client, { name: 'Anton' }, typing, r);
 }
 
 // ─── Slack App (conditional) ─────────────────────────────────
