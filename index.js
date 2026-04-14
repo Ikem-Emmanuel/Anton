@@ -53,10 +53,27 @@ const BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const APP_TOKEN = process.env.SLACK_APP_TOKEN;
 const NOEL_USER_ID = process.env.NOEL_SLACK_USER_ID || '';
 
-if (!BOT_TOKEN || !APP_TOKEN) {
-  console.error('[Anton] Missing SLACK_BOT_TOKEN or SLACK_APP_TOKEN');
+// Channel switches — control which frontends are active
+// Set in .env: ANTON_CHANNELS=web,slack (comma-separated)
+// Default: all available channels
+const CHANNEL_CONFIG = (process.env.ANTON_CHANNELS || 'web,slack')
+  .toLowerCase()
+  .split(',')
+  .map((c) => c.trim());
+const SLACK_ENABLED = CHANNEL_CONFIG.includes('slack') && BOT_TOKEN && APP_TOKEN;
+const WEB_ENABLED = CHANNEL_CONFIG.includes('web');
+
+if (!SLACK_ENABLED && !WEB_ENABLED) {
+  console.error('[Anton] No channels enabled. Set ANTON_CHANNELS=web,slack in .env');
   process.exit(1);
 }
+
+if (SLACK_ENABLED) {
+  console.log('[Anton] Slack channel: ON');
+} else {
+  console.log('[Anton] Slack channel: OFF' + (!BOT_TOKEN ? ' (no token)' : ''));
+}
+if (WEB_ENABLED) console.log('[Anton] Web channel: ON');
 
 // ─── Security: NOEL_USER_ID guard ────────────────────────────
 // Approval gate is disabled without this — warn loudly but don't hard-fail
@@ -802,156 +819,166 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   }
 }
 
-// ─── Slack App ───────────────────────────────────────────────
-const slackApp = new App({
-  token: BOT_TOKEN,
-  appToken: APP_TOKEN,
-  socketMode: true,
-  logLevel: 'WARN',
-});
+// ─── Slack App (conditional) ─────────────────────────────────
+let slackApp = null;
+if (SLACK_ENABLED) {
+  slackApp = new App({
+    token: BOT_TOKEN,
+    appToken: APP_TOKEN,
+    socketMode: true,
+    logLevel: 'WARN',
+  });
+} else {
+  // Stub so slackApp.client references don't crash in shared code
+  slackApp = { client: null, start: async () => {} };
+}
 
 // Channel messages in #anton-* channels
-slackApp.message(async ({ message, client }) => {
-  if ('bot_id' in message) return;
-  if ('subtype' in message && message.subtype !== 'file_share') return;
-  if (!('channel' in message)) return;
-  const channelName = idToName.get(message.channel);
-  if (!channelName) return;
+if (SLACK_ENABLED)
+  slackApp.message(async ({ message, client }) => {
+    if ('bot_id' in message) return;
+    if ('subtype' in message && message.subtype !== 'file_share') return;
+    if (!('channel' in message)) return;
+    const channelName = idToName.get(message.channel);
+    if (!channelName) return;
 
-  const hasFiles = message.files?.length > 0;
-  const text = (message.text ?? '').trim();
+    const hasFiles = message.files?.length > 0;
+    const text = (message.text ?? '').trim();
 
-  if (hasFiles) {
-    const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
-    const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, text) : '';
+    if (hasFiles) {
+      const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
+      const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, text) : '';
 
-    if (!text && !imageContext) {
-      await postAs(
-        client,
-        { name: 'Anton' },
-        message.channel,
-        message.ts,
-        `Couldn't process that image. Try describing what you see or paste the text directly.`
-      );
+      if (!text && !imageContext) {
+        await postAs(
+          client,
+          { name: 'Anton' },
+          message.channel,
+          message.ts,
+          `Couldn't process that image. Try describing what you see or paste the text directly.`
+        );
+        return;
+      }
+
+      const fullText = (text || 'User sent an image:') + (imageContext ? `\n\n${imageContext}` : '');
+      await handle(fullText, message.channel, channelName, message.ts, message.user ?? 'unknown', client);
       return;
     }
 
-    const fullText = (text || 'User sent an image:') + (imageContext ? `\n\n${imageContext}` : '');
-    await handle(fullText, message.channel, channelName, message.ts, message.user ?? 'unknown', client);
-    return;
-  }
-
-  if (!text) return;
-  await handle(text, message.channel, channelName, message.ts, message.user ?? 'unknown', client);
-});
+    if (!text) return;
+    await handle(text, message.channel, channelName, message.ts, message.user ?? 'unknown', client);
+  });
 
 // DMs — check for pending approval responses FIRST, then route normally
-slackApp.message(async ({ message, client }) => {
-  if ('bot_id' in message) return;
-  if ('subtype' in message && message.subtype !== 'file_share') return;
-  if (!('channel' in message)) return;
-  if (idToName.has(message.channel)) return; // already handled above
+if (SLACK_ENABLED)
+  slackApp.message(async ({ message, client }) => {
+    if ('bot_id' in message) return;
+    if ('subtype' in message && message.subtype !== 'file_share') return;
+    if (!('channel' in message)) return;
+    if (idToName.has(message.channel)) return; // already handled above
 
-  const hasFiles = message.files?.length > 0;
-  const rawText = (message.text ?? '').trim();
+    const hasFiles = message.files?.length > 0;
+    const rawText = (message.text ?? '').trim();
 
-  let finalText = rawText;
-  if (hasFiles) {
-    const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
-    const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, rawText) : '';
-    finalText = (rawText || 'User sent an image:') + (imageContext ? `\n\n${imageContext}` : '');
+    let finalText = rawText;
+    if (hasFiles) {
+      const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
+      const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, rawText) : '';
+      finalText = (rawText || 'User sent an image:') + (imageContext ? `\n\n${imageContext}` : '');
 
-    if (!finalText.trim()) {
-      await postAs(
-        client,
-        { name: 'Anton' },
-        message.channel,
-        message.ts,
-        `Couldn't process that image. Try describing what you see.`
-      );
-      return;
-    }
-  }
-
-  if (!finalText) return;
-
-  // ── Approval response: must be from Noel in his DM channel ──
-  if (NOEL_USER_ID && message.user === NOEL_USER_ID) {
-    const queue = pendingApprovals.get(message.channel);
-    if (queue?.length > 0) {
-      const approved = /^(yes|y|ok|approve|go|approved|do it)\b/i.test(finalText);
-      const denied = /^(no|n|deny|denied|reject|stop|cancel|don.?t)\b/i.test(finalText);
-
-      if (approved || denied) {
-        // Remove head of queue and process it
-        const pending = queue.shift();
-        if (queue.length === 0) {
-          pendingApprovals.delete(message.channel);
-        } else {
-          // Show the next pending request immediately
-          pendingApprovals.set(message.channel, queue);
-          postApprovalDM(client, message.channel, queue[0], queue.length).catch(() => {});
-        }
-
-        if (approved) {
-          await postAs(
-            client,
-            { name: 'Anton' },
-            message.channel,
-            message.ts,
-            `Approved. Telling ${pending.member.name} to proceed.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
-          );
-          const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
-          const result = await trackedAsk(
-            pending.member,
-            `Noel approved your ${pending.actionType} request: "${pending.summary}". ` +
-              `Please execute it now. Original draft:\n${pending.fullDraft.slice(0, 1000)}`,
-            'approval-approved'
-          );
-          await replaceTyping(client, pending.member, h, result || 'executing...');
-        } else {
-          await postAs(
-            client,
-            { name: 'Anton' },
-            message.channel,
-            message.ts,
-            `Denied. Notifying ${pending.member.name}.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
-          );
-          const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
-          const r = await trackedAsk(
-            pending.member,
-            `Noel denied your ${pending.actionType} request: "${pending.summary}". Do not proceed. Stand by.`,
-            'approval-denied'
-          );
-          await replaceTyping(client, pending.member, h, r || 'understood, standing by');
-        }
-        return; // Do not fall through to normal routing
+      if (!finalText.trim()) {
+        await postAs(
+          client,
+          { name: 'Anton' },
+          message.channel,
+          message.ts,
+          `Couldn't process that image. Try describing what you see.`
+        );
+        return;
       }
     }
-  }
 
-  console.log(`[Anton] DM from ${message.user}: ${finalText.slice(0, 60)}`);
-  await handle(finalText, message.channel, 'dm', message.ts, message.user ?? 'unknown', client);
-});
+    if (!finalText) return;
+
+    // ── Approval response: must be from Noel in his DM channel ──
+    if (NOEL_USER_ID && message.user === NOEL_USER_ID) {
+      const queue = pendingApprovals.get(message.channel);
+      if (queue?.length > 0) {
+        const approved = /^(yes|y|ok|approve|go|approved|do it)\b/i.test(finalText);
+        const denied = /^(no|n|deny|denied|reject|stop|cancel|don.?t)\b/i.test(finalText);
+
+        if (approved || denied) {
+          // Remove head of queue and process it
+          const pending = queue.shift();
+          if (queue.length === 0) {
+            pendingApprovals.delete(message.channel);
+          } else {
+            // Show the next pending request immediately
+            pendingApprovals.set(message.channel, queue);
+            postApprovalDM(client, message.channel, queue[0], queue.length).catch(() => {});
+          }
+
+          if (approved) {
+            await postAs(
+              client,
+              { name: 'Anton' },
+              message.channel,
+              message.ts,
+              `Approved. Telling ${pending.member.name} to proceed.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
+            );
+            const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
+            const result = await trackedAsk(
+              pending.member,
+              `Noel approved your ${pending.actionType} request: "${pending.summary}". ` +
+                `Please execute it now. Original draft:\n${pending.fullDraft.slice(0, 1000)}`,
+              'approval-approved'
+            );
+            await replaceTyping(client, pending.member, h, result || 'executing...');
+          } else {
+            await postAs(
+              client,
+              { name: 'Anton' },
+              message.channel,
+              message.ts,
+              `Denied. Notifying ${pending.member.name}.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
+            );
+            const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
+            const r = await trackedAsk(
+              pending.member,
+              `Noel denied your ${pending.actionType} request: "${pending.summary}". Do not proceed. Stand by.`,
+              'approval-denied'
+            );
+            await replaceTyping(client, pending.member, h, r || 'understood, standing by');
+          }
+          return; // Do not fall through to normal routing
+        }
+      }
+    }
+
+    console.log(`[Anton] DM from ${message.user}: ${finalText.slice(0, 60)}`);
+    await handle(finalText, message.channel, 'dm', message.ts, message.user ?? 'unknown', client);
+  });
 
 // @anton mentions in any channel
-slackApp.event('app_mention', async ({ event, client }) => {
-  const text = (event.text ?? '').replace(/<@[^>]+>/g, '').trim();
-  if (!text) return;
-  const channelName = idToName.get(event.channel) ?? 'unknown';
-  await handle(text, event.channel, channelName, event.ts, event.user, client);
-});
+if (SLACK_ENABLED)
+  slackApp.event('app_mention', async ({ event, client }) => {
+    const text = (event.text ?? '').replace(/<@[^>]+>/g, '').trim();
+    if (!text) return;
+    const channelName = idToName.get(event.channel) ?? 'unknown';
+    await handle(text, event.channel, channelName, event.ts, event.user, client);
+  });
 
 // ─── Start ───────────────────────────────────────────────────
 console.log(`[Anton] Starting...`);
 console.log(`[Anton] Channels: ${idToName.size} | Team: ${Object.keys(TEAM).length}`);
 
-slackApp
-  .start()
+// Start — Slack connects if enabled, then init subsystems
+(SLACK_ENABLED ? slackApp.start() : Promise.resolve())
   .then(async () => {
     console.log('');
     console.log('  Anton is online.');
-    console.log(`  ${idToName.size} channels | ${Object.keys(TEAM).length} team members`);
+    console.log(`  ${SLACK_ENABLED ? idToName.size + ' channels | ' : ''}${Object.keys(TEAM).length} team members`);
+    console.log(`  Channels: ${[SLACK_ENABLED && 'slack', WEB_ENABLED && 'web'].filter(Boolean).join(', ')}`);
     console.log('');
 
     // Restore persisted schedule
@@ -999,49 +1026,52 @@ slackApp
     initNightlyConsolidation(runNightlyConsolidation);
 
     // Notification system
-    initNotify({ slackClient: slackApp.client, noelUserId: NOEL_USER_ID });
+    initNotify({ slackClient: SLACK_ENABLED ? slackApp.client : null, noelUserId: NOEL_USER_ID });
 
     // Audit log (SQLite, hash-chained)
     initAudit(DATA_DIR);
 
     // Web chat interface at localhost:3000
-    const { wss } = initWeb({
-      askAgent: async (agentName, text, onHandoff) => {
-        const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
-        try {
-          const response = await trackedAsk(member, text, 'web-chat');
+    let wss = null;
+    if (WEB_ENABLED) {
+      const webResult = initWeb({
+        askAgent: async (agentName, text, onHandoff) => {
+          const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
+          try {
+            const response = await trackedAsk(member, text, 'web-chat');
 
-          // Process SendMessage handoffs (same as Slack path)
-          const handoffs = consumeHandoffs(member.name);
-          for (const { target, message: hMsg } of handoffs) {
-            const permitted = HANDOFF_RULES[member.name] || [];
-            if (!permitted.includes(target.name)) continue;
-            // Dispatch handoff asynchronously — response goes to web client
-            if (onHandoff) {
-              (async () => {
-                try {
-                  const handoffResponse = await trackedAsk(target, hMsg, 'web-handoff');
-                  onHandoff(target.name, handoffResponse || 'Got it.');
-                } catch (e) {
-                  console.error(`[Web] Handoff to ${target.name} failed:`, e.message?.slice(0, 80));
-                }
-              })();
+            // Process SendMessage handoffs (same as Slack path)
+            const handoffs = consumeHandoffs(member.name);
+            for (const { target, message: hMsg } of handoffs) {
+              const permitted = HANDOFF_RULES[member.name] || [];
+              if (!permitted.includes(target.name)) continue;
+              // Dispatch handoff asynchronously — response goes to web client
+              if (onHandoff) {
+                (async () => {
+                  try {
+                    const handoffResponse = await trackedAsk(target, hMsg, 'web-handoff');
+                    onHandoff(target.name, handoffResponse || 'Got it.');
+                  } catch (e) {
+                    console.error(`[Web] Handoff to ${target.name} failed:`, e.message?.slice(0, 80));
+                  }
+                })();
+              }
             }
+
+            return response;
+          } catch {
+            return 'Having trouble right now. Try again.';
           }
+        },
+        port: 3000,
+      });
+      wss = webResult.wss;
+    }
 
-          return response;
-        } catch {
-          return 'Having trouble right now. Try again.';
-        }
-      },
-      port: 3000,
-    });
-
-    // System health watcher — broadcasts to web UI
+    // System health watcher — emits events to event bus, broadcasts health to web UI
     initWatcher({
-      notifyNoel,
       dataDir: DATA_DIR,
-      broadcast: (msg) => wss.broadcast(msg),
+      broadcast: wss ? (msg) => wss.broadcast(msg) : null,
     });
 
     // Morning briefing — proactive daily push
@@ -1059,32 +1089,32 @@ slackApp
     initPriority({ notifyNoel });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
-    const standupChannel = nameToId.get('anton-standup');
     const startupFile = join(DATA_DIR, '.last-startup');
-    const lastStartup = (() => {
-      try {
-        return parseInt(readFileSync(startupFile, 'utf-8'), 10);
-      } catch {
-        return 0;
-      }
-    })();
     const now = Date.now();
-    if (standupChannel && now - lastStartup > 120_000) {
-      // suppress if restarted within 2 min
-      try {
-        writeFileSync(startupFile, String(now));
-        await postAs(
-          slackApp.client,
-          { name: 'Anton' },
-          standupChannel,
-          undefined,
-          `Online. ${Object.keys(TEAM).length} agents ready. Type a name to reach anyone, or ask me directly.`
-        );
-      } catch {}
-    } else {
-      try {
-        writeFileSync(startupFile, String(now));
-      } catch {}
+    try {
+      writeFileSync(startupFile, String(now));
+    } catch {}
+
+    if (SLACK_ENABLED) {
+      const standupChannel = nameToId.get('anton-standup');
+      const lastStartup = (() => {
+        try {
+          return parseInt(readFileSync(startupFile, 'utf-8'), 10);
+        } catch {
+          return 0;
+        }
+      })();
+      if (standupChannel && now - lastStartup > 120_000) {
+        try {
+          await postAs(
+            slackApp.client,
+            { name: 'Anton' },
+            standupChannel,
+            undefined,
+            `Online. ${Object.keys(TEAM).length} agents ready. Type a name to reach anyone, or ask me directly.`
+          );
+        } catch {}
+      }
     }
   })
   .catch((err) => {
