@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { TEAM, HANDOFF_RULES, findByName, getDeptMembers, getDeptLead } from './team.js';
+import { describe, expect, it } from 'vitest';
+import { findByName, getDeptLead, getDeptMembers, HANDOFF_RULES, TEAM } from './team.js';
 
 describe('TEAM', () => {
   it('has 27 entries (26 agents + riley)', () => {
@@ -58,16 +58,16 @@ describe('getDeptLead', () => {
 describe('HANDOFF_RULES', () => {
   it('Marcus can dispatch to James, Elena, Kai, Omar, Priya, Sarah, Riley', () => {
     expect(HANDOFF_RULES.Marcus).toEqual(
-      expect.arrayContaining(['James', 'Elena', 'Kai', 'Omar', 'Priya', 'Sarah', 'Riley']),
+      expect.arrayContaining(['James', 'Elena', 'Kai', 'Omar', 'Priya', 'Sarah', 'Riley'])
     );
     expect(HANDOFF_RULES.Marcus).toHaveLength(12);
   });
 
-  it('James can dispatch to Marcus, Priya, Omar, Riley', () => {
+  it('James can dispatch to full engineering team', () => {
     expect(HANDOFF_RULES.James).toEqual(
-      expect.arrayContaining(['Marcus', 'Priya', 'Omar', 'Riley']),
+      expect.arrayContaining(['Marcus', 'Sarah', 'Elena', 'Kai', 'Priya', 'Omar', 'Riley'])
     );
-    expect(HANDOFF_RULES.James).toHaveLength(4);
+    expect(HANDOFF_RULES.James).toHaveLength(7);
   });
 
   it('Marcus cannot dispatch to himself', () => {
@@ -91,13 +91,13 @@ describe('getDeptMembers', () => {
 
   it('returns only eng members for dept "eng"', () => {
     const eng = getDeptMembers('eng');
-    expect(eng.every(m => m.dept === 'eng')).toBe(true);
+    expect(eng.every((m) => m.dept === 'eng')).toBe(true);
     expect(eng.length).toBe(7);
   });
 
   it('returns only mktg members for dept "mktg"', () => {
     const mktg = getDeptMembers('mktg');
-    expect(mktg.every(m => m.dept === 'mktg')).toBe(true);
+    expect(mktg.every((m) => m.dept === 'mktg')).toBe(true);
     expect(mktg.length).toBe(4);
   });
 });
@@ -110,7 +110,7 @@ describe('HANDOFF_RULES — cross-dept', () => {
   });
 
   it('all 27 agents appear in HANDOFF_RULES', () => {
-    const allNames = Object.values(TEAM).map(m => m.name);
+    const allNames = Object.values(TEAM).map((m) => m.name);
     for (const name of allNames) {
       expect(HANDOFF_RULES).toHaveProperty(name);
     }
@@ -124,7 +124,7 @@ describe('HANDOFF_RULES — cross-dept', () => {
   });
 
   it('every non-lead agent can reach Riley', () => {
-    const nonLeads = Object.values(TEAM).filter(m => m.name !== 'Riley');
+    const nonLeads = Object.values(TEAM).filter((m) => m.name !== 'Riley');
     for (const m of nonLeads) {
       expect(HANDOFF_RULES[m.name]).toContain('Riley');
     }
@@ -146,7 +146,7 @@ describe('HANDOFF_RULES — cross-dept', () => {
   });
 
   it('all handoff targets are valid team member names', () => {
-    const allNames = new Set(Object.values(TEAM).map(m => m.name));
+    const allNames = new Set(Object.values(TEAM).map((m) => m.name));
     for (const [, targets] of Object.entries(HANDOFF_RULES)) {
       for (const t of targets) {
         expect(allNames.has(t)).toBe(true);
