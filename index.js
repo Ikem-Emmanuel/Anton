@@ -6,10 +6,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
+import { initBriefing } from './src/briefing.js';
 import { classifyIntent } from './src/handle.js';
 import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
-import { initNotify, notifyNoel } from './src/notify.js';
+import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/notify.js';
 import { detectCommand, initOrchestrator, runSprint, startTeam, stopTeam, teamStatus } from './src/orchestrator.js';
 import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/router.js';
 import {
@@ -28,7 +29,7 @@ import { openDM, postAs, postTyping, replaceTyping } from './src/slack.js';
 import { getBoardReport, initTaskQueue } from './src/taskqueue.js';
 import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/team.js';
 import { describeImages, initVision } from './src/vision.js';
-import { initWatcher } from './src/watcher.js';
+import { checkGitState, getHealthSnapshot, initWatcher } from './src/watcher.js';
 import { initWeb } from './src/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
@@ -1036,6 +1037,17 @@ slackApp
       notifyNoel,
       dataDir: DATA_DIR,
       broadcast: (msg) => wss.broadcast(msg),
+    });
+
+    // Morning briefing — proactive daily push
+    initBriefing({
+      scheduleJob,
+      getHealthSnapshot,
+      checkGitState,
+      consumeBriefingBuffer,
+      notifyNoel,
+      antonRoot: ANTON_ROOT,
+      dataDir: DATA_DIR,
     });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
