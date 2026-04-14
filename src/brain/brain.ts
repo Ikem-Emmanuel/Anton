@@ -11,6 +11,7 @@ import {
   getTemperatureForDepth,
   getMaxTokensForDepth,
 } from './thinking.js';
+import { buildAgentPrompt } from './personas.js';
 
 export interface BrainResponse {
   text: string;
@@ -48,12 +49,14 @@ export async function initBrain(): Promise<void> {
 }
 
 // Main entry point — process any message through the brain
+// If options.agent is set, the brain responds AS that agent using their persona
 export async function process(
   message: string,
   options?: {
     context?: string;
     from?: string;
     channel?: string;
+    agent?: string; // respond AS this agent (e.g. 'Marcus')
   }
 ): Promise<BrainResponse> {
   if (!_initialized) {
@@ -101,7 +104,9 @@ export async function process(
   try {
     const depth = getThinkingDepth(classification.intent, classification.complexity, classification.adaptiveDepth);
 
-    const thinkingSystem = buildThinkingPrompt(ANTON_SYSTEM, depth, options?.context);
+    // Use agent persona if specified, otherwise Anton's default
+    const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : ANTON_SYSTEM;
+    const thinkingSystem = buildThinkingPrompt(basePrompt, depth, options?.context);
     const temperature = getTemperatureForDepth(depth);
     const maxTokens = getMaxTokensForDepth(depth);
 

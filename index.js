@@ -913,14 +913,14 @@ startPromise
             if (forceLocalMatch && brain) {
               const cleanText = forceLocalMatch[1].trim();
               console.log(`[Override] @local — forcing local brain`);
-              const result = await brain.process(cleanText, { context: `Talking to: ${agentName}` });
+              const result = await brain.process(cleanText, { context: `Talking to: ${agentName}`, agent: agentName });
               console.log(`[Brain] LOCAL (forced) | ${result.durationMs}ms | ${result.tokensOut} tokens`);
               return result.text || 'Could not process locally. Try without @local.';
             }
 
             // Brain handles everything (if available)
             if (brain) {
-              const result = await brain.process(text, { context: `Talking to: ${agentName}` });
+              const result = await brain.process(text, { context: `Talking to: ${agentName}`, agent: agentName });
               const c = result.classification;
 
               console.log(
