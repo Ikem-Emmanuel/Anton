@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ahnton — Commit-msg Hook
+# Anton — Commit-msg Hook
 # Enforces conventional commit format and blocks AI attribution
 
 set -e

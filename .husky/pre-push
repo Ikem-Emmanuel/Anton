@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ahnton — Pre-push Hook
+# Anton — Pre-push Hook
 # Scans commits being pushed for AI attribution in messages and staged content
 
 set -e
