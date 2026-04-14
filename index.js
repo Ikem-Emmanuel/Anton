@@ -1052,6 +1052,26 @@ startPromise
       const webResult = initWeb({
         askAgent: async (agentName, text, onHandoff) => {
           try {
+            // Override prefixes: @claude or /claude forces Claude, @local or /local forces local
+            const forceClaudeMatch = text.match(/^[@/]claude\s+([\s\S]+)/i);
+            const forceLocalMatch = text.match(/^[@/]local\s+([\s\S]+)/i);
+
+            if (forceClaudeMatch) {
+              const cleanText = forceClaudeMatch[1].trim();
+              console.log(`[Override] @claude — forcing Claude for: ${cleanText.slice(0, 60)}`);
+              const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
+              const response = await trackedAsk(member, cleanText, 'forced-claude');
+              return response;
+            }
+
+            if (forceLocalMatch && brain) {
+              const cleanText = forceLocalMatch[1].trim();
+              console.log(`[Override] @local — forcing local brain for: ${cleanText.slice(0, 60)}`);
+              const result = await brain.process(cleanText, { context: `Talking to: ${agentName}` });
+              console.log(`[Brain] LOCAL (forced) | ${result.durationMs}ms | ${result.tokensOut} tokens`);
+              return result.text || 'Brain could not process that locally. Try without @local.';
+            }
+
             // ALL messages go through brain first (if available)
             if (brain) {
               const result = await brain.process(text, { context: `Talking to: ${agentName}` });
