@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
 import { trackSession } from './analytics.js';
-import { getContextForAgent, getModelForMessage, resetSessionMessageCount, trackSessionMessage } from './context.js';
+import { getContextForAgent, resetSessionMessageCount, trackSessionMessage } from './context.js';
 import { logHandoff, logSession, logToolUse } from './logger.js';
 import { findByName } from './team.js';
 
@@ -22,13 +22,13 @@ export function consumeHandoffs(agentName) {
   return handoffs;
 }
 let sessionsFile;
-let projectRoot;
+let _projectRoot;
 const NOEL_ID = 'U0ACB02JTTN';
 let personasData = {};
 
 export function init(antonRoot, dataDir) {
   sessionsFile = join(dataDir, 'sessions.json');
-  projectRoot = antonRoot;
+  _projectRoot = antonRoot;
 
   // Load personas from config/
   try {
@@ -194,20 +194,13 @@ function buildPersonaPrompt(member) {
     `- If you disagree with an approach, push back respectfully — real engineers do.`,
     `- Reference actual file paths when discussing code: "src/sessions.js" not "the sessions file"`,
     ``,
-    `## Handoffs — CRITICAL`,
-    `When you need to contact, ping, reach out to, or delegate to another team member,`,
-    `you MUST use the SendMessage tool. This is the ONLY way to actually reach them.`,
-    `Saying "I'll ping Elena" or "I told her" without using SendMessage does NOTHING —`,
-    `the other person never receives the message. You are lying to the user if you say`,
-    `you contacted someone without actually calling SendMessage.`,
-    ``,
-    `CORRECT (actually sends):`,
-    `  SendMessage({ to: "Elena", message: "Noel wants you to reach out to Anton for interview prep." })`,
-    ``,
-    `WRONG (does nothing, the other person never sees it):`,
-    `  "I'll ping Elena" or "Done, told her to reach out" — WITHOUT calling SendMessage`,
-    ``,
-    `Rule: If you say you contacted someone, you MUST have called SendMessage in the same response.`,
+    `## Handoffs`,
+    `When you need another team member involved, just say so naturally:`,
+    `  "I'll ping Elena about this."`,
+    `  "Let me loop in James for the backend review."`,
+    `  "That's Priya's area — she should test this."`,
+    `The system detects your intent and routes the message automatically.`,
+    `You don't need any special format — just mention who and what.`,
     ``,
     `## Staying Silent`,
     `If a message is not directed at you and you have nothing useful to add,`,
@@ -416,7 +409,7 @@ function getRolePrompt(member) {
       `  *Velocity:* X completed | Y in progress | Z blocked`,
       ``,
       `Per-dept queries: "Riley, how's engineering?" → report eng only.`,
-      `Use SendMessage({ to: "AgentName", message: "..." }) for agent handoffs.`,
+      `Use HANDOFF: AgentName — message for agent handoffs.`,
     ].join('\n'),
   };
 
