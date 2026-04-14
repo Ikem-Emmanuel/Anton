@@ -1,10 +1,10 @@
 const { readFileSync } = require('fs');
 const { join } = require('path');
 
-// Load .anton/.env into env object
+// Load .env into env object
 const envVars = {};
 try {
-  const envFile = join(__dirname, '..', '.env');
+  const envFile = join(__dirname, '.env');
   for (const line of readFileSync(envFile, 'utf-8').split('\n')) {
     const match = line.match(/^([^#=]+)=(.+)$/);
     if (match) envVars[match[1].trim()] = match[2].trim();
@@ -15,7 +15,7 @@ module.exports = {
   apps: [{
     name: 'anton-service',
     script: join(__dirname, 'index.js'),
-    cwd: join(__dirname, '..', '..'),
+    cwd: __dirname,
     env: {
       ...envVars,
       NODE_ENV: 'production',

@@ -3,22 +3,22 @@
  * runner.js — Comprehensive test runner for the Anton 26-agent AI organization.
  *
  * Usage:
- *   node .anton/tests/runner.js                           # run ALL (~1600 scenarios)
- *   node .anton/tests/runner.js --dept=engineering         # run one department
- *   node .anton/tests/runner.js --dept=anton-pa,marketing  # run multiple
- *   node .anton/tests/runner.js --block=PA-A,ENG-C        # run specific blocks
- *   node .anton/tests/runner.js --id=PA-A1,ENG-C4         # run specific IDs
- *   node .anton/tests/runner.js --from=PA-A1 --to=PA-A10  # run a range
- *   node .anton/tests/runner.js --difficulty=advanced      # filter by difficulty
- *   node .anton/tests/runner.js --tags=approval,slack      # filter by tags
- *   node .anton/tests/runner.js --dry-run                  # print without running
- *   node .anton/tests/runner.js --list                     # list all scenario IDs
- *   node .anton/tests/runner.js --parallel=3               # run N concurrently
- *   node .anton/tests/runner.js --timeout=120              # per-scenario timeout (s)
- *   node .anton/tests/runner.js --resume                   # skip already-passed IDs
+ *   node tests/runner.js                           # run ALL (~1600 scenarios)
+ *   node tests/runner.js --dept=engineering         # run one department
+ *   node tests/runner.js --dept=anton-pa,marketing  # run multiple
+ *   node tests/runner.js --block=PA-A,ENG-C        # run specific blocks
+ *   node tests/runner.js --id=PA-A1,ENG-C4         # run specific IDs
+ *   node tests/runner.js --from=PA-A1 --to=PA-A10  # run a range
+ *   node tests/runner.js --difficulty=advanced      # filter by difficulty
+ *   node tests/runner.js --tags=approval,slack      # filter by tags
+ *   node tests/runner.js --dry-run                  # print without running
+ *   node tests/runner.js --list                     # list all scenario IDs
+ *   node tests/runner.js --parallel=3               # run N concurrently
+ *   node tests/runner.js --timeout=120              # per-scenario timeout (s)
+ *   node tests/runner.js --resume                   # skip already-passed IDs
  *
- * Logs:   .anton/logs/tests/full-suite-<date>.jsonl
- * Report: .anton/logs/tests/full-suite-<date>-report.md
+ * Logs:   data/logs/tests/full-suite-<date>.jsonl
+ * Report: data/logs/tests/full-suite-<date>-report.md
  */
 
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync, readdirSync } from 'node:fs';
@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ANTON_ROOT = join(__dirname, '..');
-const PROJECT_ROOT = join(ANTON_ROOT, '..');
+const DATA_DIR = join(ANTON_ROOT, 'data');
 
 // ─── CLI argument parsing ─────────────────────────────────────
 const args = process.argv.slice(2);
@@ -119,7 +119,7 @@ function print(msg) {
 }
 
 // ─── Logging ──────────────────────────────────────────────────
-const LOG_DIR = join(ANTON_ROOT, 'logs', 'tests');
+const LOG_DIR = join(DATA_DIR, 'logs', 'tests');
 mkdirSync(LOG_DIR, { recursive: true });
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -684,7 +684,7 @@ async function main() {
   }
 
   if (allScenarios.length === 0) {
-    print(color(C.red, 'No scenarios loaded. Check that scenario files exist in .anton/tests/scenarios/'));
+    print(color(C.red, 'No scenarios loaded. Check that scenario files exist in tests/scenarios/'));
     print(color(C.gray, 'Expected files: anton-pa.js, engineering.js, marketing.js, seo.js, automation.js, data.js, growth.js, cross-dept.js'));
     process.exit(1);
   }
@@ -697,14 +697,14 @@ async function main() {
   if (!DRY_RUN && !LIST_ONLY) {
     print(color(C.cyan, 'Initializing subsystems...'));
 
-    const sessions   = await import('../service/src/sessions.js');
-    const analytics  = await import('../service/src/analytics.js');
-    const logger     = await import('../service/src/logger.js');
-    const teamModule = await import('../service/src/team.js');
+    const sessions   = await import('../src/sessions.js');
+    const analytics  = await import('../src/analytics.js');
+    const logger     = await import('../src/logger.js');
+    const teamModule = await import('../src/team.js');
 
-    sessions.init(ANTON_ROOT, PROJECT_ROOT);
-    analytics.initAnalytics(ANTON_ROOT);
-    logger.initLogger(ANTON_ROOT);
+    sessions.init(ANTON_ROOT, DATA_DIR);
+    analytics.initAnalytics(DATA_DIR);
+    logger.initLogger(DATA_DIR);
 
     ask           = sessions.ask;
     consumeHandoffs = sessions.consumeHandoffs;
@@ -728,7 +728,7 @@ async function main() {
     print(color(C.green, '  Subsystems ready'));
     if (SYNERGY) print(color(C.cyan, '  Synergy mode ON — agents will delegate and hand off to each other'));
   } else {
-    const teamModule = await import('../service/src/team.js');
+    const teamModule = await import('../src/team.js');
     TEAM = teamModule.TEAM;
   }
 

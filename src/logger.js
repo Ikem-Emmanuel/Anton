@@ -6,8 +6,8 @@ import { join } from 'node:path';
 
 let logsDir;
 
-export function initLogger(antonRoot) {
-  logsDir = join(antonRoot, 'logs');
+export function initLogger(dataDir) {
+  logsDir = join(dataDir, 'logs');
   mkdirSync(logsDir, { recursive: true });
 }
 

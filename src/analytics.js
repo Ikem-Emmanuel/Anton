@@ -15,7 +15,7 @@ const dailyStats = {
   startedAt: new Date().toISOString(),
 };
 
-export function initAnalytics(antonRoot) {
+export function initAnalytics(dataDir) {
   // Always reset in-memory state first (ensures test isolation and clean restarts)
   dailyStats.date = new Date().toISOString().split('T')[0];
   dailyStats.agents = {};
@@ -23,7 +23,7 @@ export function initAnalytics(antonRoot) {
   dailyStats.totals = { messages: 0, errors: 0, total_response_ms: 0, avg_response_ms: 0, tokens_est: 0 };
   dailyStats.startedAt = new Date().toISOString();
 
-  analyticsDir = join(antonRoot, 'analytics');
+  analyticsDir = join(dataDir, 'analytics');
   mkdirSync(analyticsDir, { recursive: true });
   dailyFile = join(analyticsDir, `daily-${dailyStats.date}.json`);
 
