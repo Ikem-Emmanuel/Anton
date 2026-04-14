@@ -1039,13 +1039,59 @@ startPromise
     if (WEB_ENABLED) {
       const { analyzeForHandoffs, stripExplicitHandoffs, buildHandoffMessage } = await import('./src/handoff.js');
 
+      // Try to load the local brain (Ollama). Falls back to Claude-only if not available.
+      let brain = null;
+      try {
+        const brainModule = await import('./src/brain/brain.js');
+        await brainModule.initBrain();
+        brain = brainModule;
+      } catch (e) {
+        console.warn(`[Web] Brain not available (${e.message?.slice(0, 60)}). Using Claude-only mode.`);
+      }
+
       const webResult = initWeb({
         askAgent: async (agentName, text, onHandoff) => {
-          const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
           try {
+            // If talking to Anton (PA) and brain is available, use the local brain first
+            if (agentName === 'Anton' && brain) {
+              const result = await brain.process(text);
+
+              // Brain handled it locally — free, instant
+              if (result.handledLocally) {
+                // Check brain's classification for handoffs
+                if (result.classification.handoffs?.length > 0 && onHandoff) {
+                  for (const h of result.classification.handoffs) {
+                    const target = findByName(h.agent);
+                    if (target) {
+                      (async () => {
+                        try {
+                          const resp = await trackedAsk(target, h.message, 'brain-handoff');
+                          onHandoff(target.name, resp || 'Got it.');
+                        } catch (e) {
+                          console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
+                        }
+                      })();
+                    }
+                  }
+                }
+                return result.text;
+              }
+
+              // Brain says this needs Claude — route to Agent SDK
+              if (result.classification.needsClaude) {
+                const agent = result.classification.agent
+                  ? findByName(result.classification.agent) || ANTON_AGENT
+                  : ANTON_AGENT;
+                const response = await trackedAsk(agent, text, 'brain-to-claude');
+                return stripExplicitHandoffs(response);
+              }
+            }
+
+            // Direct agent DM or brain not available — use Agent SDK
+            const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
             const response = await trackedAsk(member, text, 'web-chat');
 
-            // Smart handoff detection — analyze response for delegation signals
+            // Regex handoff detection (fallback when brain isn't routing)
             const handoffs = analyzeForHandoffs(member.name, response, text);
             for (const h of handoffs) {
               console.log(`[Handoff] ${member.name} → ${h.target.name} (${h.signal}, confidence: ${h.confidence})`);
