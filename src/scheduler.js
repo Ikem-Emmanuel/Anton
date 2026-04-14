@@ -1,6 +1,6 @@
 // ─── Scheduler ───────────────────────────────────────────────
 // Lightweight job scheduler — no external dependencies.
-// Persists scheduled times to .anton/schedule.json so jobs
+// Persists scheduled times to data/schedule.json so jobs
 // survive service restarts.
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, renameSync } from 'node:fs';
@@ -9,8 +9,8 @@ import { join } from 'node:path';
 let scheduleFile;
 const jobs = new Map(); // id → { hours, minutes, intervalId, fn }
 
-export function init(antonRoot) {
-  scheduleFile = join(antonRoot, 'schedule.json');
+export function init(dataDir) {
+  scheduleFile = join(dataDir, 'schedule.json');
   console.log('[Scheduler] Ready');
 }
 
@@ -127,17 +127,17 @@ export function formatTime(hours, minutes) {
 }
 
 // ─── Inbox auto-processor ────────────────────────────────────
-// Polls .anton/inbox/*.md every 30s and passes each file to handler(content, filename).
-// Files are moved to .anton/inbox/processed/ before calling handler
+// Polls data/inbox/*.md every 30s and passes each file to handler(content, filename).
+// Files are moved to data/inbox/processed/ before calling handler
 // to prevent double-processing even if handler throws.
 //
 // Inbox file format (simple convention):
-//   Any .md file dropped in .anton/inbox/ is treated as a command.
+//   Any .md file dropped in data/inbox/ is treated as a command.
 //   The caller (index.js handler) decides what to do with the content.
 //
-// Usage: initInboxProcessor(antonRoot, async (content, filename) => { ... })
-export function initInboxProcessor(antonRoot, handler) {
-  const inboxDir = join(antonRoot, 'inbox');
+// Usage: initInboxProcessor(dataDir, async (content, filename) => { ... })
+export function initInboxProcessor(dataDir, handler) {
+  const inboxDir = join(dataDir, 'inbox');
   const processedDir = join(inboxDir, 'processed');
 
   const poll = async () => {

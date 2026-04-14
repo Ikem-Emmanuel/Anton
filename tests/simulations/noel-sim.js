@@ -2,9 +2,9 @@
 /**
  * noel-sim.js — Comprehensive live simulation of Noel interacting with Anton and the team.
  *
- * Runs via: node .anton/noel-sim.js
- * Logs:     .anton/logs/simulation/noel-sim-<date>.jsonl
- * Report:   .anton/logs/simulation/noel-sim-<date>-report.md
+ * Runs via: node tests/simulations/noel-sim.js
+ * Logs:     data/logs/simulation/noel-sim-<date>.jsonl
+ * Report:   data/logs/simulation/noel-sim-<date>-report.md
  *
  * ─── 8 Blocks, 35 Scenarios ───────────────────────────────────
  *
@@ -23,20 +23,20 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANTON_ROOT = __dirname;
-const PROJECT_ROOT = join(ANTON_ROOT, '..');
+const ANTON_ROOT = join(__dirname, '..', '..');
+const DATA_DIR = join(ANTON_ROOT, 'data');
 
 // ─── Init subsystems ──────────────────────────────────────────
-import { init as initSessions, ask } from './service/src/sessions.js';
-import { initAnalytics, trackRequest, getReport } from './service/src/analytics.js';
-import { initLogger, logMessage, logResponse, logError } from './service/src/logger.js';
+import { init as initSessions, ask } from '../../src/sessions.js';
+import { initAnalytics, trackRequest, getReport } from '../../src/analytics.js';
+import { initLogger, logMessage, logResponse, logError } from '../../src/logger.js';
 
-initSessions(ANTON_ROOT, PROJECT_ROOT);
-initAnalytics(ANTON_ROOT);
-initLogger(ANTON_ROOT);
+initSessions(ANTON_ROOT, DATA_DIR);
+initAnalytics(DATA_DIR);
+initLogger(DATA_DIR);
 
 // ─── Interaction log ──────────────────────────────────────────
-const LOG_DIR = join(ANTON_ROOT, 'logs', 'simulation');
+const LOG_DIR = join(DATA_DIR, 'logs', 'simulation');
 mkdirSync(LOG_DIR, { recursive: true });
 const TODAY = new Date().toISOString().split('T')[0];
 const LOG_FILE  = join(LOG_DIR, `noel-sim-${TODAY}.jsonl`);
@@ -90,7 +90,7 @@ async function noel(member, message, scenarioId) {
 }
 
 // ─── TEAM references ──────────────────────────────────────────
-import { TEAM } from './service/src/team.js';
+import { TEAM } from '../../src/team.js';
 
 // ─── Simulation ───────────────────────────────────────────────
 const results = [];

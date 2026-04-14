@@ -27,9 +27,9 @@ function persistSprints() {
   }
 }
 
-export function initOrchestrator(antonRoot) {
-  _antonRoot = antonRoot;
-  sprintStateFile = join(antonRoot, 'sprint-state.json');
+export function initOrchestrator(dataDir) {
+  _antonRoot = dataDir;
+  sprintStateFile = join(dataDir, 'sprint-state.json');
   if (existsSync(sprintStateFile)) {
     try {
       const saved = JSON.parse(readFileSync(sprintStateFile, 'utf-8'));

@@ -9,12 +9,12 @@ let tasksFile;
 let tasks = [];  // Array of task objects
 let nextId = 1;  // Declared here so initTaskQueue can reset it
 
-export function initTaskQueue(antonRoot) {
+export function initTaskQueue(dataDir) {
   // Always reset in-memory state first (ensures test isolation)
   tasks = [];
   nextId = 1;
 
-  const dir = join(antonRoot, 'tasks');
+  const dir = join(dataDir, 'tasks');
   mkdirSync(dir, { recursive: true });
   tasksFile = join(dir, 'queue.json');
 

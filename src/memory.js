@@ -5,16 +5,16 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-let antonRoot;
+let _antonRoot;
 let sharedMemoryFile;
 let dailyDir;
 let deptDir;
 
-export function initMemory(root) {
-  antonRoot = root;
-  sharedMemoryFile = join(root, 'SHARED-MEMORY.md');
-  dailyDir = join(root, 'daily');
-  deptDir = join(root, 'departments');
+export function initMemory(antonRoot, dataDir) {
+  _antonRoot = antonRoot;
+  sharedMemoryFile = join(dataDir, 'SHARED-MEMORY.md');
+  dailyDir = join(dataDir, 'daily');
+  deptDir = join(antonRoot, 'config', 'departments');
   mkdirSync(dailyDir, { recursive: true });
   mkdirSync(deptDir, { recursive: true });
 }

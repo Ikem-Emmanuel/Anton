@@ -25,13 +25,13 @@ let projectRoot;
 const NOEL_ID = 'U0ACB02JTTN';
 let personasData = {};
 
-export function init(antonRoot, projRoot) {
-  sessionsFile = join(antonRoot, 'sessions.json');
-  projectRoot = projRoot;
+export function init(antonRoot, dataDir) {
+  sessionsFile = join(dataDir, 'sessions.json');
+  projectRoot = antonRoot;
 
-  // Load personas
+  // Load personas from config/
   try {
-    personasData = JSON.parse(readFileSync(join(antonRoot, 'personas.json'), 'utf-8'));
+    personasData = JSON.parse(readFileSync(join(antonRoot, 'config', 'personas.json'), 'utf-8'));
   } catch {}
 
   // Restore saved session IDs

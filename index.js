@@ -28,8 +28,8 @@ import { initMemory, appendDeptMemory, appendSharedMemory, appendDailyNote } fro
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANTON_ROOT = join(__dirname, '..');
-const PROJECT_ROOT = join(ANTON_ROOT, '..');
+const ANTON_ROOT = __dirname;
+const DATA_DIR = join(ANTON_ROOT, 'data');
 const CHANNEL_MAP_FILE = join(ANTON_ROOT, 'slack-channels.env');
 
 // Load .env
@@ -55,7 +55,7 @@ if (!BOT_TOKEN || !APP_TOKEN) {
 // (allows running in dev without full env setup).
 if (!NOEL_USER_ID) {
   console.warn('[Anton] WARNING: NOEL_SLACK_USER_ID not set — approval gate disabled.');
-  console.warn('[Anton] Set NOEL_SLACK_USER_ID in .anton/.env to enable Jarvis trust mode.');
+  console.warn('[Anton] Set NOEL_SLACK_USER_ID in .env to enable Jarvis trust mode.');
 }
 
 // Load channel map (id→name and name→id)
@@ -83,14 +83,14 @@ const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
 
 
 // ─── Init subsystems ─────────────────────────────────────────
-initSessions(ANTON_ROOT, PROJECT_ROOT);
-initAnalytics(ANTON_ROOT);
-initLogger(ANTON_ROOT);
-initTaskQueue(ANTON_ROOT);
+initSessions(ANTON_ROOT, DATA_DIR);
+initAnalytics(DATA_DIR);
+initLogger(DATA_DIR);
+initTaskQueue(DATA_DIR);
 initVision();
-initMemory(ANTON_ROOT);
-initScheduler(ANTON_ROOT);
-initOrchestrator(ANTON_ROOT);
+initMemory(ANTON_ROOT, DATA_DIR);
+initScheduler(DATA_DIR);
+initOrchestrator(DATA_DIR);
 
 // ─── NO_REPLY sentinel ───────────────────────────────────────
 // Agents respond with exactly "NO_REPLY" to stay silent in group messages.
@@ -636,7 +636,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   ) {
     await postAs(client, { name: 'Anton' }, channelId, ts, `Restarting...`);
     try {
-      writeFileSync(join(ANTON_ROOT, 'sessions.json'), '{}');
+      writeFileSync(join(DATA_DIR, 'sessions.json'), '{}');
     } catch {}
     setTimeout(() => process.exit(0), 2000);
     return;
@@ -1094,10 +1094,10 @@ slackApp
       console.log(`[Anton] Restored standup at ${formatTime(hours, minutes)}`);
     }
 
-    // Inbox auto-processor — routes .anton/inbox/*.md files through handle()
-    // Drop any .md file in .anton/inbox/ to inject a command programmatically.
+    // Inbox auto-processor — routes data/inbox/*.md files through handle()
+    // Drop any .md file in data/inbox/ to inject a command programmatically.
     // Format: first line is optional routing hint (#channel-name), rest is the message.
-    initInboxProcessor(ANTON_ROOT, async (content, filename) => {
+    initInboxProcessor(DATA_DIR, async (content, filename) => {
       try {
         // Optional first line: "#channel-name" to route to a specific channel
         const lines = content.split('\n');
@@ -1132,7 +1132,7 @@ slackApp
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const standupChannel = nameToId.get('anton-standup');
-    const startupFile = join(ANTON_ROOT, '.last-startup');
+    const startupFile = join(DATA_DIR, '.last-startup');
     const lastStartup = (() => { try { return parseInt(readFileSync(startupFile, 'utf-8'), 10); } catch { return 0; } })();
     const now = Date.now();
     if (standupChannel && now - lastStartup > 120_000) { // suppress if restarted within 2 min

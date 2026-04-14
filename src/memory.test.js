@@ -18,7 +18,7 @@ describe('memory', () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'anton-memory-'));
-    initMemory(tempDir);
+    initMemory(tempDir, tempDir);
   });
 
   afterEach(() => {
@@ -73,7 +73,7 @@ describe('memory', () => {
 
     it('creates dept directory if needed', () => {
       appendDeptMemory('mktg', 'Diana', 'Content calendar ready.');
-      expect(existsSync(join(tempDir, 'departments', 'mktg'))).toBe(true);
+      expect(existsSync(join(tempDir, 'config', 'departments', 'mktg'))).toBe(true);
     });
   });
 

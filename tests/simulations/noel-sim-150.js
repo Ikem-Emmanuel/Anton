@@ -3,15 +3,15 @@
  * noel-sim-150.js — 150 real-world AI use cases for Anton / the team.
  *
  * Usage:
- *   node .anton/noel-sim-150.js                   # run all 150
- *   node .anton/noel-sim-150.js --block=A,B,C     # run specific blocks
- *   node .anton/noel-sim-150.js --from=A3 --to=B7 # run a range
- *   node .anton/noel-sim-150.js --id=A1,C4,H2     # run specific IDs
- *   node .anton/noel-sim-150.js --dry-run          # print without running
- *   node .anton/noel-sim-150.js --list             # list all scenario IDs
+ *   node tests/simulations/noel-sim-150.js                   # run all 150
+ *   node tests/simulations/noel-sim-150.js --block=A,B,C     # run specific blocks
+ *   node tests/simulations/noel-sim-150.js --from=A3 --to=B7 # run a range
+ *   node tests/simulations/noel-sim-150.js --id=A1,C4,H2     # run specific IDs
+ *   node tests/simulations/noel-sim-150.js --dry-run          # print without running
+ *   node tests/simulations/noel-sim-150.js --list             # list all scenario IDs
  *
- * Logs:   .anton/logs/simulation/noel-150-<date>.jsonl
- * Report: .anton/logs/simulation/noel-150-<date>-report.md
+ * Logs:   data/logs/simulation/noel-150-<date>.jsonl
+ * Report: data/logs/simulation/noel-150-<date>-report.md
  *
  * ─── 15 Blocks, 150 Scenarios ─────────────────────────────────
  * A: Morning PA Routine           (10)
@@ -36,8 +36,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANTON_ROOT = __dirname;
-const PROJECT_ROOT = join(ANTON_ROOT, '..');
+const ANTON_ROOT = join(__dirname, '..', '..');
+const DATA_DIR = join(ANTON_ROOT, 'data');
 
 // ─── Parse CLI args ───────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -55,14 +55,14 @@ const FILTER_IDS    = idArg ? idArg.toUpperCase().split(',') : null;
 let ask, trackRequest, getReport, logMessage, logResponse, logError, TEAM;
 
 if (!DRY_RUN && !LIST_ONLY) {
-  const sessions   = await import('./service/src/sessions.js');
-  const analytics  = await import('./service/src/analytics.js');
-  const logger     = await import('./service/src/logger.js');
-  const teamModule = await import('./service/src/team.js');
+  const sessions   = await import('../../src/sessions.js');
+  const analytics  = await import('../../src/analytics.js');
+  const logger     = await import('../../src/logger.js');
+  const teamModule = await import('../../src/team.js');
 
-  sessions.init(ANTON_ROOT, PROJECT_ROOT);
-  analytics.initAnalytics(ANTON_ROOT);
-  logger.initLogger(ANTON_ROOT);
+  sessions.init(ANTON_ROOT, DATA_DIR);
+  analytics.initAnalytics(DATA_DIR);
+  logger.initLogger(DATA_DIR);
 
   ask           = sessions.ask;
   trackRequest  = analytics.trackRequest;
@@ -72,12 +72,12 @@ if (!DRY_RUN && !LIST_ONLY) {
   logError      = logger.logError;
   TEAM          = teamModule.TEAM;
 } else {
-  const teamModule = await import('./service/src/team.js');
+  const teamModule = await import('../../src/team.js');
   TEAM = teamModule.TEAM;
 }
 
 // ─── Log setup ────────────────────────────────────────────────
-const LOG_DIR = join(ANTON_ROOT, 'logs', 'simulation');
+const LOG_DIR = join(DATA_DIR, 'logs', 'simulation');
 mkdirSync(LOG_DIR, { recursive: true });
 const TODAY = new Date().toISOString().split('T')[0];
 const LOG_FILE    = join(LOG_DIR, `noel-150-${TODAY}.jsonl`);
