@@ -1,8 +1,8 @@
 {
-  "name": "ahnton-service",
+  "name": "anton-service",
   "version": "1.0.0",
   "private": true,
-  "description": "Ahnton — Personal AI operating system powered by Claude Agent SDK",
+  "description": "Anton — Personal AI operating system powered by Claude Agent SDK",
   "type": "module",
   "exports": "./index.js",
   "scripts": {

@@ -279,24 +279,49 @@
 
 ---
 
-## Priority Order
+## Patterns Adopted from Research (Hermes Agent, isair/jarvis, microsoft/JARVIS)
+
+- [ ] **Auxiliary client** — use Haiku for side tasks (consolidation, summaries, analytics)
+- [ ] **Memory injection scanning** — scan writes for prompt injection before storing
+- [ ] **Error classification** — rate-limited vs context-overflow vs billing-exhausted, different recovery per type
+- [ ] **Smart model routing** — simple queries (short, no code) route to Haiku per-turn
+- [ ] **Tool result size budget** — oversized results stored to disk, agent gets preview + path
+- [ ] **Session search (FTS5)** — SQLite full-text search across past conversations
+- [ ] **Approval cooldowns** — session-scoped trust ("approve this type for 1 hour")
+- [ ] **Haiku pre-router** (from isair/jarvis) — classify intent semantically before keyword matching
+- [ ] **Task dependency graph** (from microsoft/JARVIS) — DAG for complex multi-agent requests
+- [ ] **Agent capability registry** — structured JSON profiles per agent for semantic routing
+
+---
+
+## Reality Check — What's Not Happening
+
+- Physical room awareness (camera, biometrics, temperature) — no hardware sensors, skip for now
+- Voice through Slack — API can't play audio or capture mic, needs separate interface
+- True Slack DND bypass — Pushover is the only path to real interrupts
+- Full infrastructure control — each integration is manual, not general "fly the suit"
+- Predictive anticipation without data — need monitoring running first
+- Asana/GitHub/Gmail real-time webhooks — no public URL, use polling instead
+- 3D holographic interface
+
+---
+
+## Priority Order (Revised)
 
 ```
-Migration fixes (1 day)         ← can't do anything until this works
+Phase 1: Proactive Awareness    ← Anton sees without being asked
   ↓
-Phase 1: Proactive Awareness    ← biggest bang for buck, uses existing scheduler
+Phase 2: Real-Time Interrupts   ← Anton reaches you when it matters (Pushover for P0)
   ↓
-Phase 2: Real-Time Interrupts   ← makes Phase 1 useful to Noel
+Phase 3: Three-Tier Trust       ← Anton acts, not just proposes
   ↓
-Phase 3: Three-Tier Trust       ← unlocks Phase 4
+Phase 4: Autonomous Execution   ← PM2 + git ops (not full infra)
   ↓
-Phase 4: Autonomous Execution   ← JARVIS acts, then reports
+Phase 5: Environmental Sensors  ← macOS local sensors + API polling (no webhooks)
   ↓
-Phase 5: Environmental Sensors  ← feeds Phases 1 and 6
+Phase 6: Predictive Modeling    ← build after 2+ weeks of data from Phases 1-5
   ↓
-Phase 6: Predictive Modeling    ← needs data from Phases 1-5
-  ↓
-Phase 7: Voice Interface        ← nice-to-have, parallel track
+Phase 7: Voice Interface        ← separate web/app interface, not Slack
   ↓
 Phase 8: Rich Interface         ← stretch goals
 ```
@@ -305,15 +330,18 @@ Phase 8: Rich Interface         ← stretch goals
 
 ## Progress Log
 
-| Date       | What                                                  | Phase     |
-| ---------- | ----------------------------------------------------- | --------- |
-| 2026-04-14 | Initial commit on main, branch created                | Setup     |
-| 2026-04-14 | Cross-dept handoffs expanded (27 entries)             | Pre-work  |
-| 2026-04-14 | Session health + retry/backoff                        | Pre-work  |
-| 2026-04-14 | Memory module + nightly consolidation                 | Pre-work  |
-| 2026-04-14 | DM routing to Anton, text-parse handoffs disabled     | Pre-work  |
-| 2026-04-14 | TODO.md created with full JARVIS gap plan             | Setup     |
-| 2026-04-14 | Project restructured: service/ → root, data/, config/ | Migration |
-| 2026-04-14 | All path refs updated, 576 tests passing              | Migration |
-| 2026-04-14 | Research doc saved: docs/research/jarvis-upgrade      | Research  |
-|            |                                                       |           |
+| Date       | What                                                   | Phase     |
+| ---------- | ------------------------------------------------------ | --------- |
+| 2026-04-14 | Initial commit on main, branch created                 | Setup     |
+| 2026-04-14 | Cross-dept handoffs expanded (27 entries)              | Pre-work  |
+| 2026-04-14 | Session health + retry/backoff                         | Pre-work  |
+| 2026-04-14 | Memory module + nightly consolidation                  | Pre-work  |
+| 2026-04-14 | DM routing to Anton, text-parse handoffs disabled      | Pre-work  |
+| 2026-04-14 | TODO.md created with full JARVIS gap plan              | Setup     |
+| 2026-04-14 | Project restructured: service/ to root, data/, config/ | Migration |
+| 2026-04-14 | All path refs updated, 288 tests passing               | Migration |
+| 2026-04-14 | Research: jarvis-upgrade, agent-teams, hermes-agent    | Research  |
+| 2026-04-14 | Husky v9, Biome, lint-staged, .claude/ cleanup         | Tooling   |
+| 2026-04-14 | Dead code removed, classifyIntent deduplicated         | Cleanup   |
+| 2026-04-14 | Reality check: honest assessment of achievable vs not  | Planning  |
+|            |                                                        |           |
