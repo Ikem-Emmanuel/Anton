@@ -1044,11 +1044,7 @@ startPromise
     // Web chat interface at localhost:3000
     let wss = null;
     if (WEB_ENABLED) {
-      const { analyzeForHandoffs, stripExplicitHandoffs, buildHandoffMessage } = await import(
-        './src/v1-archive/handoff.js'
-      );
-
-      // Try to load the local brain (Ollama). Falls back to Claude-only if not available.
+      // Load the local brain (Ollama)
       let brain = null;
       try {
         const brainModule = await import('./src/brain/brain.js');
@@ -1061,40 +1057,39 @@ startPromise
       const webResult = initWeb({
         askAgent: async (agentName, text, onHandoff) => {
           try {
-            // Override prefixes: @claude or /claude forces Claude, @local or /local forces local
+            // Override: @claude forces Claude session
             const forceClaudeMatch = text.match(/^[@/]claude\s+([\s\S]+)/i);
-            const forceLocalMatch = text.match(/^[@/]local\s+([\s\S]+)/i);
-
             if (forceClaudeMatch) {
               const cleanText = forceClaudeMatch[1].trim();
               console.log(`[Override] @claude — forcing Claude for: ${cleanText.slice(0, 60)}`);
               const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
-              const response = await trackedAsk(member, cleanText, 'forced-claude');
-              return response;
+              return await trackedAsk(member, cleanText, 'forced-claude');
             }
 
+            // Override: @local forces local brain
+            const forceLocalMatch = text.match(/^[@/]local\s+([\s\S]+)/i);
             if (forceLocalMatch && brain) {
               const cleanText = forceLocalMatch[1].trim();
-              console.log(`[Override] @local — forcing local brain for: ${cleanText.slice(0, 60)}`);
+              console.log(`[Override] @local — forcing local brain`);
               const result = await brain.process(cleanText, { context: `Talking to: ${agentName}` });
               console.log(`[Brain] LOCAL (forced) | ${result.durationMs}ms | ${result.tokensOut} tokens`);
-              return result.text || 'Brain could not process that locally. Try without @local.';
+              return result.text || 'Could not process locally. Try without @local.';
             }
 
-            // ALL messages go through brain first (if available)
+            // Brain handles everything (if available)
             if (brain) {
               const result = await brain.process(text, { context: `Talking to: ${agentName}` });
               const c = result.classification;
 
               console.log(
-                `[Brain] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | confidence=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
+                `[Brain] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
               );
 
-              // Brain handled it locally — FREE, no Claude session
+              // LOCAL — brain handled it (free)
               if (result.handledLocally && result.text) {
                 console.log(`[Brain] LOCAL response (${result.tokensOut} tokens, $0)`);
 
-                // Dispatch brain-detected handoffs
+                // Brain detected handoffs — dispatch them
                 if (c.handoffs?.length > 0 && onHandoff) {
                   for (const h of c.handoffs) {
                     const target = findByName(h.agent);
@@ -1111,10 +1106,10 @@ startPromise
                   }
                 }
 
-                // If brain routed to a specific agent, dispatch to them via Claude
-                if (c.agent && c.agent !== 'Anton' && agentName === 'Anton') {
+                // Brain routed to a specific agent — dispatch via Claude
+                if (c.agent && c.agent !== 'Anton' && agentName === 'Anton' && onHandoff) {
                   const target = findByName(c.agent);
-                  if (target && onHandoff) {
+                  if (target) {
                     console.log(`[Brain] Routing to ${c.agent} via Claude`);
                     (async () => {
                       try {
@@ -1130,10 +1125,8 @@ startPromise
                 return result.text;
               }
 
-              // Brain says Claude needed — route to Agent SDK session
-              console.log(
-                `[Brain] CLAUDE needed (${c.needsClaude ? 'code/research' : 'complex'}) -> ${c.agent || agentName}`
-              );
+              // CLAUDE — brain says this needs Claude
+              console.log(`[Brain] CLAUDE needed -> ${c.agent || agentName}`);
               const agent = c.agent
                 ? findByName(c.agent) || ANTON_AGENT
                 : agentName === 'Anton'
@@ -1141,31 +1134,13 @@ startPromise
                   : findByName(agentName) || ANTON_AGENT;
               const response = await trackedAsk(agent, text, 'brain-to-claude');
               console.log(`[Brain] CLAUDE response from ${agent.name} (paid session)`);
-
-              // Still check for handoffs in Claude's response
-              const handoffs = analyzeForHandoffs(agent.name, response, text);
-              for (const h of handoffs) {
-                if (onHandoff) {
-                  const handoffMsg = buildHandoffMessage(agent.name, h.target.name, h.signal, h.message, text);
-                  (async () => {
-                    try {
-                      const handoffResponse = await trackedAsk(h.target, handoffMsg, 'smart-handoff');
-                      onHandoff(h.target.name, stripExplicitHandoffs(handoffResponse) || 'Got it.');
-                    } catch (e) {
-                      console.error(`[Handoff] ${h.target.name} failed:`, e.message?.slice(0, 80));
-                    }
-                  })();
-                }
-              }
-
-              return stripExplicitHandoffs(response);
+              return response;
             }
 
-            // No brain available — Claude-only mode (V1 behavior)
-            console.log(`[Web] No brain — Claude-only mode for ${agentName}`);
+            // No brain — fall back to Claude directly
+            console.log(`[Web] No brain — Claude-only for ${agentName}`);
             const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
-            const response = await trackedAsk(member, text, 'web-chat');
-            return stripExplicitHandoffs(response);
+            return await trackedAsk(member, text, 'web-chat');
           } catch (e) {
             console.error(`[Web] Error:`, e.message?.slice(0, 100));
             return 'Having trouble right now. Try again.';
