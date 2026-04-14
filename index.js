@@ -1052,64 +1052,93 @@ startPromise
       const webResult = initWeb({
         askAgent: async (agentName, text, onHandoff) => {
           try {
-            // If talking to Anton (PA) and brain is available, use the local brain first
-            if (agentName === 'Anton' && brain) {
-              const result = await brain.process(text);
+            // ALL messages go through brain first (if available)
+            if (brain) {
+              const result = await brain.process(text, { context: `Talking to: ${agentName}` });
+              const c = result.classification;
 
-              // Brain handled it locally — free, instant
-              if (result.handledLocally) {
-                // Check brain's classification for handoffs
-                if (result.classification.handoffs?.length > 0 && onHandoff) {
-                  for (const h of result.classification.handoffs) {
+              console.log(
+                `[Brain] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | confidence=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
+              );
+
+              // Brain handled it locally — FREE, no Claude session
+              if (result.handledLocally && result.text) {
+                console.log(`[Brain] LOCAL response (${result.tokensOut} tokens, $0)`);
+
+                // Dispatch brain-detected handoffs
+                if (c.handoffs?.length > 0 && onHandoff) {
+                  for (const h of c.handoffs) {
                     const target = findByName(h.agent);
-                    if (target) {
-                      (async () => {
-                        try {
-                          const resp = await trackedAsk(target, h.message, 'brain-handoff');
-                          onHandoff(target.name, resp || 'Got it.');
-                        } catch (e) {
-                          console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
-                        }
-                      })();
-                    }
+                    if (!target) continue;
+                    console.log(`[Brain] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
+                    (async () => {
+                      try {
+                        const resp = await trackedAsk(target, h.message, 'brain-handoff');
+                        onHandoff(target.name, resp || 'Got it.');
+                      } catch (e) {
+                        console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
+                      }
+                    })();
                   }
                 }
+
+                // If brain routed to a specific agent, dispatch to them via Claude
+                if (c.agent && c.agent !== 'Anton' && agentName === 'Anton') {
+                  const target = findByName(c.agent);
+                  if (target && onHandoff) {
+                    console.log(`[Brain] Routing to ${c.agent} via Claude`);
+                    (async () => {
+                      try {
+                        const resp = await trackedAsk(target, text, 'brain-route');
+                        onHandoff(target.name, resp || 'On it.');
+                      } catch (e) {
+                        console.error(`[Brain] Route to ${c.agent} failed:`, e.message?.slice(0, 80));
+                      }
+                    })();
+                  }
+                }
+
                 return result.text;
               }
 
-              // Brain says this needs Claude — route to Agent SDK
-              if (result.classification.needsClaude) {
-                const agent = result.classification.agent
-                  ? findByName(result.classification.agent) || ANTON_AGENT
-                  : ANTON_AGENT;
-                const response = await trackedAsk(agent, text, 'brain-to-claude');
-                return stripExplicitHandoffs(response);
+              // Brain says Claude needed — route to Agent SDK session
+              console.log(
+                `[Brain] CLAUDE needed (${c.needsClaude ? 'code/research' : 'complex'}) -> ${c.agent || agentName}`
+              );
+              const agent = c.agent
+                ? findByName(c.agent) || ANTON_AGENT
+                : agentName === 'Anton'
+                  ? ANTON_AGENT
+                  : findByName(agentName) || ANTON_AGENT;
+              const response = await trackedAsk(agent, text, 'brain-to-claude');
+              console.log(`[Brain] CLAUDE response from ${agent.name} (paid session)`);
+
+              // Still check for handoffs in Claude's response
+              const handoffs = analyzeForHandoffs(agent.name, response, text);
+              for (const h of handoffs) {
+                if (onHandoff) {
+                  const handoffMsg = buildHandoffMessage(agent.name, h.target.name, h.signal, h.message, text);
+                  (async () => {
+                    try {
+                      const handoffResponse = await trackedAsk(h.target, handoffMsg, 'smart-handoff');
+                      onHandoff(h.target.name, stripExplicitHandoffs(handoffResponse) || 'Got it.');
+                    } catch (e) {
+                      console.error(`[Handoff] ${h.target.name} failed:`, e.message?.slice(0, 80));
+                    }
+                  })();
+                }
               }
+
+              return stripExplicitHandoffs(response);
             }
 
-            // Direct agent DM or brain not available — use Agent SDK
+            // No brain available — Claude-only mode (V1 behavior)
+            console.log(`[Web] No brain — Claude-only mode for ${agentName}`);
             const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
             const response = await trackedAsk(member, text, 'web-chat');
-
-            // Regex handoff detection (fallback when brain isn't routing)
-            const handoffs = analyzeForHandoffs(member.name, response, text);
-            for (const h of handoffs) {
-              console.log(`[Handoff] ${member.name} → ${h.target.name} (${h.signal}, confidence: ${h.confidence})`);
-              if (onHandoff) {
-                const handoffMsg = buildHandoffMessage(member.name, h.target.name, h.signal, h.message, text);
-                (async () => {
-                  try {
-                    const handoffResponse = await trackedAsk(h.target, handoffMsg, 'smart-handoff');
-                    onHandoff(h.target.name, stripExplicitHandoffs(handoffResponse) || 'Got it.');
-                  } catch (e) {
-                    console.error(`[Handoff] ${h.target.name} failed:`, e.message?.slice(0, 80));
-                  }
-                })();
-              }
-            }
-
             return stripExplicitHandoffs(response);
-          } catch {
+          } catch (e) {
+            console.error(`[Web] Error:`, e.message?.slice(0, 100));
             return 'Having trouble right now. Try again.';
           }
         },
