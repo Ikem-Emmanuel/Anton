@@ -44,12 +44,12 @@
 
 > Dev environment, Ollama, Docker, Obsidian vault
 
-- [ ] Install Ollama natively (`brew install --cask ollama`)
-- [ ] Pull models: `qwen3:8b`, `qwen2.5-coder:7b`, `nomic-embed-text`
-- [ ] Verify MLX backend (Ollama 0.19+)
-- [ ] Init TypeScript project with Zod, Mastra
+- [x] Install Ollama natively (`brew install --cask ollama`)
+- [x] Pull models: `qwen3:8b`, `qwen2.5-coder:7b`, `nomic-embed-text`
+- [x] Verify MLX backend (Ollama 0.20.7)
+- [x] Init TypeScript project with Zod, tsx
 - [ ] Docker Compose: Redis, ChromaDB, Nginx, Langfuse
-- [ ] Create `config/models.ts` with model routing config
+- [x] Create `config/models.ts` with model routing config
 - [ ] Create `config/agents/` with Zod-validated agent schemas
 - [ ] Set up Langfuse for observability from day 1
 - [ ] Init Obsidian vault at `~/vault/` with PARA structure
@@ -57,29 +57,32 @@
 - [ ] Create note templates (daily, meeting, decision, research)
 - [ ] Symlink vault into project
 - [ ] Health check script for all services
-- [ ] Bind Ollama to localhost only (CVE-2025-63389 fix)
+- [x] Bind Ollama to localhost only (CVE-2025-63389 fix)
+- [x] Organ system created with READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)
+- [x] V1 code preserved in src/v1-archive/ (43 files)
 
 ### Phase 1: Brain Core + Routing (Week 2)
 
 > Local LLM replaces all regex. Claude kept for code via model switching.
 
-- [ ] Build `src/brain.ts` — Ollama client with structured JSON output
-- [ ] Build system prompt for intent classification
-- [ ] Build `src/router.ts` — intent -> model -> agent routing
+- [x] Build `src/brain/ollama-client.ts` — Ollama client with structured JSON output
+- [x] Build `src/brain/classifier.ts` — intent classification with Zod schema
+- [x] Build `src/brain/brain.ts` — main brain module (classify -> route -> think)
 - [ ] Implement circuit breaker for Ollama failures
-- [ ] Wire brain into message pipeline (brain processes first)
-- [ ] Keep regex as fallback (confidence < 70%)
-- [ ] Build Claude CLI fallback (`claude -p` wrapper)
-- [ ] **Model switching**: brain decides local vs Claude per task
-  - Simple Q&A, routing, memory -> local (free)
-  - Code generation, complex analysis -> Claude (subscription)
-  - Research, web search -> Claude with tools
-- [ ] **Adaptive thinking**: brain adjusts response depth based on complexity
-  - Short questions -> concise local response
-  - Complex questions -> deeper reasoning, may escalate to Claude
+- [x] Wire brain into web UI message pipeline (brain processes ALL messages first)
+- [x] V1 regex kept as fallback in src/v1-archive/
+- [ ] Build Claude CLI fallback (`claude -p` in src/hands/claude.ts)
+- [x] **Model switching**: brain decides local vs Claude per task
+- [x] **Override prefixes**: @claude forces Claude, @local forces local brain
+- [x] **Adaptive thinking**: `src/brain/thinking.ts` — 4 depth levels
+  - minimal: no reasoning, direct response (greetings)
+  - standard: brief think step (simple questions)
+  - detailed: multi-step reasoning (analysis)
+  - deep: full chain-of-thought with alternatives (strategy)
 - [ ] Add Langfuse tracing to every brain call
-- [ ] 50+ routing test cases
+- [ ] 50+ routing test cases (brain classifier tests)
 - [ ] A/B test: brain vs regex (log both, compare accuracy)
+- [ ] Make brain respond AS agents (Marcus persona, Elena persona) locally
 
 ### Phase 2: Memory System (Weeks 3-4)
 
@@ -293,4 +296,16 @@ The brain learns which tasks need which depth by tracking outcomes.
 | 2026-04-14 | Architecture V2 researched and documented by Noel                                    | Planning |
 | 2026-04-14 | Implementation plan V2 created (8 phases, 12 weeks)                                  | Planning |
 | 2026-04-14 | Hardware decision: Mac Studio M4 Max 64GB ordered                                    | Hardware |
+| 2026-04-14 | Organ system created: brain, memory, nervous, heart, voice, eyes, hands, spine       | Phase 0  |
+| 2026-04-14 | Each organ has comprehensive README (what, how, communicates, scales)                | Phase 0  |
+| 2026-04-14 | Ollama installed (0.20.7), 3 models pulled (qwen3:8b, coder:7b, nomic-embed)         | Phase 0  |
+| 2026-04-14 | Ollama bound to localhost (CVE-2025-63389 security fix)                              | Phase 0  |
+| 2026-04-14 | TypeScript setup (tsconfig.json, tsx, zod, ollama client)                            | Phase 0  |
+| 2026-04-14 | config/models.ts — model routing config (Tier 1, upgradeable)                        | Phase 0  |
+| 2026-04-14 | Brain core: ollama-client.ts, classifier.ts, brain.ts                                | Phase 1  |
+| 2026-04-14 | Adaptive thinking: thinking.ts (minimal/standard/detailed/deep)                      | Phase 1  |
+| 2026-04-14 | Brain wired into web UI — all messages go through brain first                        | Phase 1  |
+| 2026-04-14 | Override prefixes: @claude and @local for manual control                             | Phase 1  |
+| 2026-04-14 | V1 code moved to src/v1-archive/ (preserved, not deleted)                            | Phase 1  |
+| 2026-04-14 | index.js imports updated to v1-archive paths                                         | Phase 1  |
 |            |                                                                                      |          |

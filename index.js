@@ -5,17 +5,24 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
-import { initAudit } from './src/audit.js';
-import { initBriefing } from './src/briefing.js';
-import { initContext } from './src/context.js';
-import { classifyIntent } from './src/handle.js';
-import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
-import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
-import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/notify.js';
-import { detectCommand, initOrchestrator, runSprint, startTeam, stopTeam, teamStatus } from './src/orchestrator.js';
-import { initPriority } from './src/priority.js';
-import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/router.js';
+import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
+import { initAudit } from './src/v1-archive/audit.js';
+import { initBriefing } from './src/v1-archive/briefing.js';
+import { initContext } from './src/v1-archive/context.js';
+import { classifyIntent } from './src/v1-archive/handle.js';
+import { initLogger, logError, logMessage, logResponse } from './src/v1-archive/logger.js';
+import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/v1-archive/memory.js';
+import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/v1-archive/notify.js';
+import {
+  detectCommand,
+  initOrchestrator,
+  runSprint,
+  startTeam,
+  stopTeam,
+  teamStatus,
+} from './src/v1-archive/orchestrator.js';
+import { initPriority } from './src/v1-archive/priority.js';
+import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/v1-archive/router.js';
 import {
   cancelJob,
   formatTime,
@@ -26,14 +33,14 @@ import {
   loadPersistedTimes,
   parseTimeStr,
   scheduleJob,
-} from './src/scheduler.js';
-import { ask, consumeHandoffs, init as initSessions } from './src/sessions.js';
-import { openDM, postAs, postTyping, replaceTyping } from './src/slack.js';
-import { getBoardReport, initTaskQueue } from './src/taskqueue.js';
-import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/team.js';
-import { describeImages, initVision } from './src/vision.js';
-import { checkGitState, getHealthSnapshot, initWatcher } from './src/watcher.js';
-import { initWeb } from './src/web.js';
+} from './src/v1-archive/scheduler.js';
+import { ask, consumeHandoffs, init as initSessions } from './src/v1-archive/sessions.js';
+import { openDM, postAs, postTyping, replaceTyping } from './src/v1-archive/slack.js';
+import { getBoardReport, initTaskQueue } from './src/v1-archive/taskqueue.js';
+import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/v1-archive/team.js';
+import { describeImages, initVision } from './src/v1-archive/vision.js';
+import { checkGitState, getHealthSnapshot, initWatcher } from './src/v1-archive/watcher.js';
+import { initWeb } from './src/v1-archive/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
