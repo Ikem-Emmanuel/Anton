@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eventBus } from './eventbus.js';
 import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from './watcher.js';
 
 // Mock systeminformation
@@ -16,27 +17,30 @@ vi.mock('systeminformation', () => ({
 
 describe('watcher', () => {
   let tempDir;
-  let notifications;
-  let mockNotify;
+  let emittedEvents;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'anton-watcher-'));
     mkdirSync(join(tempDir, 'logs'), { recursive: true });
-    notifications = [];
-    mockNotify = async (severity, message, opts) => {
-      notifications.push({ severity, message, ...opts });
-    };
+    emittedEvents = [];
+    // Capture all events emitted to the bus
+    eventBus.removeAllListeners();
+    const origEmit = eventBus.emit.bind(eventBus);
+    vi.spyOn(eventBus, 'emit').mockImplementation((event, data) => {
+      emittedEvents.push({ event, data });
+      return origEmit(event, data);
+    });
   });
 
   afterEach(() => {
     shutdownWatcher();
+    vi.restoreAllMocks();
     rmSync(tempDir, { recursive: true, force: true });
   });
 
   describe('system health', () => {
     it('starts without errors and creates a health snapshot', async () => {
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
-      // Wait for the initial check to complete
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
       const snap = getHealthSnapshot();
       expect(snap).not.toBeNull();
@@ -46,93 +50,85 @@ describe('watcher', () => {
       expect(snap.batteryPercent).toBe(72);
     });
 
-    it('does not alert when below thresholds', async () => {
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+    it('does not emit events when below thresholds', async () => {
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
-      expect(notifications).toHaveLength(0);
+      const healthEvents = emittedEvents.filter((e) => e.event.startsWith('health:'));
+      expect(healthEvents).toHaveLength(0);
     });
 
-    it('alerts when CPU exceeds threshold', async () => {
+    it('emits health:cpu:critical when CPU exceeds threshold', async () => {
       const si = await import('systeminformation');
       si.default.currentLoad.mockResolvedValueOnce({ currentLoad: 92 });
 
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
 
-      const cpuAlert = notifications.find((n) => n.message.includes('CPU'));
-      expect(cpuAlert).toBeDefined();
-      expect(cpuAlert.severity).toBe('P1');
-      expect(cpuAlert.message).toContain('92%');
+      const cpuEvent = emittedEvents.find((e) => e.event === 'health:cpu:critical');
+      expect(cpuEvent).toBeDefined();
+      expect(cpuEvent.data.percent).toBe(92);
     });
 
-    it('alerts when memory exceeds threshold', async () => {
+    it('emits health:mem:critical when memory exceeds threshold', async () => {
       const si = await import('systeminformation');
       si.default.mem.mockResolvedValueOnce({
         total: 16 * 1024 * 1024 * 1024,
         used: 14.5 * 1024 * 1024 * 1024,
       });
 
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
 
-      const memAlert = notifications.find((n) => n.message.includes('Memory'));
-      expect(memAlert).toBeDefined();
-      expect(memAlert.severity).toBe('P1');
+      const memEvent = emittedEvents.find((e) => e.event === 'health:mem:critical');
+      expect(memEvent).toBeDefined();
     });
 
-    it('alerts when disk exceeds threshold', async () => {
+    it('emits health:disk:high when disk exceeds threshold', async () => {
       const si = await import('systeminformation');
       si.default.fsSize.mockResolvedValueOnce([{ use: 88, size: 500 * 1024 * 1024 * 1024 }]);
 
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
 
-      const diskAlert = notifications.find((n) => n.message.includes('Disk'));
-      expect(diskAlert).toBeDefined();
-      expect(diskAlert.severity).toBe('P2');
+      const diskEvent = emittedEvents.find((e) => e.event === 'health:disk:high');
+      expect(diskEvent).toBeDefined();
+      expect(diskEvent.data.percent).toBe(88);
     });
 
-    it('alerts on low battery not charging', async () => {
+    it('emits health:battery:low when battery is low and not charging', async () => {
       const si = await import('systeminformation');
       si.default.battery.mockResolvedValueOnce({ hasBattery: true, percent: 8, isCharging: false });
 
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
 
-      const batteryAlert = notifications.find((n) => n.message.includes('Battery'));
-      expect(batteryAlert).toBeDefined();
-      expect(batteryAlert.severity).toBe('P1');
-      expect(batteryAlert.message).toContain('8%');
+      const battEvent = emittedEvents.find((e) => e.event === 'health:battery:low');
+      expect(battEvent).toBeDefined();
+      expect(battEvent.data.percent).toBe(8);
     });
 
     it('respects custom thresholds', async () => {
       const si = await import('systeminformation');
       si.default.currentLoad.mockResolvedValueOnce({ currentLoad: 60 });
 
-      initWatcher({
-        notifyNoel: mockNotify,
-        dataDir: tempDir,
-        thresholds: { cpuPercent: 50 },
-      });
+      initWatcher({ dataDir: tempDir, thresholds: { cpuPercent: 50 } });
       await new Promise((r) => setTimeout(r, 200));
 
-      const cpuAlert = notifications.find((n) => n.message.includes('CPU'));
-      expect(cpuAlert).toBeDefined();
-      expect(cpuAlert.message).toContain('60%');
+      const cpuEvent = emittedEvents.find((e) => e.event === 'health:cpu:critical');
+      expect(cpuEvent).toBeDefined();
     });
   });
 
   describe('getHealthSnapshot', () => {
     it('returns a snapshot object or null', () => {
       const snap = getHealthSnapshot();
-      // May be null (first test) or populated (module state from prior test)
       if (snap !== null) {
         expect(snap).toHaveProperty('cpu');
       }
     });
 
     it('returns snapshot with all fields after check', async () => {
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       await new Promise((r) => setTimeout(r, 200));
 
       const snap = getHealthSnapshot();
@@ -150,7 +146,7 @@ describe('watcher', () => {
   describe('checkGitState', () => {
     it('returns branch and status for the current repo', async () => {
       const result = await checkGitState(process.cwd());
-      if (!result) return; // skip if not in a git repo
+      if (!result) return;
       expect(result).toHaveProperty('branch');
       expect(result).toHaveProperty('uncommitted');
       expect(typeof result.branch).toBe('string');
@@ -165,14 +161,12 @@ describe('watcher', () => {
 
   describe('shutdown', () => {
     it('stops cleanly without errors', () => {
-      initWatcher({ notifyNoel: mockNotify, dataDir: tempDir });
+      initWatcher({ dataDir: tempDir });
       shutdownWatcher();
-      // No error thrown
     });
 
     it('can shutdown without init', () => {
       shutdownWatcher();
-      // No error thrown
     });
   });
 });

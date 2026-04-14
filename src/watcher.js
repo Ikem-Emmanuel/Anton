@@ -18,10 +18,10 @@ import { readdirSync, readFileSync, statSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import si from 'systeminformation';
+import { eventBus } from './eventbus.js';
 
 const execAsync = promisify(exec);
 
-let _notifyNoel = null;
 let _dataDir = null;
 let _broadcast = null;
 let _intervals = [];
@@ -35,8 +35,7 @@ const THRESHOLDS = {
   diskPercent: 80,
 };
 
-export function initWatcher({ notifyNoel, dataDir, thresholds, broadcast }) {
-  _notifyNoel = notifyNoel;
+export function initWatcher({ dataDir, thresholds, broadcast }) {
   _dataDir = dataDir;
   _broadcast = broadcast || null;
   if (thresholds) Object.assign(THRESHOLDS, thresholds);
@@ -81,30 +80,29 @@ async function checkSystemHealth() {
       } catch {}
     }
 
-    // Check thresholds
+    // Emit events through the event bus (priority engine classifies and routes to notifyNoel)
     if (snapshot.cpu > THRESHOLDS.cpuPercent) {
-      await notify('P1', `CPU at ${snapshot.cpu}% (threshold: ${THRESHOLDS.cpuPercent}%)`, 'cpu-high');
+      eventBus.emit('health:cpu:critical', { percent: snapshot.cpu, threshold: THRESHOLDS.cpuPercent });
     }
 
     if (snapshot.memUsed > THRESHOLDS.memPercent) {
-      await notify(
-        'P1',
-        `Memory at ${snapshot.memUsed}% of ${snapshot.memTotal}GB (threshold: ${THRESHOLDS.memPercent}%)`,
-        'mem-high'
-      );
+      eventBus.emit('health:mem:critical', {
+        percent: snapshot.memUsed,
+        totalGB: snapshot.memTotal,
+        threshold: THRESHOLDS.memPercent,
+      });
     }
 
     if (snapshot.diskUsed > THRESHOLDS.diskPercent) {
-      await notify(
-        'P2',
-        `Disk at ${snapshot.diskUsed}% of ${snapshot.diskTotal}GB (threshold: ${THRESHOLDS.diskPercent}%)`,
-        'disk-high'
-      );
+      eventBus.emit('health:disk:high', {
+        percent: snapshot.diskUsed,
+        totalGB: snapshot.diskTotal,
+        threshold: THRESHOLDS.diskPercent,
+      });
     }
 
-    // Battery warning (below 15%, not charging)
     if (snapshot.batteryPercent !== null && snapshot.batteryPercent < 15 && !snapshot.batteryCharging) {
-      await notify('P1', `Battery at ${snapshot.batteryPercent}% and not charging`, 'battery-low');
+      eventBus.emit('health:battery:low', { percent: snapshot.batteryPercent });
     }
   } catch (e) {
     console.error('[Watcher] Health check failed:', e.message);
@@ -156,9 +154,9 @@ function checkLogFile(filepath) {
         const parsed = JSON.parse(line);
         const agent = parsed.agent || 'unknown';
         const msg = parsed.error || parsed.message || 'Unknown error';
-        notify('P2', `Error from ${agent}: ${msg.slice(0, 200)}`, `log-error-${agent}`);
+        eventBus.emit('log:error', { agent, message: msg.slice(0, 200) });
       } catch {
-        notify('P2', `Log error detected: ${line.slice(0, 200)}`, 'log-error-raw');
+        eventBus.emit('log:error', { agent: 'system', message: line.slice(0, 200) });
       }
     }
   } catch {
@@ -193,16 +191,6 @@ export async function checkGitState(repoPath) {
 // ---- Get current snapshot (for briefing / status queries) ----
 export function getHealthSnapshot() {
   return _lastSnapshot;
-}
-
-// ---- Notify helper ----
-async function notify(severity, message, cooldownKey) {
-  if (!_notifyNoel) return;
-  try {
-    await _notifyNoel(severity, message, { cooldownKey });
-  } catch (e) {
-    console.error('[Watcher] Notify failed:', e.message);
-  }
 }
 
 // ---- Shutdown ----
