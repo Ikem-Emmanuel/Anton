@@ -9,6 +9,7 @@ import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
 import { classifyIntent } from './src/handle.js';
 import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
+import { initNotify, notifyNoel } from './src/notify.js';
 import { detectCommand, initOrchestrator, runSprint, startTeam, stopTeam, teamStatus } from './src/orchestrator.js';
 import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/router.js';
 import {
@@ -27,6 +28,7 @@ import { openDM, postAs, postTyping, replaceTyping } from './src/slack.js';
 import { getBoardReport, initTaskQueue } from './src/taskqueue.js';
 import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/team.js';
 import { describeImages, initVision } from './src/vision.js';
+import { initWatcher } from './src/watcher.js';
 import { initWeb } from './src/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
@@ -993,18 +995,47 @@ slackApp
     // Nightly consolidation — DREAMS.md + DAILY-INTEL at 23:30
     initNightlyConsolidation(runNightlyConsolidation);
 
+    // Notification system
+    initNotify({ slackClient: slackApp.client, noelUserId: NOEL_USER_ID });
+
     // Web chat interface at localhost:3000
-    initWeb({
-      askAgent: async (agentName, text) => {
-        // Route to specific agent or default to Anton
+    const { wss } = initWeb({
+      askAgent: async (agentName, text, onHandoff) => {
         const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
         try {
-          return await trackedAsk(member, text, 'web-chat');
+          const response = await trackedAsk(member, text, 'web-chat');
+
+          // Process SendMessage handoffs (same as Slack path)
+          const handoffs = consumeHandoffs(member.name);
+          for (const { target, message: hMsg } of handoffs) {
+            const permitted = HANDOFF_RULES[member.name] || [];
+            if (!permitted.includes(target.name)) continue;
+            // Dispatch handoff asynchronously — response goes to web client
+            if (onHandoff) {
+              (async () => {
+                try {
+                  const handoffResponse = await trackedAsk(target, hMsg, 'web-handoff');
+                  onHandoff(target.name, handoffResponse || 'Got it.');
+                } catch (e) {
+                  console.error(`[Web] Handoff to ${target.name} failed:`, e.message?.slice(0, 80));
+                }
+              })();
+            }
+          }
+
+          return response;
         } catch {
           return 'Having trouble right now. Try again.';
         }
       },
       port: 3000,
+    });
+
+    // System health watcher — broadcasts to web UI
+    initWatcher({
+      notifyNoel,
+      dataDir: DATA_DIR,
+      broadcast: (msg) => wss.broadcast(msg),
     });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
