@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
 import { initAudit } from './src/audit.js';
 import { initBriefing } from './src/briefing.js';
+import { initContext } from './src/context.js';
 import { classifyIntent } from './src/handle.js';
 import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
@@ -107,12 +108,13 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
 
 // ─── Init subsystems ─────────────────────────────────────────
+initMemory(ANTON_ROOT, DATA_DIR);
+initContext(DATA_DIR);
 initSessions(ANTON_ROOT, DATA_DIR);
 initAnalytics(DATA_DIR);
 initLogger(DATA_DIR);
 initTaskQueue(DATA_DIR);
 initVision();
-initMemory(ANTON_ROOT, DATA_DIR);
 initScheduler(DATA_DIR);
 initOrchestrator(DATA_DIR);
 
