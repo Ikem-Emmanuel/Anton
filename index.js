@@ -973,7 +973,8 @@ console.log(`[Anton] Starting...`);
 console.log(`[Anton] Channels: ${idToName.size} | Team: ${Object.keys(TEAM).length}`);
 
 // Start — Slack connects if enabled, then init subsystems
-(SLACK_ENABLED ? slackApp.start() : Promise.resolve())
+const startPromise = SLACK_ENABLED ? slackApp.start() : Promise.resolve();
+startPromise
   .then(async () => {
     console.log('');
     console.log('  Anton is online.');
