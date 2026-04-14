@@ -25,14 +25,14 @@ skill-versions.json.bak
 service/
 
 # Old root-level dirs (migrated to data/ or config/)
-analytics/
-logs/
-daily/
-inbox/
-outbox/
-tasks/
-shared/
-memory/
+/analytics/
+/logs/
+/daily/
+/inbox/
+/outbox/
+/tasks/
+/shared/
+/memory/
 
 # OS
 .DS_Store
