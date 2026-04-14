@@ -1044,7 +1044,9 @@ startPromise
     // Web chat interface at localhost:3000
     let wss = null;
     if (WEB_ENABLED) {
-      const { analyzeForHandoffs, stripExplicitHandoffs, buildHandoffMessage } = await import('./src/handoff.js');
+      const { analyzeForHandoffs, stripExplicitHandoffs, buildHandoffMessage } = await import(
+        './src/v1-archive/handoff.js'
+      );
 
       // Try to load the local brain (Ollama). Falls back to Claude-only if not available.
       let brain = null;
