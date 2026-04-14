@@ -88,6 +88,36 @@ describe('handoff', () => {
       expect(handoffs).toHaveLength(0);
     });
 
+    it('detects vocative — "Elena, can you reach out..."', () => {
+      const response =
+        'Elena, can you reach out to Anton directly? Noel wants you two to prep for an interview together.';
+      const handoffs = analyzeForHandoffs('Marcus', response, 'contact elena');
+      expect(handoffs.length).toBeGreaterThanOrEqual(1);
+      expect(handoffs[0].target.name).toBe('Elena');
+      expect(handoffs[0].signal).toBe('vocative');
+    });
+
+    it('detects vocative with em dash — "Elena \u2014 prep for..."', () => {
+      const response = 'Elena \u2014 prep for the interview with Noel.';
+      const handoffs = analyzeForHandoffs('Marcus', response, 'prep elena');
+      expect(handoffs.length).toBeGreaterThanOrEqual(1);
+      expect(handoffs[0].target.name).toBe('Elena');
+    });
+
+    it('detects vocative with greeting — "Hey Elena, Noel needs you"', () => {
+      const response = 'Hey Elena, Noel needs you on this.';
+      const handoffs = analyzeForHandoffs('Marcus', response, 'get elena');
+      expect(handoffs.length).toBeGreaterThanOrEqual(1);
+      expect(handoffs[0].target.name).toBe('Elena');
+    });
+
+    it('detects @mention — "@Elena check this out"', () => {
+      const response = '@Elena check this out';
+      const handoffs = analyzeForHandoffs('Marcus', response, 'tell elena');
+      expect(handoffs.length).toBeGreaterThanOrEqual(1);
+      expect(handoffs[0].target.name).toBe('Elena');
+    });
+
     it('does not trigger on name mentions without delegation verbs', () => {
       const response = 'James wrote this code last week. It looks solid.';
       const handoffs = analyzeForHandoffs('Marcus', response, 'who wrote this');

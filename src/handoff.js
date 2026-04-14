@@ -67,7 +67,14 @@ function buildDelegationRegex() {
   const verbs = DELEGATION_VERBS.join('|');
   const pastVerbs = PAST_DELEGATION.join('|');
 
+  // Separator chars: comma, em dash (U+2014), en dash (U+2013), colon, hyphen (last to avoid range)
+  const sep = `[,\u2014\u2013:-]`;
+
   return {
+    // Vocative direct address: "Elena, do X" / "Elena — do X" / "Hey Elena, X"
+    vocative: new RegExp(`(?:^|[.!?]\\s+|\\n)(?:hey\\s+|hi\\s+)?(${agentNames})\\s*${sep}\\s*\\S`, 'gi'),
+    // @mention at start: "@Elena check this"
+    atMention: new RegExp(`(?:^|\\n)@(${agentNames})\\s+\\S`, 'gi'),
     // "I'll ask Elena", "Can ping Marcus", "Let me loop in James"
     future: new RegExp(`(?:i'?ll|let me|can|going to|will|need to)\\s+(?:${verbs})\\s+(${agentNames})`, 'gi'),
     // "Pinged Elena", "Told James", "Looped in Marcus"
@@ -96,7 +103,40 @@ export function analyzeForHandoffs(agentName, responseText, originalMessage) {
   for (const match of responseText.matchAll(/^HANDOFF:\s*(\w+)\s*[—-]\s*(.+)$/gim)) {
     const target = findByName(match[1]);
     if (target && !seen.has(target.name) && target.name !== agentName) {
-      handoffs.push({ target, message: match[2].trim(), signal: 'explicit', confidence: 1.0 });
+      handoffs.push({ target, message: match[2].trim(), signal: 'explicit', confidence: 1 });
+      seen.add(target.name);
+    }
+  }
+
+  // 1.5 Vocative direct address — "Elena, do X" / "Elena — prep" / "Hey Elena, X" / "@Elena X"
+  for (const match of responseText.matchAll(patterns.vocative)) {
+    const target = findByName(match[1]);
+    if (target && !seen.has(target.name) && target.name !== agentName) {
+      // Extract the instruction after the separator (up to next sentence boundary)
+      const afterMatch = responseText.slice(match.index + match[0].length);
+      const instruction = afterMatch.split(/[.!?\n]/)[0].trim();
+      handoffs.push({
+        target,
+        message: instruction || originalMessage?.slice(0, 300) || '',
+        signal: 'vocative',
+        confidence: 0.92,
+      });
+      seen.add(target.name);
+    }
+  }
+
+  // 1.6 @mention — "@Elena check this out"
+  for (const match of responseText.matchAll(patterns.atMention)) {
+    const target = findByName(match[1]);
+    if (target && !seen.has(target.name) && target.name !== agentName) {
+      const afterMatch = responseText.slice(match.index + match[0].length);
+      const instruction = afterMatch.split(/[.!?\n]/)[0].trim();
+      handoffs.push({
+        target,
+        message: instruction || originalMessage?.slice(0, 300) || '',
+        signal: 'at-mention',
+        confidence: 0.9,
+      });
       seen.add(target.name);
     }
   }
