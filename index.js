@@ -1,30 +1,32 @@
 import pkg from '@slack/bolt';
-const { App } = pkg;
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { TEAM, getDeptMembers, findByName, HANDOFF_RULES } from './src/team.js';
-import { route, isEveryoneRequest, detectCollaboration, channelToDept } from './src/router.js';
-import { init as initSessions, ask, consumeHandoffs } from './src/sessions.js';
-import { postAs, postTyping, replaceTyping, openDM } from './src/slack.js';
-import { initAnalytics, trackRequest, getReport } from './src/analytics.js';
-import { initLogger, logMessage, logResponse, logError, logHandoff } from './src/logger.js';
-import { initOrchestrator, detectCommand, startTeam, runSprint, teamStatus, stopTeam } from './src/orchestrator.js';
-import { initTaskQueue, getBoardReport } from './src/taskqueue.js';
-import { initVision, describeImages } from './src/vision.js';
+const { App } = pkg;
+
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
+import { classifyIntent } from './src/handle.js';
+import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
+import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
+import { detectCommand, initOrchestrator, runSprint, startTeam, stopTeam, teamStatus } from './src/orchestrator.js';
+import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/router.js';
 import {
-  init as initScheduler,
-  scheduleJob,
   cancelJob,
-  listJobs,
-  loadPersistedTimes,
-  parseTimeStr,
   formatTime,
   initInboxProcessor,
   initNightlyConsolidation,
+  init as initScheduler,
+  listJobs,
+  loadPersistedTimes,
+  parseTimeStr,
+  scheduleJob,
 } from './src/scheduler.js';
-import { initMemory, appendDeptMemory, appendSharedMemory, appendDailyNote } from './src/memory.js';
+import { ask, consumeHandoffs, init as initSessions } from './src/sessions.js';
+import { openDM, postAs, postTyping, replaceTyping } from './src/slack.js';
+import { getBoardReport, initTaskQueue } from './src/taskqueue.js';
+import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/team.js';
+import { describeImages, initVision } from './src/vision.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -80,7 +82,6 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 // Map value is an array so simultaneous requests from multiple agents don't
 // overwrite each other — they queue and are presented one at a time.
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
-
 
 // ─── Init subsystems ─────────────────────────────────────────
 initSessions(ANTON_ROOT, DATA_DIR);
@@ -146,46 +147,17 @@ async function askAnton(prompt, fallback = '') {
   }
 }
 
-// ─── Intent classification ───────────────────────────────────
-const INTENT_PATTERNS = [
-  {
-    type: 'system_command',
-    pattern:
-      /\b(set standup|cancel standup|when is standup|start .+ team|stop .+ team|run a sprint|team status|who.?s (working|active|running))\b/i,
-  },
-  {
-    type: 'approval_response',
-    pattern: /^(yes|y|no|n|approve|deny|go ahead|cancel|do it|don.?t|approved|denied)\b/i,
-  },
-  {
-    type: 'status_query',
-    pattern:
-      /\b(what.?s (happening|going on|the status)|how.?s (the team|engineering|marketing|seo|data|growth|automation)|any blockers|sprint status|daily (update|brief|standup)|show (me )?(the )?status)\b/i,
-  },
-  {
-    type: 'personal',
-    pattern:
-      /\b(what should i (do|focus|work on|prioritize)|help me (think|decide|plan)|i.?m not sure|should i|what do you think|my (priority|focus|plan) (today|this week)?)\b/i,
-  },
-  {
-    type: 'task',
-    pattern: /\b(build|fix|create|add|update|deploy|write|review|test)\b/i,
-  },
-];
-
-function classifyIntent(text) {
-  for (const { type, pattern } of INTENT_PATTERNS) {
-    if (pattern.test(text)) return type;
-  }
-  return 'general';
-}
+// classifyIntent imported from ./src/handle.js
 
 // ─── Approval gate ───────────────────────────────────────────
 
 // Post the DM for one approval entry (used for first in queue and after processing one).
 async function postApprovalDM(client, dm, entry, queueLength = 0) {
   const { member, actionType, summary, fullDraft } = entry;
-  const preview = fullDraft.replace(/AWAITING_APPROVAL:.+/i, '').trim().slice(0, 600);
+  const preview = fullDraft
+    .replace(/AWAITING_APPROVAL:.+/i, '')
+    .trim()
+    .slice(0, 600);
   const queueNote = queueLength > 1 ? ` _(${queueLength - 1} more queued after this)_` : '';
 
   await postAs(
@@ -196,7 +168,7 @@ async function postApprovalDM(client, dm, entry, queueLength = 0) {
     `*Approval needed* — ${member.name} (${member.title})${queueNote}\n` +
       `*Action:* ${actionType}\n*Summary:* ${summary}\n\n` +
       `*Draft:*\n${preview}\n\n` +
-      `Reply *yes* to approve or *no* to deny.`,
+      `Reply *yes* to approve or *no* to deny.`
   );
 }
 
@@ -245,15 +217,15 @@ async function handleApprovalRequest(member, actionType, summary, fullDraft, cha
           { name: 'Anton' },
           dm,
           undefined,
-          `Approval for ${member.name}'s ${actionType} request timed out (15 min). Automatically denied.`,
+          `Approval for ${member.name}'s ${actionType} request timed out (15 min). Automatically denied.`
         ).catch(() => {});
         trackedAsk(
           member,
           `Your ${actionType} request timed out — Noel didn't respond within 15 minutes. Request cancelled.`,
-          'approval-timeout',
+          'approval-timeout'
         ).catch(() => {});
       },
-      15 * 60 * 1000,
+      15 * 60 * 1000
     );
   } catch (e) {
     console.error('[Anton] Failed to send approval request:', e.message?.slice(0, 100));
@@ -271,7 +243,7 @@ async function handleEveryone(text, channelId, channelName, ts, client) {
       const handle = await postTyping(client, member, channelId, ts);
       const response = await trackedAsk(
         member,
-        `Team was asked: "${text}". Give YOUR short personal response. 2-3 sentences. Be yourself.`,
+        `Team was asked: "${text}". Give YOUR short personal response. 2-3 sentences. Be yourself.`
       );
       if (response && NO_REPLY_RE.test(response.trim())) {
         // Agent opted out — delete the typing indicator silently
@@ -296,14 +268,14 @@ async function handleCollab(collab, channelId, ts, client) {
   const h1 = await postTyping(client, collab.from, channelId, ts);
   const question = await trackedAsk(
     collab.from,
-    `You need to ask ${collab.to.name} (${collab.to.title}) about: ${collab.topic}. What's your question?`,
+    `You need to ask ${collab.to.name} (${collab.to.title}) about: ${collab.topic}. What's your question?`
   );
   await replaceTyping(client, collab.from, h1, question || collab.topic);
 
   const h2 = await postTyping(client, collab.to, channelId, ts);
   const answer = await trackedAsk(
     collab.to,
-    `${collab.from.name} asks you: "${question || collab.topic}". Answer directly.`,
+    `${collab.from.name} asks you: "${question || collab.topic}". Answer directly.`
   );
   await replaceTyping(client, collab.to, h2, answer || 'hmm, let me think about that');
 
@@ -311,7 +283,7 @@ async function handleCollab(collab, channelId, ts, client) {
     const h3 = await postTyping(client, collab.from, channelId, ts);
     const summary = await trackedAsk(
       collab.from,
-      `${collab.to.name} said: "${answer}". Briefly react or say what you'll do with this info.`,
+      `${collab.to.name} said: "${answer}". Briefly react or say what you'll do with this info.`
     );
     await replaceTyping(client, collab.from, h3, summary || 'got it, thanks');
   }
@@ -332,7 +304,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
 
   // ── Approval gate: only check last 200 chars to prevent injection ──
   const tail = response.slice(-200);
-  const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—\-]\s*(.+)/i);
+  const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—-]\s*(.+)/i);
   if (approvalMatch) {
     await handleApprovalRequest(
       member,
@@ -341,7 +313,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
       response,
       channelId,
       ts,
-      client,
+      client
     );
     return; // Don't also do handoff if approval is pending
   }
@@ -351,7 +323,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
   // Agents should NEVER DM Noel directly — Anton is the gatekeeper.
   if (
     /\b(ping(ing)? (anton|noel)|message (anton|noel)|notify (anton|noel)|(anton|noel).*(review|merge|approve)|ready for.*(anton|noel)|report to anton)\b/i.test(
-      response,
+      response
     )
   ) {
     if (NOEL_USER_ID) {
@@ -359,9 +331,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
         const dmChannel = await openDM(client, NOEL_USER_ID);
         const extract = response.match(/(?:anton|noel)[,:]?\s*(.*)/i)?.[1] || response.slice(0, 200);
         // Post as Anton (the PA), not the individual agent
-        await postAs(client, { name: 'Anton' }, dmChannel, undefined,
-          `From ${member.name}: ${extract}`
-        );
+        await postAs(client, { name: 'Anton' }, dmChannel, undefined, `From ${member.name}: ${extract}`);
         console.log(`[Anton] ${member.name} → Anton → Noel DM: ${extract.slice(0, 80)}`);
       } catch (e) {
         console.error(`[Anton] Failed to relay to Noel:`, e.message?.slice(0, 100));
@@ -369,75 +339,15 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
     }
   }
 
-  // ── Text-parse handoffs DISABLED ──────────────────────────────
-  // Text-parsing for handoffs is too fragile — "Elena needs to pivot" is NOT a delegation
-  // but "needs" + "Elena" in proximity triggers false dispatches.
-  // Agents are instructed to use SendMessage tool for handoffs (see persona prompt).
-  // Only SendMessage tool calls (processed via consumeHandoffs above) trigger real handoffs.
-  // The text-parse block below is kept as dead code for reference.
-  const alreadyDispatched = new Set();
-  if (false) {
-    // DEAD CODE — text-parse handoffs removed in favor of SendMessage-only.
-    // If an agent wants to delegate, they MUST use the SendMessage tool.
-    for (const teamMember of Object.values(TEAM)) {
-      if (teamMember.name === member.name) continue;
-
-      // Allowlist gate — only permitted routes can dispatch
-      const permitted = HANDOFF_RULES[member.name] || [];
-      if (!permitted.includes(teamMember.name)) {
-        console.log(`[Anton] Blocked handoff: ${member.name} → ${teamMember.name} (not in allowlist)`);
-        continue;
-      }
-
-      // Per-pair 60s cooldown
-      const dispatchKey = `${member.name}→${teamMember.name}`;
-      const lastDispatch = recentDispatches.get(dispatchKey);
-      if (lastDispatch && Date.now() - lastDispatch < 60_000) {
-        console.log(`[Anton] Cooldown active: ${dispatchKey}`);
-        continue;
-      }
-
-      // Channel rate limit
-      if (!canDispatch(channelId)) continue;
-
-      if (!alreadyDispatched.has(teamMember.name)) {
-        alreadyDispatched.add(teamMember.name);
-        recentDispatches.set(dispatchKey, Date.now());
-        console.log(`[Anton] ${member.name} → ${teamMember.name} (auto-handoff, depth ${depth})`);
-        logHandoff(member.name, teamMember.name, response.slice(0, 200));
-
-        const target = teamMember;
-        const delay = alreadyDispatched.size * 5000;
-
-        setTimeout(async () => {
-          try {
-            const h = await postTyping(client, target, channelId, ts);
-            const followUp = await trackedAsk(
-              target,
-              `${member.name} (${member.title}) just said this, and it's directed at you:\n\n"${response.slice(0, 1200)}"\n\nPick up what they're asking you to do. Respond naturally.`,
-              'auto-handoff',
-            );
-            await replaceTyping(client, target, h, followUp || 'got it, looking at it now');
-            if (followUp) {
-              await handleAgentAction(target, followUp, channelId, ts, client, depth + 1);
-            }
-          } catch (e) {
-            console.error(`[Anton] Handoff to ${target.name} failed:`, e.message?.slice(0, 100));
-          }
-        }, delay);
-      }
-    }
-  }
+  // Handoffs are SendMessage-only — agents use the SendMessage tool to delegate.
+  // Processed via consumeHandoffs() above.
 
   // ── Sarah auto-dispatch ──
   if (member.name === 'Sarah' && /\b(assign|assigned|sprint|pick up|breakdown)\b/i.test(response)) {
     const agentNames = ['James', 'Elena', 'Kai', 'Omar', 'Priya'];
     const assignedAgents = agentNames
       .filter((name) => {
-        const regex = new RegExp(
-          `\\b${name}\\b.*(?:task|build|create|write|finish|close|pick up|test|deploy)`,
-          'i',
-        );
+        const regex = new RegExp(`\\b${name}\\b.*(?:task|build|create|write|finish|close|pick up|test|deploy)`, 'i');
         const altRegex = new RegExp(`(?:assign|assigned).*\\b${name}\\b`, 'i');
         return regex.test(response) || altRegex.test(response);
       })
@@ -454,7 +364,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
             const pickup = await trackedAsk(
               agent,
               `Sarah just assigned sprint tasks. Your instructions from Sarah:\n\n"${response.slice(0, 800)}"\n\nFind YOUR tasks in the message above. Pick up your highest priority task and start working on it.`,
-              'auto-dispatch',
+              'auto-dispatch'
             );
             await replaceTyping(client, agent, h, pickup || 'checking my tasks now');
           } catch (e) {
@@ -470,9 +380,7 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
 // Returns true if the message was a schedule command (caller should return early).
 async function handleScheduleCommand(text, channelId, ts, client) {
   // "set standup at 9am" / "set standup for 14:30"
-  const setMatch = text.match(
-    /\b(?:set|schedule|create)\s+(?:a\s+)?standup\s+(?:at|for|@)\s+([0-9apm:]+)/i,
-  );
+  const setMatch = text.match(/\b(?:set|schedule|create)\s+(?:a\s+)?standup\s+(?:at|for|@)\s+([0-9apm:]+)/i);
   if (setMatch) {
     const parsed = parseTimeStr(setMatch[1]);
     if (!parsed) {
@@ -481,7 +389,7 @@ async function handleScheduleCommand(text, channelId, ts, client) {
         { name: 'Anton' },
         channelId,
         ts,
-        `Couldn't parse that time. Try "set standup at 9am" or "set standup at 14:30".`,
+        `Couldn't parse that time. Try "set standup at 9am" or "set standup at 14:30".`
       );
       return true;
     }
@@ -492,7 +400,7 @@ async function handleScheduleCommand(text, channelId, ts, client) {
       { name: 'Anton' },
       channelId,
       ts,
-      `Standup set for ${formatTime(hours, minutes)} daily. Riley will DM you.`,
+      `Standup set for ${formatTime(hours, minutes)} daily. Riley will DM you.`
     );
     return true;
   }
@@ -500,13 +408,7 @@ async function handleScheduleCommand(text, channelId, ts, client) {
   // "cancel standup"
   if (/\bcancel\s+standup\b/i.test(text)) {
     const cancelled = cancelJob('daily-standup');
-    await postAs(
-      client,
-      { name: 'Anton' },
-      channelId,
-      ts,
-      cancelled ? 'Standup cancelled.' : 'No standup scheduled.',
-    );
+    await postAs(client, { name: 'Anton' }, channelId, ts, cancelled ? 'Standup cancelled.' : 'No standup scheduled.');
     return true;
   }
 
@@ -519,7 +421,7 @@ async function handleScheduleCommand(text, channelId, ts, client) {
       { name: 'Anton' },
       channelId,
       ts,
-      standup ? `Standup is at ${standup.time} daily.` : 'No standup scheduled.',
+      standup ? `Standup is at ${standup.time} daily.` : 'No standup scheduled.'
     );
     return true;
   }
@@ -537,7 +439,7 @@ async function runScheduledStandup() {
       TEAM.riley,
       `Daily standup for Noel. Discover all projects via asana_list_workspaces. ` +
         `Per dept: in progress, blocked, completed. Specific task names. Keep it tight.`,
-      'scheduled-standup',
+      'scheduled-standup'
     );
     await replaceTyping(slackApp.client, TEAM.riley, h, report || 'No updates today.');
   } catch (e) {
@@ -561,7 +463,7 @@ async function runNightlyConsolidation() {
         `End-of-day consolidation. In 4-6 bullet points, summarise: key decisions made today, ` +
           `blockers resolved, corrections received, and patterns you noticed. ` +
           `This will be injected into your context tomorrow as your DREAMS.md.`,
-        'nightly-consolidation',
+        'nightly-consolidation'
       );
       if (summary) {
         appendDeptMemory(lead.dept, lead.name, summary);
@@ -581,7 +483,7 @@ async function runNightlyConsolidation() {
       `Tonight's DAILY-INTEL. Summarise: what shipped today, what's blocked, ` +
         `patterns across departments, and recommended focus for tomorrow. ` +
         `Under 300 words. Format: department-by-department, then a "Tomorrow" section.`,
-      'daily-intel',
+      'daily-intel'
     );
     if (intel) {
       await postAs(
@@ -589,7 +491,7 @@ async function runNightlyConsolidation() {
         TEAM.riley,
         dm,
         undefined,
-        `*Daily Intel — ${new Date().toLocaleDateString()}*\n\n${intel}`,
+        `*Daily Intel — ${new Date().toLocaleDateString()}*\n\n${intel}`
       );
       appendSharedMemory('Riley', `[DAILY-INTEL] ${intel.slice(0, 800)}`);
       appendDailyNote(`Riley DAILY-INTEL: ${intel.slice(0, 300)}`);
@@ -617,11 +519,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
 
   // ── 0. System commands (analytics, admin, orchestrator) ──
 
-  if (
-    /\b(kill all|shut(ting)?\s*down|go (to )?sleep|goodnight|stop everything|shutdown)\b/i.test(
-      text,
-    )
-  ) {
+  if (/\b(kill all|shut(ting)?\s*down|go (to )?sleep|goodnight|stop everything|shutdown)\b/i.test(text)) {
     await postAs(client, { name: 'Anton' }, channelId, ts, `Shutting down. Goodnight.`);
     try {
       await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -643,9 +541,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   }
 
   if (
-    /\b(analytics|daily report|agent stats|token usage|how efficient|agent performance)\b/i.test(
-      text,
-    ) &&
+    /\b(analytics|daily report|agent stats|token usage|how efficient|agent performance)\b/i.test(text) &&
     !/\b(build|create|fix|implement)\b/i.test(text)
   ) {
     await postAs(client, { name: 'Anton' }, channelId, ts, getReport());
@@ -655,9 +551,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     return;
   }
 
-  if (
-    /\b(board|sprint board|task board|sprint status|what.?s the board|show board)\b/i.test(text)
-  ) {
+  if (/\b(board|sprint board|task board|sprint status|what.?s the board|show board)\b/i.test(text)) {
     await postAs(client, { name: 'Anton' }, channelId, ts, getBoardReport());
     try {
       await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -666,7 +560,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   }
 
   const createChannelMatch = text.match(
-    /create\s+(?:a\s+)?(?:new\s+)?(?:slack\s+)?channel\s+(?:called|named)?\s*#?(\S+)/i,
+    /create\s+(?:a\s+)?(?:new\s+)?(?:slack\s+)?channel\s+(?:called|named)?\s*#?(\S+)/i
   );
   if (createChannelMatch) {
     const newName = createChannelMatch[1].toLowerCase().replace(/^#/, '');
@@ -677,13 +571,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
         try {
           await client.conversations.invite({ channel: newId, users: userId });
         } catch {}
-        await postAs(
-          client,
-          { name: 'Anton' },
-          channelId,
-          ts,
-          `Created #${newName} and invited you.`,
-        );
+        await postAs(client, { name: 'Anton' }, channelId, ts, `Created #${newName} and invited you.`);
         idToName.set(newId, newName);
         nameToId.set(newName, newId);
       }
@@ -694,7 +582,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
         { name: 'Anton' },
         channelId,
         ts,
-        err === 'name_taken' ? `#${newName} already exists.` : `Couldn't create: ${err}`,
+        err === 'name_taken' ? `#${newName} already exists.` : `Couldn't create: ${err}`
       );
     }
     try {
@@ -744,16 +632,14 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   // If Noel says "what's going on" — Anton answers directly.
   if (channelName === 'dm') {
     // Check if explicitly addressed to a specific agent (e.g. "Marcus, do X")
-    const directAddress = Object.values(TEAM).find(m =>
-      new RegExp(`^(?:hey\\s+)?${m.name}[,!:\\s]`, 'i').test(text)
-    );
+    const directAddress = Object.values(TEAM).find((m) => new RegExp(`^(?:hey\\s+)?${m.name}[,!:\\s]`, 'i').test(text));
     if (directAddress) {
       // Explicitly addressed — route to that agent, not Anton
       console.log(`[Anton] DM explicitly addressed to ${directAddress.name}`);
     } else {
       // Everything else in DMs → Anton
       const h = await postTyping(client, { name: 'Anton' }, channelId, ts);
-      const r = await askAnton(text, "Let me think about that.");
+      const r = await askAnton(text, 'Let me think about that.');
       await replaceTyping(client, { name: 'Anton' }, h, r);
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -809,8 +695,8 @@ async function handle(text, channelId, channelName, ts, userId, client) {
                   console.log(`[Anton] Chain: ${teamMember.name} → ${target.name}`);
                   const h2 = await postTyping(client, target, channelId, ts);
                   trackedAsk(target, hMsg, 'chain-handoff')
-                    .then(resp => replaceTyping(client, target, h2, resp || 'on it'))
-                    .catch(e => console.error(`[Anton] Chain to ${target.name} failed:`, e.message?.slice(0, 80)));
+                    .then((resp) => replaceTyping(client, target, h2, resp || 'on it'))
+                    .catch((e) => console.error(`[Anton] Chain to ${target.name} failed:`, e.message?.slice(0, 80)));
                 }
               }
             } catch (e) {
@@ -844,13 +730,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
       .filter((m) => new RegExp(`\\b${m.name}\\b`, 'i').test(text))
       .map((m) => m.name);
     const names = mentioned.join(' or ');
-    await postAs(
-      client,
-      { name: 'Anton' },
-      channelId,
-      ts,
-      `Who do you want — ${names}? Address them directly.`,
-    );
+    await postAs(client, { name: 'Anton' }, channelId, ts, `Who do you want — ${names}? Address them directly.`);
     try {
       await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
     } catch {}
@@ -859,13 +739,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
 
   // Rate limit check for the full dispatch
   if (!canDispatch(channelId)) {
-    await postAs(
-      client,
-      { name: 'Anton' },
-      channelId,
-      ts,
-      `Too many requests right now. Wait a moment.`,
-    );
+    await postAs(client, { name: 'Anton' }, channelId, ts, `Too many requests right now. Wait a moment.`);
     return;
   }
 
@@ -885,12 +759,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
       return;
     }
 
-    await replaceTyping(
-      client,
-      member,
-      handle_,
-      response || 'sorry, having trouble — try again or ask Marcus',
-    );
+    await replaceTyping(client, member, handle_, response || 'sorry, having trouble — try again or ask Marcus');
     if (response) {
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -916,8 +785,8 @@ async function handle(text, channelId, channelName, ts, userId, client) {
         console.log(`[Anton] Native SendMessage: ${member.name} → ${target.name}`);
         const h = await postTyping(client, target, channelId, ts);
         trackedAsk(target, hMsg, 'sendmessage-handoff')
-          .then(r => replaceTyping(client, target, h, r || 'got it'))
-          .catch(e => console.error(`[Anton] Native handoff to ${target.name} failed:`, e.message?.slice(0, 100)));
+          .then((r) => replaceTyping(client, target, h, r || 'got it'))
+          .catch((e) => console.error(`[Anton] Native handoff to ${target.name} failed:`, e.message?.slice(0, 100)));
       }
     }
   } catch (e) {
@@ -946,12 +815,8 @@ slackApp.message(async ({ message, client }) => {
   const text = (message.text ?? '').trim();
 
   if (hasFiles) {
-    const imageFiles = (message.files || []).filter(
-      (f) => f.mimetype?.startsWith('image/') && f.url_private,
-    );
-    const imageContext = imageFiles.length
-      ? await describeImages(imageFiles, BOT_TOKEN, text)
-      : '';
+    const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
+    const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, text) : '';
 
     if (!text && !imageContext) {
       await postAs(
@@ -959,7 +824,7 @@ slackApp.message(async ({ message, client }) => {
         { name: 'Anton' },
         message.channel,
         message.ts,
-        `Couldn't process that image. Try describing what you see or paste the text directly.`,
+        `Couldn't process that image. Try describing what you see or paste the text directly.`
       );
       return;
     }
@@ -985,12 +850,8 @@ slackApp.message(async ({ message, client }) => {
 
   let finalText = rawText;
   if (hasFiles) {
-    const imageFiles = (message.files || []).filter(
-      (f) => f.mimetype?.startsWith('image/') && f.url_private,
-    );
-    const imageContext = imageFiles.length
-      ? await describeImages(imageFiles, BOT_TOKEN, rawText)
-      : '';
+    const imageFiles = (message.files || []).filter((f) => f.mimetype?.startsWith('image/') && f.url_private);
+    const imageContext = imageFiles.length ? await describeImages(imageFiles, BOT_TOKEN, rawText) : '';
     finalText = (rawText || 'User sent an image:') + (imageContext ? `\n\n${imageContext}` : '');
 
     if (!finalText.trim()) {
@@ -999,7 +860,7 @@ slackApp.message(async ({ message, client }) => {
         { name: 'Anton' },
         message.channel,
         message.ts,
-        `Couldn't process that image. Try describing what you see.`,
+        `Couldn't process that image. Try describing what you see.`
       );
       return;
     }
@@ -1031,14 +892,14 @@ slackApp.message(async ({ message, client }) => {
             { name: 'Anton' },
             message.channel,
             message.ts,
-            `Approved. Telling ${pending.member.name} to proceed.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`,
+            `Approved. Telling ${pending.member.name} to proceed.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
           );
           const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
           const result = await trackedAsk(
             pending.member,
             `Noel approved your ${pending.actionType} request: "${pending.summary}". ` +
               `Please execute it now. Original draft:\n${pending.fullDraft.slice(0, 1000)}`,
-            'approval-approved',
+            'approval-approved'
           );
           await replaceTyping(client, pending.member, h, result || 'executing...');
         } else {
@@ -1047,13 +908,13 @@ slackApp.message(async ({ message, client }) => {
             { name: 'Anton' },
             message.channel,
             message.ts,
-            `Denied. Notifying ${pending.member.name}.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`,
+            `Denied. Notifying ${pending.member.name}.${queue.length > 0 ? ` (${queue.length} more pending above)` : ''}`
           );
           const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
           const r = await trackedAsk(
             pending.member,
             `Noel denied your ${pending.actionType} request: "${pending.summary}". Do not proceed. Stand by.`,
-            'approval-denied',
+            'approval-denied'
           );
           await replaceTyping(client, pending.member, h, r || 'understood, standing by');
         }
@@ -1133,9 +994,16 @@ slackApp
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const standupChannel = nameToId.get('anton-standup');
     const startupFile = join(DATA_DIR, '.last-startup');
-    const lastStartup = (() => { try { return parseInt(readFileSync(startupFile, 'utf-8'), 10); } catch { return 0; } })();
+    const lastStartup = (() => {
+      try {
+        return parseInt(readFileSync(startupFile, 'utf-8'), 10);
+      } catch {
+        return 0;
+      }
+    })();
     const now = Date.now();
-    if (standupChannel && now - lastStartup > 120_000) { // suppress if restarted within 2 min
+    if (standupChannel && now - lastStartup > 120_000) {
+      // suppress if restarted within 2 min
       try {
         writeFileSync(startupFile, String(now));
         await postAs(
@@ -1143,11 +1011,13 @@ slackApp
           { name: 'Anton' },
           standupChannel,
           undefined,
-          `Online. ${Object.keys(TEAM).length} agents ready. Type a name to reach anyone, or ask me directly.`,
+          `Online. ${Object.keys(TEAM).length} agents ready. Type a name to reach anyone, or ask me directly.`
         );
       } catch {}
     } else {
-      try { writeFileSync(startupFile, String(now)); } catch {}
+      try {
+        writeFileSync(startupFile, String(now));
+      } catch {}
     }
   })
   .catch((err) => {
