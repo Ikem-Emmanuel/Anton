@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
 import { trackSession } from './analytics.js';
+import { getContextForAgent, getModelForMessage, resetSessionMessageCount, trackSessionMessage } from './context.js';
 import { logHandoff, logSession, logToolUse } from './logger.js';
 import { findByName } from './team.js';
 
@@ -193,10 +194,20 @@ function buildPersonaPrompt(member) {
     `- If you disagree with an approach, push back respectfully — real engineers do.`,
     `- Reference actual file paths when discussing code: "src/sessions.js" not "the sessions file"`,
     ``,
-    `## Handoffs`,
-    `Use SendMessage when passing work to another team member:`,
-    `  SendMessage({ to: "James", message: "Auth PR is ready for your backend review." })`,
-    `Do NOT rely on mentioning names in text — use the tool.`,
+    `## Handoffs — CRITICAL`,
+    `When you need to contact, ping, reach out to, or delegate to another team member,`,
+    `you MUST use the SendMessage tool. This is the ONLY way to actually reach them.`,
+    `Saying "I'll ping Elena" or "I told her" without using SendMessage does NOTHING —`,
+    `the other person never receives the message. You are lying to the user if you say`,
+    `you contacted someone without actually calling SendMessage.`,
+    ``,
+    `CORRECT (actually sends):`,
+    `  SendMessage({ to: "Elena", message: "Noel wants you to reach out to Anton for interview prep." })`,
+    ``,
+    `WRONG (does nothing, the other person never sees it):`,
+    `  "I'll ping Elena" or "Done, told her to reach out" — WITHOUT calling SendMessage`,
+    ``,
+    `Rule: If you say you contacted someone, you MUST have called SendMessage in the same response.`,
     ``,
     `## Staying Silent`,
     `If a message is not directed at you and you have nothing useful to add,`,
@@ -443,11 +454,14 @@ async function getOrCreate(member) {
     }
   }
 
-  // Create new
+  // Create new — inject memory context into persona prompt
   console.log(`[Sessions] Creating session for ${member.name}`);
   const session = unstable_v2_createSession(opts);
 
-  await session.send(buildPersonaPrompt(member));
+  const persona = buildPersonaPrompt(member);
+  const memoryContext = getContextForAgent(member);
+  await session.send(persona + memoryContext);
+  resetSessionMessageCount(member.agent);
 
   let sessionId;
   for await (const msg of session.stream()) {
@@ -480,6 +494,7 @@ function withTimeout(promise, ms, label) {
 // Internal: the actual session ask — called by the lane serializer below.
 async function _ask(member, message) {
   const session = await getOrCreate(member);
+  trackSessionMessage(member.agent);
   await withTimeout(session.send(message), 30_000, `send to ${member.name}`);
 
   let result = '';
