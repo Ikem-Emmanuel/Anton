@@ -75,6 +75,49 @@
         color: var(--error);
       }
 
+      .health-bar {
+        display: flex;
+        gap: 12px;
+        margin-left: 12px;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      .health-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .health-item .label {
+        color: var(--text-dim);
+      }
+      .health-item .value {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .health-item .value.ok {
+        color: var(--accent);
+      }
+      .health-item .value.warn {
+        color: var(--warning);
+      }
+      .health-item .value.crit {
+        color: var(--error);
+      }
+      .health-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      .health-dot.ok {
+        background: var(--accent);
+      }
+      .health-dot.warn {
+        background: var(--warning);
+      }
+      .health-dot.crit {
+        background: var(--error);
+      }
+
       .layout {
         display: flex;
         flex: 1;
@@ -538,6 +581,22 @@
     <div class="header">
       <div class="status" id="status"></div>
       <h1>Anton</h1>
+      <div class="health-bar" id="healthBar">
+        <div class="health-item">
+          <span class="label">CPU</span> <span class="value" id="hCpu">--</span>
+        </div>
+        <div class="health-item">
+          <span class="label">MEM</span> <span class="value" id="hMem">--</span>
+        </div>
+        <div class="health-item">
+          <span class="label">DISK</span>
+          <span class="value" id="hDisk">--</span>
+        </div>
+        <div class="health-item" id="hBattWrap" style="display: none">
+          <span class="label">BAT</span>
+          <span class="value" id="hBatt">--</span>
+        </div>
+      </div>
       <span class="meta" id="meta">Connecting...</span>
       <button class="clear-btn" id="clearBtn">Clear chat</button>
     </div>
@@ -716,6 +775,10 @@
             location.reload();
             return;
           }
+          if (msg.type === "health") {
+            updateHealth(msg);
+            return;
+          }
           if (msg.type === "typing") {
             showTyping();
             return;
@@ -851,6 +914,42 @@
         div.appendChild(bubble);
         messagesEl.appendChild(div);
         if (scroll) messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function updateHealth(h) {
+        const hCpu = $("hCpu");
+        const hMem = $("hMem");
+        const hDisk = $("hDisk");
+        const hBatt = $("hBatt");
+        const hBattWrap = $("hBattWrap");
+
+        function tier(val, warn, crit) {
+          if (val >= crit) return "crit";
+          if (val >= warn) return "warn";
+          return "ok";
+        }
+
+        hCpu.textContent = h.cpu + "%";
+        hCpu.className = "value " + tier(h.cpu, 70, 85);
+
+        hMem.textContent = h.memUsed + "%";
+        hMem.className = "value " + tier(h.memUsed, 70, 85);
+
+        hDisk.textContent = h.diskUsed + "%";
+        hDisk.className = "value " + tier(h.diskUsed, 65, 80);
+
+        if (h.batteryPercent !== null) {
+          hBattWrap.style.display = "flex";
+          hBatt.textContent =
+            h.batteryPercent + "%" + (h.batteryCharging ? " +" : "");
+          hBatt.className =
+            "value " +
+            (h.batteryPercent < 15 && !h.batteryCharging
+              ? "crit"
+              : h.batteryPercent < 30
+                ? "warn"
+                : "ok");
+        }
       }
 
       function renderNotification(msg) {

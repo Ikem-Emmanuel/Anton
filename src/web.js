@@ -100,9 +100,21 @@ export function initWeb({ askAgent, port = 3000 }) {
             prompt = prompt ? `${prompt}\n\n${imgPrompt}` : imgPrompt;
           }
 
+          // Handoff callback — delivers cross-agent responses to this client
+          const onHandoff = (targetAgent, handoffText) => {
+            ws.send(
+              JSON.stringify({
+                type: 'response',
+                agent: targetAgent,
+                text: handoffText,
+                timestamp: new Date().toISOString(),
+              })
+            );
+          };
+
           let response;
           try {
-            response = await askAgent(agent, prompt);
+            response = await askAgent(agent, prompt, onHandoff);
           } finally {
             // Clean up temp images
             for (const p of savedImages) {
@@ -128,15 +140,6 @@ export function initWeb({ askAgent, port = 3000 }) {
     });
 
     ws.on('close', () => console.log('[Web] Client disconnected'));
-
-    ws.send(
-      JSON.stringify({
-        type: 'response',
-        agent: 'Anton',
-        text: 'Online. What do you need?',
-        timestamp: new Date().toISOString(),
-      })
-    );
   });
 
   // Broadcast helper (used by notify system)
