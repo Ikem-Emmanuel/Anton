@@ -2,22 +2,33 @@
   "name": "anton-service",
   "version": "1.0.0",
   "private": true,
-  "description": "Anton — Slack Socket Mode listener for AI agent organization",
+  "description": "Anton — AI operating system powered by Claude Agent SDK with 27 agents, Slack integration, and autonomous execution",
   "type": "module",
-  "main": "index.js",
+  "exports": "./index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "vitest run --reporter=verbose"
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,json}": "biome check --write --no-errors-on-unmatched"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.101",
     "@slack/bolt": "3.22.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
     "vitest": "^4.1.4"
   }
 }

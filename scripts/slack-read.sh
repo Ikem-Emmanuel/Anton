@@ -1,7 +1,7 @@
 #!/bin/bash
 # Read recent messages from a Slack channel.
-# Usage: bash .anton/scripts/slack-read.sh <channel-name> [count]
-# Example: bash .anton/scripts/slack-read.sh anton-engineering 5
+# Usage: bash scripts/slack-read.sh <channel-name> [count]
+# Example: bash scripts/slack-read.sh anton-engineering 5
 #
 # Requires SLACK_BOT_TOKEN in environment.
 
@@ -9,7 +9,7 @@ set -euo pipefail
 
 CHANNEL_NAME="${1:-}"
 LIMIT="${2:-5}"
-CHANNEL_MAP=".anton/slack-channels.env"
+CHANNEL_MAP="slack-channels.env"
 
 if [ -z "$CHANNEL_NAME" ]; then
   echo "Usage: slack-read.sh <channel-name> [count]"
@@ -17,7 +17,7 @@ if [ -z "$CHANNEL_NAME" ]; then
 fi
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
-  [ -f ".anton/.env" ] && source .anton/.env
+  [ -f ".env" ] && source .env
   if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
     echo "Error: SLACK_BOT_TOKEN not set"
     exit 1

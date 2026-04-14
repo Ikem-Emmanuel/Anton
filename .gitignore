@@ -4,6 +4,7 @@ node_modules/
 # Environment & secrets
 .env
 .env.*
+!.env.example
 slack-channels.env
 
 # All runtime data lives under data/
@@ -54,4 +55,6 @@ memory/
 
 
 
+
+a
 

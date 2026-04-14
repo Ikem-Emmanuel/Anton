@@ -9,7 +9,7 @@ import { route, isEveryoneRequest, detectCollaboration, channelToDept } from './
 import { init as initSessions, ask, consumeHandoffs } from './src/sessions.js';
 import { postAs, postTyping, replaceTyping, openDM } from './src/slack.js';
 import { initAnalytics, trackRequest, getReport } from './src/analytics.js';
-import { initLogger, logMessage, logResponse, logError, logHandoff } from './src/logger.js';
+import { initLogger, logMessage, logResponse, logError } from './src/logger.js';
 import { initOrchestrator, detectCommand, startTeam, runSprint, teamStatus, stopTeam } from './src/orchestrator.js';
 import { initTaskQueue, getBoardReport } from './src/taskqueue.js';
 import { initVision, describeImages } from './src/vision.js';
@@ -25,6 +25,7 @@ import {
   initNightlyConsolidation,
 } from './src/scheduler.js';
 import { initMemory, appendDeptMemory, appendSharedMemory, appendDailyNote } from './src/memory.js';
+import { classifyIntent } from './src/handle.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -93,7 +94,6 @@ initScheduler(DATA_DIR);
 initOrchestrator(DATA_DIR);
 
 // ─── NO_REPLY sentinel ───────────────────────────────────────
-// Agents respond with exactly "NO_REPLY" to stay silent in group messages.
 const NO_REPLY_RE = /^NO_REPLY\b/i;
 
 // ─── Rate limiting ───────────────────────────────────────────
@@ -105,7 +105,7 @@ function canDispatch(channelId) {
     entry.resetAt = now + 60_000;
   }
   if (entry.count >= 5) {
-    console.warn(`[Anton] Rate limit hit for channel ${channelId}`);
+    console.warn(`[Ahnton] Rate limit hit for channel ${channelId}`);
     return false;
   }
   entry.count++;
@@ -146,39 +146,7 @@ async function askAnton(prompt, fallback = '') {
   }
 }
 
-// ─── Intent classification ───────────────────────────────────
-const INTENT_PATTERNS = [
-  {
-    type: 'system_command',
-    pattern:
-      /\b(set standup|cancel standup|when is standup|start .+ team|stop .+ team|run a sprint|team status|who.?s (working|active|running))\b/i,
-  },
-  {
-    type: 'approval_response',
-    pattern: /^(yes|y|no|n|approve|deny|go ahead|cancel|do it|don.?t|approved|denied)\b/i,
-  },
-  {
-    type: 'status_query',
-    pattern:
-      /\b(what.?s (happening|going on|the status)|how.?s (the team|engineering|marketing|seo|data|growth|automation)|any blockers|sprint status|daily (update|brief|standup)|show (me )?(the )?status)\b/i,
-  },
-  {
-    type: 'personal',
-    pattern:
-      /\b(what should i (do|focus|work on|prioritize)|help me (think|decide|plan)|i.?m not sure|should i|what do you think|my (priority|focus|plan) (today|this week)?)\b/i,
-  },
-  {
-    type: 'task',
-    pattern: /\b(build|fix|create|add|update|deploy|write|review|test)\b/i,
-  },
-];
-
-function classifyIntent(text) {
-  for (const { type, pattern } of INTENT_PATTERNS) {
-    if (pattern.test(text)) return type;
-  }
-  return 'general';
-}
+// classifyIntent imported from ./src/handle.js
 
 // ─── Approval gate ───────────────────────────────────────────
 
@@ -369,65 +337,8 @@ async function handleAgentAction(member, response, channelId, ts, client, depth 
     }
   }
 
-  // ── Text-parse handoffs DISABLED ──────────────────────────────
-  // Text-parsing for handoffs is too fragile — "Elena needs to pivot" is NOT a delegation
-  // but "needs" + "Elena" in proximity triggers false dispatches.
-  // Agents are instructed to use SendMessage tool for handoffs (see persona prompt).
-  // Only SendMessage tool calls (processed via consumeHandoffs above) trigger real handoffs.
-  // The text-parse block below is kept as dead code for reference.
-  const alreadyDispatched = new Set();
-  if (false) {
-    // DEAD CODE — text-parse handoffs removed in favor of SendMessage-only.
-    // If an agent wants to delegate, they MUST use the SendMessage tool.
-    for (const teamMember of Object.values(TEAM)) {
-      if (teamMember.name === member.name) continue;
-
-      // Allowlist gate — only permitted routes can dispatch
-      const permitted = HANDOFF_RULES[member.name] || [];
-      if (!permitted.includes(teamMember.name)) {
-        console.log(`[Anton] Blocked handoff: ${member.name} → ${teamMember.name} (not in allowlist)`);
-        continue;
-      }
-
-      // Per-pair 60s cooldown
-      const dispatchKey = `${member.name}→${teamMember.name}`;
-      const lastDispatch = recentDispatches.get(dispatchKey);
-      if (lastDispatch && Date.now() - lastDispatch < 60_000) {
-        console.log(`[Anton] Cooldown active: ${dispatchKey}`);
-        continue;
-      }
-
-      // Channel rate limit
-      if (!canDispatch(channelId)) continue;
-
-      if (!alreadyDispatched.has(teamMember.name)) {
-        alreadyDispatched.add(teamMember.name);
-        recentDispatches.set(dispatchKey, Date.now());
-        console.log(`[Anton] ${member.name} → ${teamMember.name} (auto-handoff, depth ${depth})`);
-        logHandoff(member.name, teamMember.name, response.slice(0, 200));
-
-        const target = teamMember;
-        const delay = alreadyDispatched.size * 5000;
-
-        setTimeout(async () => {
-          try {
-            const h = await postTyping(client, target, channelId, ts);
-            const followUp = await trackedAsk(
-              target,
-              `${member.name} (${member.title}) just said this, and it's directed at you:\n\n"${response.slice(0, 1200)}"\n\nPick up what they're asking you to do. Respond naturally.`,
-              'auto-handoff',
-            );
-            await replaceTyping(client, target, h, followUp || 'got it, looking at it now');
-            if (followUp) {
-              await handleAgentAction(target, followUp, channelId, ts, client, depth + 1);
-            }
-          } catch (e) {
-            console.error(`[Anton] Handoff to ${target.name} failed:`, e.message?.slice(0, 100));
-          }
-        }, delay);
-      }
-    }
-  }
+  // Handoffs are SendMessage-only — agents use the SendMessage tool to delegate.
+  // Processed via consumeHandoffs() above.
 
   // ── Sarah auto-dispatch ──
   if (member.name === 'Sarah' && /\b(assign|assigned|sprint|pick up|breakdown)\b/i.test(response)) {
