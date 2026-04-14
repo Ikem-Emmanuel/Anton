@@ -12,6 +12,7 @@ import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory.js';
 import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/notify.js';
 import { detectCommand, initOrchestrator, runSprint, startTeam, stopTeam, teamStatus } from './src/orchestrator.js';
+import { initPriority } from './src/priority.js';
 import { channelToDept, detectCollaboration, isEveryoneRequest, route } from './src/router.js';
 import {
   cancelJob,
@@ -1049,6 +1050,9 @@ slackApp
       antonRoot: ANTON_ROOT,
       dataDir: DATA_DIR,
     });
+
+    // Priority engine — maps events to notification severity
+    initPriority({ notifyNoel });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const standupChannel = nameToId.get('anton-standup');
