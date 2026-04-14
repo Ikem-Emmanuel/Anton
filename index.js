@@ -72,7 +72,7 @@ if (!SLACK_ENABLED && !WEB_ENABLED) {
 if (SLACK_ENABLED) {
   console.log('[Anton] Slack channel: ON');
 } else {
-  console.log('[Anton] Slack channel: OFF' + (!BOT_TOKEN ? ' (no token)' : ''));
+  console.log(`[Anton] Slack channel: OFF${!BOT_TOKEN ? ' (no token)' : ''}`);
 }
 if (WEB_ENABLED) console.log('[Anton] Web channel: ON');
 
@@ -643,7 +643,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     try {
       const r = await trackedAsk(TEAM.riley, text, 'status-query');
       await replaceTyping(client, TEAM.riley, h, r || 'checking...');
-    } catch (e) {
+    } catch (_e) {
       await replaceTyping(client, TEAM.riley, h, 'trouble pulling status right now, try again');
     }
     try {
@@ -980,7 +980,7 @@ startPromise
   .then(async () => {
     console.log('');
     console.log('  Anton is online.');
-    console.log(`  ${SLACK_ENABLED ? idToName.size + ' channels | ' : ''}${Object.keys(TEAM).length} team members`);
+    console.log(`  ${SLACK_ENABLED ? `${idToName.size} channels | ` : ''}${Object.keys(TEAM).length} team members`);
     console.log(`  Channels: ${[SLACK_ENABLED && 'slack', WEB_ENABLED && 'web'].filter(Boolean).join(', ')}`);
     console.log('');
 
@@ -1037,31 +1037,32 @@ startPromise
     // Web chat interface at localhost:3000
     let wss = null;
     if (WEB_ENABLED) {
+      const { analyzeForHandoffs, stripExplicitHandoffs, buildHandoffMessage } = await import('./src/handoff.js');
+
       const webResult = initWeb({
         askAgent: async (agentName, text, onHandoff) => {
           const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
           try {
             const response = await trackedAsk(member, text, 'web-chat');
 
-            // Process SendMessage handoffs (same as Slack path)
-            const handoffs = consumeHandoffs(member.name);
-            for (const { target, message: hMsg } of handoffs) {
-              const permitted = HANDOFF_RULES[member.name] || [];
-              if (!permitted.includes(target.name)) continue;
-              // Dispatch handoff asynchronously — response goes to web client
+            // Smart handoff detection — analyze response for delegation signals
+            const handoffs = analyzeForHandoffs(member.name, response, text);
+            for (const h of handoffs) {
+              console.log(`[Handoff] ${member.name} → ${h.target.name} (${h.signal}, confidence: ${h.confidence})`);
               if (onHandoff) {
+                const handoffMsg = buildHandoffMessage(member.name, h.target.name, h.signal, h.message, text);
                 (async () => {
                   try {
-                    const handoffResponse = await trackedAsk(target, hMsg, 'web-handoff');
-                    onHandoff(target.name, handoffResponse || 'Got it.');
+                    const handoffResponse = await trackedAsk(h.target, handoffMsg, 'smart-handoff');
+                    onHandoff(h.target.name, stripExplicitHandoffs(handoffResponse) || 'Got it.');
                   } catch (e) {
-                    console.error(`[Web] Handoff to ${target.name} failed:`, e.message?.slice(0, 80));
+                    console.error(`[Handoff] ${h.target.name} failed:`, e.message?.slice(0, 80));
                   }
                 })();
               }
             }
 
-            return response;
+            return stripExplicitHandoffs(response);
           } catch {
             return 'Having trouble right now. Try again.';
           }
