@@ -2,8 +2,15 @@
 // Every message passes through here. It classifies, routes, thinks, and learns.
 
 import { classify, getModelForClassification, type Classification } from './classifier.js';
-import { chat, chatJSON, isHealthy, listModels } from './ollama-client.js';
+import { chat, isHealthy, listModels } from './ollama-client.js';
 import { models, detectTier } from '../../config/models.js';
+import {
+  buildThinkingPrompt,
+  extractResponse,
+  getThinkingDepth,
+  getTemperatureForDepth,
+  getMaxTokensForDepth,
+} from './thinking.js';
 
 export interface BrainResponse {
   text: string;
@@ -90,18 +97,32 @@ export async function process(
     };
   }
 
-  // Step 4: Handle locally with the right model
+  // Step 4: Handle locally with adaptive thinking
   try {
-    const maxTokens = getMaxTokensForDepth(classification.adaptiveDepth);
+    const depth = getThinkingDepth(classification.intent, classification.complexity, classification.adaptiveDepth);
+
+    const thinkingSystem = buildThinkingPrompt(ANTON_SYSTEM, depth, options?.context);
+    const temperature = getTemperatureForDepth(depth);
+    const maxTokens = getMaxTokensForDepth(depth);
+
+    console.log(`[Brain] Thinking at depth: ${depth} (temp=${temperature}, maxTokens=${maxTokens})`);
+
     const result = await chat(message, {
       model: modelConfig.model,
-      system: ANTON_SYSTEM,
-      temperature: modelConfig.temperature ?? 0.3,
+      system: thinkingSystem,
+      temperature,
       maxTokens,
     });
 
+    // Extract thinking and visible response
+    const { thinking, response } = extractResponse(result.content);
+
+    if (thinking) {
+      console.log(`[Brain] Reasoning: ${thinking.slice(0, 150)}${thinking.length > 150 ? '...' : ''}`);
+    }
+
     return {
-      text: result.content,
+      text: response || result.content,
       classification,
       model: modelKey,
       tokensIn: result.tokensIn,
@@ -122,22 +143,6 @@ export async function process(
       durationMs: Date.now() - start,
       handledLocally: false,
     };
-  }
-}
-
-// Adaptive token budget based on depth
-function getMaxTokensForDepth(depth: string): number {
-  switch (depth) {
-    case 'minimal':
-      return 128;
-    case 'standard':
-      return 512;
-    case 'detailed':
-      return 2048;
-    case 'deep':
-      return 4096;
-    default:
-      return 512;
   }
 }
 
