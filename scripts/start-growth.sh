@@ -1,6 +1,6 @@
 #!/bin/bash
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-cd "$(dirname "$0")/../"
+cd "$(dirname "$0")/../../"
 
 claude --model opus -p "
 Create an agent team called 'growth'.
@@ -13,6 +13,6 @@ Spawn these teammates:
 
 Require plan approval for attribution and experiments before changes.
 Have teammates share findings with each other.
-Write reports to data/shared/growth-to-all/.
+Write reports to .anton/shared/growth-to-all/.
 Wait for all teammates. When done, clean up the team.
 "

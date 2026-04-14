@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Reads SLACK_BOT_TOKEN from environment or prompts for it.
 # Usage:
-#   SLACK_BOT_TOKEN=... bash scripts/slack-setup.sh
+#   SLACK_BOT_TOKEN=... bash .anton/scripts/slack-setup.sh
 #   Or just run it and paste when prompted.
 
 TOKEN="${SLACK_BOT_TOKEN:-}"
@@ -100,12 +100,12 @@ for c in data.get('channels',[]):
 done
 
 # Save channel map (no secrets in this file)
-printf "%b" "$CHANNEL_MAP" | grep -v '^$' > slack-channels.env
+printf "%b" "$CHANNEL_MAP" | grep -v '^$' > .anton/slack-channels.env
 echo ""
-echo "Channel map saved to slack-channels.env"
+echo "Channel map saved to .anton/slack-channels.env"
 
 # Post welcome message to engineering channel
-ENG_ID=$(grep "anton-engineering" slack-channels.env 2>/dev/null | cut -d= -f2)
+ENG_ID=$(grep "anton-engineering" .anton/slack-channels.env 2>/dev/null | cut -d= -f2)
 if [ -n "$ENG_ID" ]; then
   curl -s -X POST https://slack.com/api/chat.postMessage \
     -H "Authorization: Bearer $TOKEN" \

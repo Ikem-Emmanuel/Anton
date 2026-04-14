@@ -1,6 +1,6 @@
 #!/bin/bash
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-cd "$(dirname "$0")/../"
+cd "$(dirname "$0")/../../"
 
 claude --model opus -p "
 Create an agent team called 'engineering'.
