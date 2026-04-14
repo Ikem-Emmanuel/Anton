@@ -6,6 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getReport, initAnalytics, trackRequest } from './src/analytics.js';
+import { initAudit } from './src/audit.js';
 import { initBriefing } from './src/briefing.js';
 import { classifyIntent } from './src/handle.js';
 import { initLogger, logError, logMessage, logResponse } from './src/logger.js';
@@ -999,6 +1000,9 @@ slackApp
 
     // Notification system
     initNotify({ slackClient: slackApp.client, noelUserId: NOEL_USER_ID });
+
+    // Audit log (SQLite, hash-chained)
+    initAudit(DATA_DIR);
 
     // Web chat interface at localhost:3000
     const { wss } = initWeb({
