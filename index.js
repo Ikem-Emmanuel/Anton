@@ -603,12 +603,12 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     const c = result.classification;
 
     console.log(
-      `[Brain/Slack] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
+      `[${result.handledLocally ? 'LOCAL' : 'CLAUDE'}] Slack | ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | ${result.durationMs}ms`
     );
 
     // LOCAL — brain handled it (free, no Claude)
     if (result.handledLocally && result.text) {
-      console.log(`[Brain/Slack] LOCAL (${result.tokensOut} tokens, $0)`);
+      console.log(`[LOCAL/Slack] (${result.tokensOut} tokens, $0)`);
       await postAs(client, { name: 'Anton' }, channelId, ts, result.text);
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
@@ -617,7 +617,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
       // Brain-detected handoffs — also handled by brain locally
       if (c.handoffs?.length > 0) {
         for (const h of c.handoffs) {
-          console.log(`[Brain/Slack] Handoff -> ${h.agent}`);
+          console.log(`[LOCAL/Slack] Handoff -> ${h.agent}`);
           const typing = await postTyping(client, { name: h.agent }, channelId, ts);
           try {
             const handoffResult = await _slackBrain.process(h.message, {
@@ -636,7 +636,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     }
 
     // CLAUDE — brain says this needs Claude
-    console.log(`[Brain/Slack] CLAUDE needed -> ${c.agent || 'Anton'}`);
+    console.log(`[CLAUDE/Slack] needed -> ${c.agent || 'Anton'}`);
     const agent = c.agent ? findByName(c.agent) || ANTON_AGENT : ANTON_AGENT;
     const typing = await postTyping(client, agent, channelId, ts);
     try {
@@ -891,7 +891,7 @@ startPromise
             const forceClaudeMatch = text.match(/^[@/]claude\s+([\s\S]+)/i);
             if (forceClaudeMatch) {
               const cleanText = forceClaudeMatch[1].trim();
-              console.log(`[Override] @claude — forcing Claude for: ${cleanText.slice(0, 60)}`);
+              console.log(`[CLAUDE] Forced via @claude: ${cleanText.slice(0, 60)}`);
               const member = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
               return await trackedAsk(member, cleanText, 'forced-claude');
             }
@@ -900,9 +900,9 @@ startPromise
             const forceLocalMatch = text.match(/^[@/]local\s+([\s\S]+)/i);
             if (forceLocalMatch && brain) {
               const cleanText = forceLocalMatch[1].trim();
-              console.log(`[Override] @local — forcing local brain`);
+              console.log(`[LOCAL] Forced via @local`);
               const result = await brain.process(cleanText, { context: `Talking to: ${agentName}`, agent: agentName });
-              console.log(`[Brain] LOCAL (forced) | ${result.durationMs}ms | ${result.tokensOut} tokens`);
+              console.log(`[LOCAL] Forced | ${result.durationMs}ms | ${result.tokensOut} tokens`);
               return result.text || 'Could not process locally. Try without @local.';
             }
 
@@ -912,17 +912,17 @@ startPromise
               const c = result.classification;
 
               console.log(
-                `[Brain] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
+                `[${result.handledLocally ? 'LOCAL' : 'CLAUDE'}] Web | ${agentName} | ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | ${result.durationMs}ms`
               );
 
               // LOCAL — brain handled it (free, no Claude)
               if (result.handledLocally && result.text) {
-                console.log(`[Brain] LOCAL as ${agentName} (${result.tokensOut} tokens, $0)`);
+                console.log(`[LOCAL] ${agentName} (${result.tokensOut} tokens, $0)`);
 
                 // Brain detected handoffs — dispatch them via brain (not Claude)
                 if (c.handoffs?.length > 0 && onHandoff) {
                   for (const h of c.handoffs) {
-                    console.log(`[Brain] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
+                    console.log(`[LOCAL] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
                     // Handoff target also responds via brain locally
                     (async () => {
                       try {
@@ -944,14 +944,14 @@ startPromise
               }
 
               // CLAUDE — brain says this needs Claude
-              console.log(`[Brain] CLAUDE needed -> ${c.agent || agentName}`);
+              console.log(`[CLAUDE] -> ${c.agent || agentName}`);
               const agent = c.agent
                 ? findByName(c.agent) || ANTON_AGENT
                 : agentName === 'Anton'
                   ? ANTON_AGENT
                   : findByName(agentName) || ANTON_AGENT;
               const response = await trackedAsk(agent, text, 'brain-to-claude');
-              console.log(`[Brain] CLAUDE response from ${agent.name} (paid session)`);
+              console.log(`[CLAUDE] Response from ${agent.name} (paid session)`);
               return response;
             }
 
