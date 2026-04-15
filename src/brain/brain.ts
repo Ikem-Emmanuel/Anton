@@ -12,6 +12,7 @@ import {
   getMaxTokensForDepth,
 } from './thinking.js';
 import { buildAgentPrompt } from './personas.js';
+import { storeConversation, storeMemory, buildMemoryContext } from '../memory/sqlite.js';
 
 export interface BrainResponse {
   text: string;
@@ -64,9 +65,17 @@ export async function process(
   }
 
   const start = Date.now();
+  const sessionId = `${options?.agent || 'Anton'}-${Date.now()}`;
 
-  // Step 1: Classify the message
-  const classification = await classify(message, 'qwen3:8b', options?.context);
+  // Step 0: Get memory context (inject into brain's prompt)
+  let memoryContext = '';
+  try {
+    memoryContext = buildMemoryContext(options?.agent);
+  } catch {}
+
+  // Step 1: Classify the message (with memory context)
+  const classifyContext = [options?.context, memoryContext].filter(Boolean).join('\n');
+  const classification = await classify(message, 'qwen3:8b', classifyContext);
   console.log(
     `[Brain] ${classification.intent} (${classification.complexity}, confidence: ${classification.confidence}, depth: ${classification.adaptiveDepth})`
   );
@@ -106,7 +115,9 @@ export async function process(
 
     // Use agent persona if specified, otherwise Anton's default
     const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : ANTON_SYSTEM;
-    const thinkingSystem = buildThinkingPrompt(basePrompt, depth, options?.context);
+    // Inject memory context into the prompt so the brain remembers
+    const contextWithMemory = [options?.context, memoryContext].filter(Boolean).join('\n');
+    const thinkingSystem = buildThinkingPrompt(basePrompt, depth, contextWithMemory);
     const temperature = getTemperatureForDepth(depth);
     const maxTokens = getMaxTokensForDepth(depth);
 
@@ -126,8 +137,28 @@ export async function process(
       console.log(`[Brain] Reasoning: ${thinking.slice(0, 150)}${thinking.length > 150 ? '...' : ''}`);
     }
 
+    const finalText = response || result.content;
+
+    // Store conversation in memory (both user message and agent response)
+    try {
+      const agentName = options?.agent || 'Anton';
+      storeConversation(sessionId, agentName, 'user', message, {
+        channel: options?.channel || 'web',
+      });
+      storeConversation(sessionId, agentName, 'agent', finalText, {
+        channel: options?.channel || 'web',
+        modelUsed: modelConfig.model,
+        tokensIn: result.tokensIn,
+        tokensOut: result.tokensOut,
+        latencyMs: Date.now() - start,
+        handledLocally: true,
+      });
+    } catch (e) {
+      console.warn('[Brain] Failed to store conversation:', (e as Error).message?.slice(0, 60));
+    }
+
     return {
-      text: response || result.content,
+      text: finalText,
       classification,
       model: modelKey,
       tokensIn: result.tokensIn,
