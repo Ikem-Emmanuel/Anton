@@ -555,7 +555,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
   // Load brain once (lazy init for Slack path)
   if (!_slackBrain) {
     try {
-      const brainModule = await import('./src/brain/brain.js');
+      const brainModule = await import('./src/brain/brain.ts');
       await brainModule.initBrain();
       _slackBrain = brainModule;
     } catch (e) {
@@ -886,7 +886,7 @@ startPromise
       // Load the local brain (Ollama)
       let brain = null;
       try {
-        const brainModule = await import('./src/brain/brain.js');
+        const brainModule = await import('./src/brain/brain.ts');
         await brainModule.initBrain();
         brain = brainModule;
       } catch (e) {
