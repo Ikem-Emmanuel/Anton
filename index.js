@@ -606,7 +606,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
       `[Brain/Slack] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
     );
 
-    // LOCAL — brain handled it (free)
+    // LOCAL — brain handled it (free, no Claude)
     if (result.handledLocally && result.text) {
       console.log(`[Brain/Slack] LOCAL (${result.tokensOut} tokens, $0)`);
       await postAs(client, { name: 'Anton' }, channelId, ts, result.text);
@@ -614,36 +614,24 @@ async function handle(text, channelId, channelName, ts, userId, client) {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
       } catch {}
 
-      // Brain-detected handoffs
+      // Brain-detected handoffs — also handled by brain locally
       if (c.handoffs?.length > 0) {
         for (const h of c.handoffs) {
-          const target = findByName(h.agent);
-          if (!target) continue;
           console.log(`[Brain/Slack] Handoff -> ${h.agent}`);
-          const typing = await postTyping(client, target, channelId, ts);
+          const typing = await postTyping(client, { name: h.agent }, channelId, ts);
           try {
-            const resp = await trackedAsk(target, h.message, 'brain-handoff');
-            await replaceTyping(client, target, typing, resp || 'Got it.');
+            const handoffResult = await _slackBrain.process(h.message, {
+              agent: h.agent,
+              context: `Handoff from Anton`,
+            });
+            await replaceTyping(client, { name: h.agent }, typing, handoffResult.text || 'Got it.');
           } catch (e) {
-            await replaceTyping(client, target, typing, 'hit a snag');
+            await replaceTyping(client, { name: h.agent }, typing, 'hit a snag');
           }
         }
       }
 
-      // Brain routed to a specific agent
-      if (c.agent && c.agent !== 'Anton') {
-        const target = findByName(c.agent);
-        if (target) {
-          console.log(`[Brain/Slack] Routing to ${c.agent} via Claude`);
-          const typing = await postTyping(client, target, channelId, ts);
-          try {
-            const resp = await trackedAsk(target, text, 'brain-route');
-            await replaceTyping(client, target, typing, resp || 'On it.');
-          } catch (e) {
-            await replaceTyping(client, target, typing, 'hit a snag');
-          }
-        }
-      }
+      // DO NOT create Claude sessions for local responses.
       return;
     }
 
@@ -927,20 +915,22 @@ startPromise
                 `[Brain] ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | local=${result.handledLocally} | ${result.durationMs}ms`
               );
 
-              // LOCAL — brain handled it (free)
+              // LOCAL — brain handled it (free, no Claude)
               if (result.handledLocally && result.text) {
-                console.log(`[Brain] LOCAL response (${result.tokensOut} tokens, $0)`);
+                console.log(`[Brain] LOCAL as ${agentName} (${result.tokensOut} tokens, $0)`);
 
-                // Brain detected handoffs — dispatch them
+                // Brain detected handoffs — dispatch them via brain (not Claude)
                 if (c.handoffs?.length > 0 && onHandoff) {
                   for (const h of c.handoffs) {
-                    const target = findByName(h.agent);
-                    if (!target) continue;
                     console.log(`[Brain] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
+                    // Handoff target also responds via brain locally
                     (async () => {
                       try {
-                        const resp = await trackedAsk(target, h.message, 'brain-handoff');
-                        onHandoff(target.name, resp || 'Got it.');
+                        const handoffResult = await brain.process(h.message, {
+                          agent: h.agent,
+                          context: `Handoff from ${agentName}`,
+                        });
+                        onHandoff(h.agent, handoffResult.text || 'Got it.');
                       } catch (e) {
                         console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
                       }
@@ -948,22 +938,8 @@ startPromise
                   }
                 }
 
-                // Brain routed to a specific agent — dispatch via Claude
-                if (c.agent && c.agent !== 'Anton' && agentName === 'Anton' && onHandoff) {
-                  const target = findByName(c.agent);
-                  if (target) {
-                    console.log(`[Brain] Routing to ${c.agent} via Claude`);
-                    (async () => {
-                      try {
-                        const resp = await trackedAsk(target, text, 'brain-route');
-                        onHandoff(target.name, resp || 'On it.');
-                      } catch (e) {
-                        console.error(`[Brain] Route to ${c.agent} failed:`, e.message?.slice(0, 80));
-                      }
-                    })();
-                  }
-                }
-
+                // DO NOT create Claude sessions here.
+                // The brain already responded AS the agent. Done.
                 return result.text;
               }
 
