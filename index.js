@@ -116,6 +116,12 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
 
 // ─── Init subsystems ─────────────────────────────────────────
+// V2 Memory (SQLite — crash-safe, searchable)
+import { initSqliteMemory } from './src/memory/sqlite.js';
+
+initSqliteMemory(DATA_DIR);
+
+// V1 Memory (kept for backward compat during migration)
 initMemory(ANTON_ROOT, DATA_DIR);
 initContext(DATA_DIR);
 initSessions(ANTON_ROOT, DATA_DIR);
