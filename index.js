@@ -116,11 +116,6 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
 
 // ─── Init subsystems ─────────────────────────────────────────
-// V2 Memory (SQLite — crash-safe, searchable)
-import { initSqliteMemory } from './src/memory/sqlite.js';
-
-initSqliteMemory(DATA_DIR);
-
 // V1 Memory (kept for backward compat during migration)
 initMemory(ANTON_ROOT, DATA_DIR);
 initContext(DATA_DIR);
@@ -821,6 +816,14 @@ console.log(`[Anton] Channels: ${idToName.size} | Team: ${Object.keys(TEAM).leng
 const startPromise = SLACK_ENABLED ? slackApp.start() : Promise.resolve();
 startPromise
   .then(async () => {
+    // V2 Memory (SQLite — crash-safe, searchable)
+    try {
+      const { initSqliteMemory } = await import('./src/memory/sqlite.ts');
+      initSqliteMemory(DATA_DIR);
+    } catch (e) {
+      console.warn(`[Memory] SQLite init failed: ${e.message?.slice(0, 60)}`);
+    }
+
     console.log('');
     console.log('  Anton is online.');
     console.log(`  ${SLACK_ENABLED ? `${idToName.size} channels | ` : ''}${Object.keys(TEAM).length} team members`);

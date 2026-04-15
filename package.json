@@ -6,8 +6,8 @@
   "type": "module",
   "exports": "./index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
+    "start": "node --import tsx index.js",
+    "dev": "node --import tsx --watch index.js",
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
     "lint": "biome check .",
