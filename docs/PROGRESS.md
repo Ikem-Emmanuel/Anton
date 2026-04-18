@@ -8,26 +8,27 @@
 ## 📍 Current State (2026-04-19)
 
 **Branch:** `phase2/memory`  
-**Active phase:** Phase 2.5 (Stabilize) — **✅ COMPLETE (10 of 10)**  
-**Test baseline:** 484 pass / 1 pre-existing V1 flake / 54 new brain+memory tests  
+**Active phase:** Phase 3 (Jarvis feel) — **2 of 6 items shipped**  
+**Test baseline:** 497 pass / 1 pre-existing V1 flake / 67 new brain+memory tests  
 **Smoke test:** 9 of 9 routing cases pass end-to-end against live Ollama  
-**V1 memory:** 12 journal entries migrated to SQLite; memory context now spotlighted
+**V1 memory:** 12 journal entries migrated to SQLite; memory context spotlighted + ambient-wrapped  
+**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits landed
 
 ### Phase status overview
 
-| Phase                          | Status                | Progress                             |
-| ------------------------------ | --------------------- | ------------------------------------ |
-| 0 — Foundation                 | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5  |
-| 1 — Brain Core + Routing       | ✅ Verified working   | Behavioral issues fixed in Phase 2.5 |
-| 2 — Memory (SQLite)            | ✅ SQLite done        | RAG/vault/LightRAG deferred          |
-| **2.5 — Stabilize**            | 🟡 70% done           | 7/10 items complete; 3 remaining     |
-| 3 — Intelligence + Jarvis Feel | ⏳ Not started        | After 2.5 completes                  |
-| 4 — Web + Mobile               | ⏳ Design brief done  | Implementation blocked on 3          |
-| 5 — Hardware upgrade           | ⏳ Pending Mac Studio | Config-only change                   |
-| 6 — Self-Training              | ⏳ Not started        |                                      |
-| 7 — Voice                      | ⏳ Not started        |                                      |
-| 8 — Finance                    | ⏳ Not started        |                                      |
-| 9 — Production hardening       | ⏳ Not started        |                                      |
+| Phase                         | Status                | Progress                                                           |
+| ----------------------------- | --------------------- | ------------------------------------------------------------------ |
+| 0 — Foundation                | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5                                |
+| 1 — Brain Core + Routing      | ✅ Verified working   | Behavioral issues fixed in Phase 2.5                               |
+| 2 — Memory (SQLite)           | ✅ SQLite done        | RAG/vault/LightRAG deferred                                        |
+| **2.5 — Stabilize**           | ✅ Complete           | 10/10 items shipped (5 commits)                                    |
+| **3 — Intelligence + Jarvis** | 🟡 In progress        | §4.1 distillation + §4.4 ambient done; §4.2/§4.3/§4.5/§4.6 pending |
+| 4 — Web + Mobile              | ⏳ Design brief done  | Implementation blocked on 3                                        |
+| 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                                 |
+| 6 — Self-Training             | ⏳ Not started        |                                                                    |
+| 7 — Voice                     | ⏳ Not started        |                                                                    |
+| 8 — Finance                   | ⏳ Not started        |                                                                    |
+| 9 — Production hardening      | ⏳ Not started        |                                                                    |
 
 ---
 
@@ -175,6 +176,32 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 ---
 
 ## 📝 Recent Work Log
+
+### 2026-04-19 — Phase 3 kickoff (§4.1 + §4.4)
+
+- Created `src/brain/ambient-context.ts` — pure function building `[AMBIENT]`
+  string with time, day, idle duration, open items, memory depth. Injected
+  into every system prompt so Anton has temporal awareness across both local
+  and Claude paths. Reads from SQLite (memory stats) but falls back safely
+  if the store is uninitialized.
+- Created `src/brain/distill.ts` — fire-and-forget memory distillation. After
+  each response, setImmediate queues a schema-constrained Qwen3 8B pass that
+  extracts 0-5 structured facts (fact/decision/preference/commitment) with
+  confidence scores. Confidence < 0.5 dropped. Short exchanges (< 80 chars
+  combined) skip the LLM call entirely. Maps onto SQLite's 5 memory types
+  (commitment → pattern). 25s timeout.
+- Wired both into `src/brain/brain.ts`:
+  - Ambient context added once to the shared system-prompt build block.
+  - `markInteraction(agent)` + `scheduleDistillation(...)` called after
+    every successful response across all 3 return paths (local responder,
+    Claude fallback, circuit-open Claude fallback).
+  - `_lastTurnAt: Map<string, Date>` tracks last-turn timestamps for
+    ambient idle reporting.
+- Created `ambient-context.test.ts` (9 tests) and `distill.test.ts` (4 tests).
+- Smoke test 9/9 green; distillation fires in background, visible in logs.
+- Greeting now shows 15 tokens (was 10) due to ambient context — acceptable
+  tradeoff for the feel gain.
+- Tests: 484 → 497 (13 new).
 
 ### 2026-04-19 — Phase 2.5 execution, part 3 (§3.7) — PHASE COMPLETE
 
