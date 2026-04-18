@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = join(__dirname, '..', 'public');
+const PUBLIC_DIR = join(__dirname, '..', '..', 'public');
 
 let _server = null;
 let _wss = null;
