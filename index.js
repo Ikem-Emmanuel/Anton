@@ -5,6 +5,7 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { initWeb } from './src/spine/web.js';
 import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
 import { initAudit } from './src/v1-archive/audit.js';
 import { initBriefing } from './src/v1-archive/briefing.js';
@@ -41,7 +42,6 @@ import { getBoardReport, initTaskQueue } from './src/v1-archive/taskqueue.js';
 import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/v1-archive/team.js';
 import { describeImages, initVision } from './src/v1-archive/vision.js';
 import { checkGitState, getHealthSnapshot, initWatcher } from './src/v1-archive/watcher.js';
-import { initWeb } from './src/v1-archive/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -598,26 +598,20 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     if (cmd.type === 'stop') return stopTeam(cmd.dept, channelId, ts, client);
   }
 
-  // ── BRAIN HANDLES EVERYTHING ELSE — no regex routing ──
+  // ── BRAIN HANDLES EVERYTHING ELSE — single-pass, no classifier ──
   if (_slackBrain) {
     const result = await _slackBrain.process(text, { context: `Channel: ${channelName}` });
-    const c = result.classification;
-
-    console.log(
-      `[${result.handledLocally ? 'LOCAL' : 'CLAUDE'}] Slack | ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | ${result.durationMs}ms`
-    );
 
     // LOCAL — brain handled it (free, no Claude)
     if (result.handledLocally && result.text) {
-      console.log(`[LOCAL/Slack] (${result.tokensOut} tokens, $0)`);
       await postAs(client, { name: 'Anton' }, channelId, ts, result.text);
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
       } catch {}
 
-      // Brain-detected handoffs — also handled by brain locally
-      if (c.handoffs?.length > 0) {
-        for (const h of c.handoffs) {
+      // Natural handoffs detected in the response
+      if (result.handoffs?.length > 0) {
+        for (const h of result.handoffs) {
           console.log(`[LOCAL/Slack] Handoff -> ${h.agent}`);
           const typing = await postTyping(client, { name: h.agent }, channelId, ts);
           try {
@@ -631,14 +625,12 @@ async function handle(text, channelId, channelName, ts, userId, client) {
           }
         }
       }
-
-      // DO NOT create Claude sessions for local responses.
       return;
     }
 
     // CLAUDE — brain says this needs Claude
-    console.log(`[CLAUDE/Slack] needed -> ${c.agent || 'Anton'}`);
-    const agent = c.agent ? findByName(c.agent) || ANTON_AGENT : ANTON_AGENT;
+    console.log(`[CLAUDE/Slack] needed -> Anton`);
+    const agent = ANTON_AGENT;
     const typing = await postTyping(client, agent, channelId, ts);
     try {
       const response = await trackedAsk(agent, text, 'brain-to-claude');
@@ -915,29 +907,21 @@ startPromise
               return result.text || 'Could not process locally. Try without @local.';
             }
 
-            // Brain handles everything (if available)
+            // Brain handles everything (if available) — single-pass, no classifier
             if (brain) {
               const result = await brain.process(text, { context: `Talking to: ${agentName}`, agent: agentName });
-              const c = result.classification;
-
-              console.log(
-                `[${result.handledLocally ? 'LOCAL' : 'CLAUDE'}] Web | ${agentName} | ${c.intent} | ${c.complexity} | depth=${c.adaptiveDepth} | conf=${c.confidence.toFixed(2)} | model=${result.model} | ${result.durationMs}ms`
-              );
 
               // LOCAL — brain handled it (free, no Claude)
               if (result.handledLocally && result.text) {
-                console.log(`[LOCAL] ${agentName} (${result.tokensOut} tokens, $0)`);
-
-                // Brain detected handoffs — dispatch them via brain (not Claude)
-                if (c.handoffs?.length > 0 && onHandoff) {
-                  for (const h of c.handoffs) {
+                // Dispatch handoffs (brain detected delegation in its response)
+                if (result.handoffs?.length > 0 && onHandoff) {
+                  for (const h of result.handoffs) {
                     console.log(`[LOCAL] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
-                    // Handoff target also responds via brain locally
                     (async () => {
                       try {
                         const handoffResult = await brain.process(h.message, {
                           agent: h.agent,
-                          context: `Handoff from ${agentName}`,
+                          context: `Handoff from Anton`,
                         });
                         onHandoff(h.agent, handoffResult.text || 'Got it.');
                       } catch (e) {
@@ -946,19 +930,12 @@ startPromise
                     })();
                   }
                 }
-
-                // DO NOT create Claude sessions here.
-                // The brain already responded AS the agent. Done.
                 return result.text;
               }
 
               // CLAUDE — brain says this needs Claude
-              console.log(`[CLAUDE] -> ${c.agent || agentName}`);
-              const agent = c.agent
-                ? findByName(c.agent) || ANTON_AGENT
-                : agentName === 'Anton'
-                  ? ANTON_AGENT
-                  : findByName(agentName) || ANTON_AGENT;
+              console.log(`[CLAUDE] -> ${agentName}`);
+              const agent = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
               const response = await trackedAsk(agent, text, 'brain-to-claude');
               console.log(`[CLAUDE] Response from ${agent.name} (paid session)`);
               return response;
