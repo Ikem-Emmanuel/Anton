@@ -19,7 +19,7 @@ export const models: Record<string, ModelConfig> = {
     model: 'qwen3:8b',
     maxTokens: 2048,
     temperature: 0.3,
-    description: 'Fast routing, simple Q&A, greetings, status checks',
+    description: 'Primary brain — conversations, routing, delegation (Qwen3 8B, think:false)',
   },
 
   'local-coder': {

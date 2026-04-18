@@ -1,38 +1,72 @@
-// Anton's Brain — the central intelligence
-// Every message passes through here. It classifies, routes, thinks, and learns.
+// Anton's Brain — three-layer pipeline.
+//
+//   Layer 0: Deterministic pre-gate (0ms, pure fn) — handles obvious cases
+//   Layer 1: Schema-constrained classifier (200-400ms, Qwen3 8B, think:false) — handles ambiguous
+//   Layer 2: Depth-controlled responder (variable, think:depth-driven) — produces the answer
+//
+// Routing via logical model names (`'local-fast'`, `'local-reason'`, etc.) — resolved from
+// config/models.ts. Hardware upgrades change only that file. No model string hardcoded anywhere.
 
-import { classify, getModelForClassification, type Classification } from './classifier.js';
-import { chat, isHealthy, listModels } from './ollama-client.js';
-import { models, detectTier } from '../../config/models.js';
-import {
-  buildThinkingPrompt,
-  extractResponse,
-  getThinkingDepth,
-  getTemperatureForDepth,
-  getMaxTokensForDepth,
-} from './thinking.js';
-import { buildAgentPrompt } from './personas.js';
-import { storeConversation, storeMemory, buildMemoryContext } from '../memory/sqlite.js';
+import { detectTier, models, taskRouting } from '../../config/models.js';
+import { buildMemoryContext, storeConversation } from '../memory/sqlite.js';
+import { classify } from './classifier.js';
+import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
+import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
+import { type AdaptiveDepth, preGate } from './pre-gate.js';
+import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
 
 export interface BrainResponse {
   text: string;
-  classification: Classification;
   model: string;
   tokensIn: number;
   tokensOut: number;
   durationMs: number;
   handledLocally: boolean;
+  needsClaude: boolean;
+  handoffs: Array<{ agent: string; message: string }>;
+  classification?: {
+    intent: string;
+    depth: ThinkingDepth;
+    confidence: number;
+    route: string;
+    reason: string;
+  };
 }
-
-const ANTON_SYSTEM = `You are Anton — a personal AI operating system for Noel.
-You are direct, concise, and never use filler words.
-You know the team: Marcus (tech lead), Sarah (PM), James (backend), Elena (frontend), Kai (mobile), Priya (QA), Omar (devops), Diana (CMO), Alex (content), Nina (SEO), Riley (scrum master), and others.
-You manage everything: personal assistance, team coordination, system monitoring, and strategic decisions.
-When you need to involve a team member, just say who and what naturally.
-When a task needs code or deep research, say so — it will be routed to Claude.`;
 
 let _initialized = false;
 let _tier = 1;
+let _activeModels: string[] = [];
+
+// In-memory conversation history per agent (last N turns for immediate context).
+const _conversationHistory: Map<string, Array<{ role: string; content: string }>> = new Map();
+const MAX_HISTORY = 10;
+
+function addToHistory(agent: string, role: string, content: string): void {
+  if (!_conversationHistory.has(agent)) _conversationHistory.set(agent, []);
+  const history = _conversationHistory.get(agent)!;
+  history.push({ role, content });
+  if (history.length > MAX_HISTORY * 2) {
+    _conversationHistory.set(agent, history.slice(-MAX_HISTORY * 2));
+  }
+}
+
+function getHistory(agent: string): Array<{ role: string; content: string }> {
+  return _conversationHistory.get(agent) || [];
+}
+
+function getAntonSystem(): string {
+  return `You are Anton — Noel's personal AI operating system. Like JARVIS for Tony Stark.
+Direct, concise, actionable. Never say "certainly", "of course", or "happy to help".
+You run on a local LLM via Ollama. Created by Noel. Report to Noel only.
+Memory stored in SQLite. Claude is a rare fallback for code generation and deep research.
+
+${buildTeamDirectory()}
+
+Delegation: when task is clear, assign using [HANDOFF:Name] tag.
+Example: "On it. [HANDOFF:James] Build user profiles API endpoint."
+If task needs Claude, prefix with [NEEDS_CLAUDE].
+Always respond in complete sentences. Act first, ask later. Be decisive.`;
+}
 
 export async function initBrain(): Promise<void> {
   const healthy = await isHealthy();
@@ -43,151 +77,308 @@ export async function initBrain(): Promise<void> {
   }
 
   _tier = detectTier();
-  const availableModels = await listModels();
+  _activeModels = await listModels();
   _initialized = true;
 
-  console.log(`[Brain] Online (Tier ${_tier}, ${availableModels.length} models: ${availableModels.join(', ')})`);
+  console.log(`[Brain] Online (Tier ${_tier}, ${_activeModels.length} models: ${_activeModels.join(', ')})`);
 }
 
-// Main entry point — process any message through the brain
-// If options.agent is set, the brain responds AS that agent using their persona
+// Resolve logical model name (e.g. 'local-fast') to concrete Ollama model string.
+function resolveModel(logicalName: string): string {
+  const config = models[logicalName];
+  if (!config) {
+    console.warn(`[Brain] Unknown logical model '${logicalName}', using local-fast`);
+    return models['local-fast'].model;
+  }
+  return config.model;
+}
+
+// Task-type → logical model. Consults taskRouting map in config/models.ts.
+function routeForClassification(intent: string, complexity: string, needsClaude: boolean): string {
+  if (needsClaude) return complexity === 'extreme' ? 'claude-opus' : 'claude-sonnet';
+
+  const compound = `${intent}_${complexity}`;
+  if (taskRouting[compound]) return taskRouting[compound];
+  if (taskRouting[intent]) return taskRouting[intent];
+  return 'local-fast';
+}
+
+// Depth → timeout budget (ms). Short for minimal, generous for deep.
+function timeoutForDepth(depth: ThinkingDepth): number {
+  switch (depth) {
+    case 'minimal':
+      return 10_000;
+    case 'standard':
+      return 20_000;
+    case 'detailed':
+      return 45_000;
+    case 'deep':
+      return 60_000;
+  }
+}
+
 export async function process(
   message: string,
   options?: {
     context?: string;
     from?: string;
     channel?: string;
-    agent?: string; // respond AS this agent (e.g. 'Marcus')
+    agent?: string;
   }
 ): Promise<BrainResponse> {
-  if (!_initialized) {
-    await initBrain();
-  }
+  if (!_initialized) await initBrain();
 
   const start = Date.now();
-  const sessionId = `${options?.agent || 'Anton'}-${Date.now()}`;
+  const agentName = options?.agent || 'Anton';
+  const sessionId = `${agentName}-${Date.now()}`;
 
-  // Step 0: Get memory context (inject into brain's prompt)
+  // LAYER 0: Deterministic pre-gate.
+  const hint = preGate(message);
+
+  // Initialize routing with pre-gate's hints (defaults if unset).
+  let intent: string = hint.intent || 'question';
+  let complexity: 'simple' | 'complex' | 'extreme' = 'simple';
+  let needsClaude = hint.needsClaude ?? false;
+  let depth: ThinkingDepth = (hint.adaptiveDepth as AdaptiveDepth) || 'standard';
+  let confidence = hint.skipClassifier ? 1.0 : 0.0;
+  let reason = hint.reason;
+  let classifierHandoffs: Array<{ agent: string; message: string }> = [];
+
+  // LAYER 1: Classifier (only if pre-gate was ambiguous and not @local-forced).
+  if (!hint.skipClassifier) {
+    try {
+      const classification = await classify(message, resolveModel('local-fast'), options?.context);
+      intent = classification.intent;
+      complexity = classification.complexity;
+      needsClaude = classification.needsClaude;
+      depth = classification.adaptiveDepth;
+      confidence = classification.confidence;
+      classifierHandoffs = classification.handoffs;
+      reason = `classify:${intent}/${complexity}`;
+
+      // Low-confidence responses from local classifier get bumped to more thinking
+      // (cheaper than Claude, catches borderline cases).
+      if (confidence < 0.5 && !needsClaude) {
+        console.log(`[Brain] Low confidence ${confidence.toFixed(2)} — bumping depth`);
+        depth = depth === 'minimal' ? 'standard' : depth === 'standard' ? 'detailed' : depth;
+      }
+    } catch (err) {
+      console.error('[Brain] Classifier failed:', (err as Error).message?.slice(0, 100));
+      // Continue with pre-gate defaults.
+    }
+  }
+
+  // @local prefix overrides classifier's "needsClaude: true".
+  if (hint.forceLocal) needsClaude = false;
+
+  const logicalModel = routeForClassification(intent, complexity, needsClaude);
+
+  // LAYER 2a: Claude path — caller handles fallback. Store user turn and return early.
+  if (needsClaude) {
+    const durationMs = Date.now() - start;
+    console.log(
+      `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${durationMs}ms classify`
+    );
+    try {
+      storeConversation(sessionId, agentName, 'user', message, {
+        channel: options?.channel || 'web',
+      });
+    } catch {}
+    return {
+      text: '',
+      model: logicalModel,
+      tokensIn: 0,
+      tokensOut: 0,
+      durationMs,
+      handledLocally: false,
+      needsClaude: true,
+      handoffs: classifierHandoffs,
+      classification: { intent, depth, confidence, route: logicalModel, reason },
+    };
+  }
+
+  // LAYER 2b: Local responder with adaptive thinking.
   let memoryContext = '';
   try {
     memoryContext = buildMemoryContext(options?.agent);
   } catch {}
 
-  // Step 1: Classify the message (with memory context)
-  const classifyContext = [options?.context, memoryContext].filter(Boolean).join('\n');
-  const classification = await classify(message, 'qwen3:8b', classifyContext);
-  console.log(
-    `[Brain] ${classification.intent} (${classification.complexity}, confidence: ${classification.confidence}, depth: ${classification.adaptiveDepth})`
-  );
+  const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : getAntonSystem();
+  const contextParts = [basePrompt];
+  if (options?.context) contextParts.push(`\nContext: ${options.context}`);
+  if (memoryContext) contextParts.push(`\n${memoryContext}`);
 
-  // Step 2: Should the brain handle this locally?
-  const modelKey = getModelForClassification(classification);
-  const modelConfig = models[modelKey];
-
-  if (!modelConfig) {
-    return {
-      text: 'I need to think about this. Give me a moment.',
-      classification,
-      model: 'fallback',
-      tokensIn: 0,
-      tokensOut: 0,
-      durationMs: Date.now() - start,
-      handledLocally: false,
-    };
+  const history = getHistory(agentName);
+  if (history.length > 0) {
+    contextParts.push('\n[RECENT CONVERSATION]');
+    for (const msg of history.slice(-6)) {
+      contextParts.push(`${msg.role === 'user' ? 'Noel' : agentName}: ${msg.content.slice(0, 300)}`);
+    }
   }
 
-  // Step 3: If it needs Claude, signal that (don't execute here — hands do that)
-  if (modelConfig.provider === 'claude') {
-    return {
-      text: `This needs ${modelConfig.model === 'opus' ? 'deep' : 'focused'} work. Routing to Claude.`,
-      classification,
-      model: modelKey,
-      tokensIn: 0,
-      tokensOut: 0,
-      durationMs: Date.now() - start,
-      handledLocally: false,
-    };
-  }
+  const systemPrompt = contextParts.join('\n');
+  const actualModel = resolveModel(logicalModel);
+  const shouldThink = depth === 'detailed' || depth === 'deep';
+  const temperature = getTemperatureForDepth(depth);
+  const maxTokens = getMaxTokensForDepth(depth);
+  const timeoutMs = timeoutForDepth(depth);
 
-  // Step 4: Handle locally with adaptive thinking
   try {
-    const depth = getThinkingDepth(classification.intent, classification.complexity, classification.adaptiveDepth);
-
-    // Use agent persona if specified, otherwise Anton's default
-    const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : ANTON_SYSTEM;
-    // Inject memory context into the prompt so the brain remembers
-    const contextWithMemory = [options?.context, memoryContext].filter(Boolean).join('\n');
-    const thinkingSystem = buildThinkingPrompt(basePrompt, depth, contextWithMemory);
-    const temperature = getTemperatureForDepth(depth);
-    const maxTokens = getMaxTokensForDepth(depth);
-
-    console.log(`[Brain] Thinking at depth: ${depth} (temp=${temperature}, maxTokens=${maxTokens})`);
-
     const result = await chat(message, {
-      model: modelConfig.model,
-      system: thinkingSystem,
+      model: actualModel,
+      system: systemPrompt,
       temperature,
       maxTokens,
+      think: shouldThink,
+      timeoutMs,
     });
 
-    // Extract thinking and visible response
-    const { thinking, response } = extractResponse(result.content);
+    const nativeThinking = result.thinking;
+    const { thinking: parsedThinking, response: parsedResponse } = extractResponse(result.content);
+    const thinking = nativeThinking || parsedThinking;
+    const responseText = parsedResponse || result.content;
 
-    if (thinking) {
+    if (thinking && shouldThink) {
       console.log(`[Brain] Reasoning: ${thinking.slice(0, 150)}${thinking.length > 150 ? '...' : ''}`);
     }
 
-    const finalText = response || result.content;
+    // Model may still self-escalate via [NEEDS_CLAUDE] — honor it.
+    const selfEscalated = responseText.includes('[NEEDS_CLAUDE]');
+    let finalText = responseText.replace(/\[NEEDS_CLAUDE\]\s*/g, '').trim();
 
-    // Store conversation in memory (both user message and agent response)
+    // Explicit [HANDOFF:Agent] tags only — no NL fallback (removed, was fragile).
+    const handoffsFromText = extractHandoffs(finalText);
+    finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+
+    // Merge classifier handoffs + text handoffs (dedupe by agent name).
+    const handoffMap = new Map<string, string>();
+    for (const h of classifierHandoffs) handoffMap.set(h.agent, h.message);
+    for (const h of handoffsFromText) handoffMap.set(h.agent, h.message);
+    const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({
+      agent,
+      message: msg,
+    }));
+
+    const durationMs = Date.now() - start;
+    console.log(
+      `[${selfEscalated ? 'CLAUDE' : 'LOCAL'}] ${agentName} | ${intent}/${complexity} depth=${depth} | ${result.tokensOut}t | ${durationMs}ms | conf=${confidence.toFixed(2)} | ${reason}`
+    );
+
+    if (handoffs.length > 0) {
+      console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+    }
+
+    addToHistory(agentName, 'user', message);
+    addToHistory(agentName, 'assistant', finalText);
+
     try {
-      const agentName = options?.agent || 'Anton';
       storeConversation(sessionId, agentName, 'user', message, {
         channel: options?.channel || 'web',
       });
       storeConversation(sessionId, agentName, 'agent', finalText, {
         channel: options?.channel || 'web',
-        modelUsed: modelConfig.model,
+        modelUsed: actualModel,
         tokensIn: result.tokensIn,
         tokensOut: result.tokensOut,
-        latencyMs: Date.now() - start,
-        handledLocally: true,
+        latencyMs: durationMs,
+        handledLocally: !selfEscalated,
       });
     } catch (e) {
-      console.warn('[Brain] Failed to store conversation:', (e as Error).message?.slice(0, 60));
+      console.warn('[Brain] Memory store failed:', (e as Error).message?.slice(0, 60));
     }
 
     return {
       text: finalText,
-      classification,
-      model: modelKey,
+      model: logicalModel,
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
-      durationMs: Date.now() - start,
-      handledLocally: true,
+      durationMs,
+      handledLocally: !selfEscalated,
+      needsClaude: selfEscalated,
+      handoffs,
+      classification: { intent, depth, confidence, route: logicalModel, reason },
     };
   } catch (error) {
-    console.error('[Brain] Local model failed:', (error as Error).message?.slice(0, 100));
+    const isCircuitOpen = error instanceof CircuitOpenError;
+    const errMsg = (error as Error).message?.slice(0, 120) || 'unknown';
+    console.error(`[Brain] Local ${isCircuitOpen ? 'CIRCUIT OPEN' : 'failed'}: ${errMsg}`);
 
-    // Fallback: return a safe response and let the system retry or escalate
+    // Circuit open → escalate to Claude (caller will handle the fallback).
+    if (isCircuitOpen) {
+      return {
+        text: '',
+        model: 'circuit-open',
+        tokensIn: 0,
+        tokensOut: 0,
+        durationMs: Date.now() - start,
+        handledLocally: false,
+        needsClaude: true,
+        handoffs: classifierHandoffs,
+        classification: {
+          intent,
+          depth,
+          confidence,
+          route: 'claude-sonnet',
+          reason: 'circuit-open',
+        },
+      };
+    }
+
     return {
       text: 'Having trouble thinking right now. Let me try again.',
-      classification,
       model: 'error',
       tokensIn: 0,
       tokensOut: 0,
       durationMs: Date.now() - start,
       handledLocally: false,
+      needsClaude: false,
+      handoffs: [],
     };
   }
 }
 
-// Quick health check
+// Explicit [HANDOFF:AgentName] tag extraction — NO natural-language fallback.
+// NL fallback was removed in Phase 2.5 (produced false positives on "let me check with Sarah").
+function extractHandoffs(text: string): Array<{ agent: string; message: string }> {
+  const handoffs: Array<{ agent: string; message: string }> = [];
+  const regex = /\[HANDOFF:(\w+)\]\s*([^[\n]*(?:\n(?!\[HANDOFF)[^[\n]*)*)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const agent = match[1];
+    const message = match[2].trim();
+    if (TEAM_NAMES.includes(agent) && message) {
+      handoffs.push({ agent, message });
+    }
+  }
+
+  return handoffs;
+}
+
+const TEAM_NAMES = [
+  'Marcus',
+  'Sarah',
+  'James',
+  'Elena',
+  'Kai',
+  'Priya',
+  'Omar',
+  'Diana',
+  'Alex',
+  'Nina',
+  'Riley',
+  'Ada',
+  'Nadia',
+  'Felix',
+  'Ben',
+];
+
 export async function getBrainHealth(): Promise<{
   healthy: boolean;
   tier: number;
   ollamaUp: boolean;
   models: string[];
+  circuit: 'closed' | 'open' | 'halfOpen';
 }> {
   const ollamaUp = await isHealthy();
   const modelList = ollamaUp ? await listModels() : [];
@@ -196,6 +387,7 @@ export async function getBrainHealth(): Promise<{
     tier: _tier,
     ollamaUp,
     models: modelList,
+    circuit: getCircuitState(),
   };
 }
 

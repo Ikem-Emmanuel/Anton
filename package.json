@@ -24,6 +24,7 @@
     "better-sqlite3": "^12.9.0",
     "ioredis": "^5.10.1",
     "ollama": "^0.6.3",
+    "opossum": "^9.0.0",
     "systeminformation": "^5.31.5",
     "ws": "^8.20.0",
     "zod": "^4.3.6"
@@ -35,6 +36,7 @@
     "@biomejs/biome": "^2.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
+    "@types/opossum": "^8.1.9",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
     "tsx": "^4.21.0",

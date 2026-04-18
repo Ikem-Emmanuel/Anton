@@ -56,14 +56,19 @@ Be honest about what you don't know.`;
 }
 
 // Extract the visible response from a thinking-enabled response
-// Strips <think>...</think> blocks from the output
+// Strips <think>...</think> blocks and stray closing tags from the output.
+// Qwen3 via Ollama sometimes leaks a bare </think> into content when the
+// opening tag was separated into the native `thinking` field.
 export function extractResponse(rawResponse: string): {
   thinking: string | null;
   response: string;
 } {
   const thinkMatch = rawResponse.match(/<think>([\s\S]*?)<\/think>/);
   const thinking = thinkMatch ? thinkMatch[1].trim() : null;
-  const response = rawResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  const response = rawResponse
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/^<\/think>\s*/g, '')
+    .trim();
 
   return { thinking, response };
 }
@@ -98,15 +103,17 @@ export function getTemperatureForDepth(depth: ThinkingDepth): number {
 }
 
 // Get max tokens for thinking depth
+// NOTE: Qwen3 thinking tokens count against num_predict.
+// The model needs headroom for internal reasoning + visible response.
 export function getMaxTokensForDepth(depth: ThinkingDepth): number {
   switch (depth) {
     case 'minimal':
-      return 128;
-    case 'standard':
       return 512;
+    case 'standard':
+      return 1024;
     case 'detailed':
-      return 2048;
-    case 'deep':
       return 4096;
+    case 'deep':
+      return 8192;
   }
 }
