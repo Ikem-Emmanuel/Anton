@@ -598,21 +598,25 @@ async function handle(text, channelId, channelName, ts, userId, client) {
     if (cmd.type === 'stop') return stopTeam(cmd.dept, channelId, ts, client);
   }
 
-  // ── BRAIN HANDLES EVERYTHING ELSE — single-pass, no classifier ──
+  // ── BRAIN HANDLES EVERYTHING ELSE — unified pipeline ──
+  // Brain owns both local AND Claude paths. result.text is always populated
+  // (brain calls claudeFallback internally when needsClaude). Index.js just posts.
   if (_slackBrain) {
     const result = await _slackBrain.process(text, { context: `Channel: ${channelName}` });
 
-    // LOCAL — brain handled it (free, no Claude)
-    if (result.handledLocally && result.text) {
-      await postAs(client, { name: 'Anton' }, channelId, ts, result.text);
+    // Brain returned text — post it. Whether it came from local Ollama or Claude
+    // fallback, the voice is unified (same system prompt for both).
+    if (result.text) {
+      const speaker = result.handledLocally ? { name: 'Anton' } : ANTON_AGENT;
+      await postAs(client, speaker, channelId, ts, result.text);
       try {
         await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
       } catch {}
 
-      // Natural handoffs detected in the response
+      // Dispatch handoffs — always through brain, local or Claude path chosen per handoff
       if (result.handoffs?.length > 0) {
         for (const h of result.handoffs) {
-          console.log(`[LOCAL/Slack] Handoff -> ${h.agent}`);
+          console.log(`[Handoff/Slack] ${result.handledLocally ? 'LOCAL' : 'CLAUDE'} -> ${h.agent}`);
           const typing = await postTyping(client, { name: h.agent }, channelId, ts);
           try {
             const handoffResult = await _slackBrain.process(h.message, {
@@ -620,7 +624,7 @@ async function handle(text, channelId, channelName, ts, userId, client) {
               context: `Handoff from Anton`,
             });
             await replaceTyping(client, { name: h.agent }, typing, handoffResult.text || 'Got it.');
-          } catch (e) {
+          } catch {
             await replaceTyping(client, { name: h.agent }, typing, 'hit a snag');
           }
         }
@@ -628,19 +632,10 @@ async function handle(text, channelId, channelName, ts, userId, client) {
       return;
     }
 
-    // CLAUDE — brain says this needs Claude
-    console.log(`[CLAUDE/Slack] needed -> Anton`);
-    const agent = ANTON_AGENT;
-    const typing = await postTyping(client, agent, channelId, ts);
-    try {
-      const response = await trackedAsk(agent, text, 'brain-to-claude');
-      await replaceTyping(client, agent, typing, response || 'working on it...');
-      try {
-        await client.reactions.add({ channel: channelId, timestamp: ts, name: 'white_check_mark' });
-      } catch {}
-    } catch (e) {
-      await replaceTyping(client, agent, typing, 'hit a snag, try again?');
-    }
+    // Brain returned empty text — something broke (Ollama down AND Claude failed).
+    // Surface the error state directly.
+    console.warn('[Brain/Slack] empty text — both paths failed');
+    await postAs(client, { name: 'Anton' }, channelId, ts, 'Hit a snag. Try again in a moment.');
     return;
   }
 
@@ -907,38 +902,33 @@ startPromise
               return result.text || 'Could not process locally. Try without @local.';
             }
 
-            // Brain handles everything (if available) — single-pass, no classifier
+            // Brain handles everything (if available) — unified local + Claude pipeline.
+            // Brain owns the Claude fallback internally via claudeFallback, so result.text
+            // is populated whether the answer came from Ollama or Claude. Same voice.
             if (brain) {
               const result = await brain.process(text, { context: `Talking to: ${agentName}`, agent: agentName });
 
-              // LOCAL — brain handled it (free, no Claude)
-              if (result.handledLocally && result.text) {
-                // Dispatch handoffs (brain detected delegation in its response)
-                if (result.handoffs?.length > 0 && onHandoff) {
-                  for (const h of result.handoffs) {
-                    console.log(`[LOCAL] Handoff -> ${h.agent}: ${h.message.slice(0, 80)}`);
-                    (async () => {
-                      try {
-                        const handoffResult = await brain.process(h.message, {
-                          agent: h.agent,
-                          context: `Handoff from Anton`,
-                        });
-                        onHandoff(h.agent, handoffResult.text || 'Got it.');
-                      } catch (e) {
-                        console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
-                      }
-                    })();
-                  }
+              // Dispatch handoffs (works for both local and Claude paths)
+              if (result.handoffs?.length > 0 && onHandoff) {
+                for (const h of result.handoffs) {
+                  console.log(
+                    `[Handoff] ${result.handledLocally ? 'LOCAL' : 'CLAUDE'} -> ${h.agent}: ${h.message.slice(0, 80)}`
+                  );
+                  (async () => {
+                    try {
+                      const handoffResult = await brain.process(h.message, {
+                        agent: h.agent,
+                        context: `Handoff from Anton`,
+                      });
+                      onHandoff(h.agent, handoffResult.text || 'Got it.');
+                    } catch (e) {
+                      console.error(`[Handoff] ${h.agent} failed:`, e.message?.slice(0, 80));
+                    }
+                  })();
                 }
-                return result.text;
               }
 
-              // CLAUDE — brain says this needs Claude
-              console.log(`[CLAUDE] -> ${agentName}`);
-              const agent = agentName === 'Anton' ? ANTON_AGENT : findByName(agentName) || ANTON_AGENT;
-              const response = await trackedAsk(agent, text, 'brain-to-claude');
-              console.log(`[CLAUDE] Response from ${agent.name} (paid session)`);
-              return response;
+              return result.text || 'Hit a snag. Try again in a moment.';
             }
 
             // No brain — fall back to Claude directly

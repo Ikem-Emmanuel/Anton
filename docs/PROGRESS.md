@@ -8,7 +8,7 @@
 ## 📍 Current State (2026-04-19)
 
 **Branch:** `phase2/memory`  
-**Active phase:** Phase 2.5 (Stabilize) — **9 of 10 items shipped**  
+**Active phase:** Phase 2.5 (Stabilize) — **✅ COMPLETE (10 of 10)**  
 **Test baseline:** 484 pass / 1 pre-existing V1 flake / 54 new brain+memory tests  
 **Smoke test:** 9 of 9 routing cases pass end-to-end against live Ollama  
 **V1 memory:** 12 journal entries migrated to SQLite; memory context now spotlighted
@@ -65,11 +65,11 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 | 3.9  | Spotlighting + log audit      | `src/memory/sqlite.ts` (`sanitizeMemoryContent` + `<EXTERNAL_CONTENT>` wrapper), `spotlighting.test.ts` | 10 sanitization tests pass; 14 marker patterns stripped; live memory context verified wrapped with data-only footer                          |
 | 3.10 | V1 markdown memory migration  | `scripts/migrate-v1-memory.ts` (new)                                                                    | 12 V1 journal entries migrated across 6 departments (auto, data, eng, growth, mktg, seo); idempotent via SHA-16; dry-run + --apply + --reset |
 
-### Remaining (1 item)
+### Shipped (10/10) — §3.7 complete
 
-| #   | Item                         | Estimated effort | Blocks what                                                                   |
-| --- | ---------------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| 3.7 | Unified Claude fallback path | 3 hrs            | Voice drift between local/Claude paths; biggest refactor (touches `index.js`) |
+| #   | Item                         | File                                                                                 | Verification                                                                                                    |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| 3.7 | Unified Claude fallback path | `src/brain/claude-fallback.ts` (new), `src/brain/brain.ts`, `index.js` (Slack + web) | Smoke 9/9 green; Claude paths now return populated `result.text`; index.js simplified; voice unified both paths |
 
 ---
 
@@ -175,6 +175,16 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 ---
 
 ## 📝 Recent Work Log
+
+### 2026-04-19 — Phase 2.5 execution, part 3 (§3.7) — PHASE COMPLETE
+
+- Created `src/brain/claude-fallback.ts` — stateless one-shot Claude call via the Agent SDK's `unstable_v2_createSession`, takes explicit `system` + `message`, returns `{text, tokensIn, tokensOut, durationMs}`. Read-only tools (Read, Grep, Glob, WebSearch, WebFetch). No persona.json involvement — eliminates voice drift.
+- `src/brain/brain.ts`: system prompt now built ONCE and reused by both local responder (Layer 2b) and Claude fallback (Layer 2a). When `needsClaude: true`, brain calls `claudeFallback(message, systemPrompt)` internally, gets response, writes to SQLite with `handledLocally: false`, returns populated `BrainResponse.text`. Circuit-open catch branch also routes through `claudeFallback` — no more silent drop.
+- `index.js` (Slack handler): simplified — removed `!handledLocally` branch that called `trackedAsk`. Brain returns text for both paths; index.js just posts. Speaker identity preserved (Anton vs ANTON_AGENT depending on path).
+- `index.js` (web handler): same simplification; handoffs dispatch identically for both paths.
+- Fixed `TEAM_NAMES.includes()` → `TEAM_NAMES.has()` (Set).
+- Smoke 9/9 green; Claude paths now show actual token counts (57t code-block, 89t code-req, 427t @claude) and populated responses, instead of the previous 0ms empty passthrough.
+- Baseline: greeting latency dropped from 9.7s first-run to 748ms after warm-up.
 
 ### 2026-04-19 — Phase 2.5 execution, part 2 (§3.9 + §3.10)
 

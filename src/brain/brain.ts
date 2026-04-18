@@ -14,6 +14,7 @@ import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from '
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
 import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
+import { claudeFallback } from './claude-fallback.js';
 
 export interface BrainResponse {
   text: string;
@@ -173,31 +174,8 @@ export async function process(
 
   const logicalModel = routeForClassification(intent, complexity, needsClaude);
 
-  // LAYER 2a: Claude path — caller handles fallback. Store user turn and return early.
-  if (needsClaude) {
-    const durationMs = Date.now() - start;
-    console.log(
-      `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${durationMs}ms classify`
-    );
-    try {
-      storeConversation(sessionId, agentName, 'user', message, {
-        channel: options?.channel || 'web',
-      });
-    } catch {}
-    return {
-      text: '',
-      model: logicalModel,
-      tokensIn: 0,
-      tokensOut: 0,
-      durationMs,
-      handledLocally: false,
-      needsClaude: true,
-      handoffs: classifierHandoffs,
-      classification: { intent, depth, confidence, route: logicalModel, reason },
-    };
-  }
-
-  // LAYER 2b: Local responder with adaptive thinking.
+  // Build system prompt once — used by BOTH local responder and Claude fallback
+  // so voice is consistent across paths. This is the fix for the "voice drift" bug.
   let memoryContext = '';
   try {
     memoryContext = buildMemoryContext(options?.agent);
@@ -217,6 +195,68 @@ export async function process(
   }
 
   const systemPrompt = contextParts.join('\n');
+
+  // LAYER 2a: Claude path — brain invokes the fallback directly with its own
+  // system prompt. No drop into V1 sessions, no persona drift.
+  if (needsClaude) {
+    try {
+      const claudeModel: 'sonnet' | 'opus' = logicalModel === 'claude-opus' ? 'opus' : 'sonnet';
+      const result = await claudeFallback(message, systemPrompt, { model: claudeModel });
+      const durationMs = Date.now() - start;
+      const finalText = result.text || "Couldn't complete that through Claude. Retry?";
+
+      console.log(
+        `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${result.tokensOut}t | ${durationMs}ms`
+      );
+
+      addToHistory(agentName, 'user', message);
+      addToHistory(agentName, 'assistant', finalText);
+
+      try {
+        storeConversation(sessionId, agentName, 'user', message, {
+          channel: options?.channel || 'web',
+        });
+        storeConversation(sessionId, agentName, 'agent', finalText, {
+          channel: options?.channel || 'web',
+          modelUsed: `claude-${claudeModel}`,
+          tokensIn: result.tokensIn,
+          tokensOut: result.tokensOut,
+          latencyMs: durationMs,
+          handledLocally: false,
+        });
+      } catch (e) {
+        console.warn('[Brain] Memory store failed (claude path):', (e as Error).message?.slice(0, 60));
+      }
+
+      return {
+        text: finalText,
+        model: logicalModel,
+        tokensIn: result.tokensIn,
+        tokensOut: result.tokensOut,
+        durationMs,
+        handledLocally: false,
+        needsClaude: true,
+        handoffs: classifierHandoffs,
+        classification: { intent, depth, confidence, route: logicalModel, reason },
+      };
+    } catch (err) {
+      const msg = (err as Error).message?.slice(0, 120) || 'unknown';
+      console.error(`[Brain] Claude fallback failed: ${msg}`);
+      return {
+        text: "Couldn't reach Claude right now. Tell me again in a moment.",
+        model: 'claude-error',
+        tokensIn: 0,
+        tokensOut: 0,
+        durationMs: Date.now() - start,
+        handledLocally: false,
+        needsClaude: true,
+        handoffs: classifierHandoffs,
+        classification: { intent, depth, confidence, route: logicalModel, reason },
+      };
+    }
+  }
+
+  // LAYER 2b: Local responder with adaptive thinking.
   const actualModel = resolveModel(logicalModel);
   const shouldThink = depth === 'detailed' || depth === 'deep';
   const temperature = getTemperatureForDepth(depth);
@@ -303,25 +343,56 @@ export async function process(
     const errMsg = (error as Error).message?.slice(0, 120) || 'unknown';
     console.error(`[Brain] Local ${isCircuitOpen ? 'CIRCUIT OPEN' : 'failed'}: ${errMsg}`);
 
-    // Circuit open → escalate to Claude (caller will handle the fallback).
+    // Circuit open → escalate to Claude using the same system prompt.
     if (isCircuitOpen) {
-      return {
-        text: '',
-        model: 'circuit-open',
-        tokensIn: 0,
-        tokensOut: 0,
-        durationMs: Date.now() - start,
-        handledLocally: false,
-        needsClaude: true,
-        handoffs: classifierHandoffs,
-        classification: {
-          intent,
-          depth,
-          confidence,
-          route: 'claude-sonnet',
-          reason: 'circuit-open',
-        },
-      };
+      try {
+        const claudeResult = await claudeFallback(message, systemPrompt, { model: 'sonnet' });
+        const durationMs = Date.now() - start;
+        const finalText = claudeResult.text || 'Ollama is down and Claude came back empty. Retry shortly.';
+
+        console.log(`[CLAUDE] ${agentName} | circuit-open fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
+
+        addToHistory(agentName, 'user', message);
+        addToHistory(agentName, 'assistant', finalText);
+
+        try {
+          storeConversation(sessionId, agentName, 'user', message, {
+            channel: options?.channel || 'web',
+          });
+          storeConversation(sessionId, agentName, 'agent', finalText, {
+            channel: options?.channel || 'web',
+            modelUsed: 'claude-sonnet',
+            tokensIn: claudeResult.tokensIn,
+            tokensOut: claudeResult.tokensOut,
+            latencyMs: durationMs,
+            handledLocally: false,
+          });
+        } catch {}
+
+        return {
+          text: finalText,
+          model: 'claude-sonnet',
+          tokensIn: claudeResult.tokensIn,
+          tokensOut: claudeResult.tokensOut,
+          durationMs,
+          handledLocally: false,
+          needsClaude: true,
+          handoffs: classifierHandoffs,
+          classification: { intent, depth, confidence, route: 'claude-sonnet', reason: 'circuit-open' },
+        };
+      } catch (fallbackErr) {
+        console.error('[Brain] Both local AND Claude failed:', (fallbackErr as Error).message?.slice(0, 100));
+        return {
+          text: 'Local brain is down and Claude is unreachable. Check Ollama + network.',
+          model: 'both-down',
+          tokensIn: 0,
+          tokensOut: 0,
+          durationMs: Date.now() - start,
+          handledLocally: false,
+          needsClaude: false,
+          handoffs: [],
+        };
+      }
     }
 
     return {
@@ -347,7 +418,7 @@ function extractHandoffs(text: string): Array<{ agent: string; message: string }
   while ((match = regex.exec(text)) !== null) {
     const agent = match[1];
     const message = match[2].trim();
-    if (TEAM_NAMES.includes(agent) && message) {
+    if (TEAM_NAMES.has(agent) && message) {
       handoffs.push({ agent, message });
     }
   }
@@ -355,7 +426,7 @@ function extractHandoffs(text: string): Array<{ agent: string; message: string }
   return handoffs;
 }
 
-const TEAM_NAMES = [
+const TEAM_NAMES: Set<string> = new Set([
   'Marcus',
   'Sarah',
   'James',
@@ -371,7 +442,7 @@ const TEAM_NAMES = [
   'Nadia',
   'Felix',
   'Ben',
-];
+]);
 
 export async function getBrainHealth(): Promise<{
   healthy: boolean;
