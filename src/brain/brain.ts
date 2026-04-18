@@ -9,12 +9,14 @@
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
 import { buildMemoryContext, storeConversation } from '../memory/sqlite.js';
+import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
+import { claudeFallback } from './claude-fallback.js';
+import { distillConversation } from './distill.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
 import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
-import { claudeFallback } from './claude-fallback.js';
 
 export interface BrainResponse {
   text: string;
@@ -53,6 +55,34 @@ function addToHistory(agent: string, role: string, content: string): void {
 
 function getHistory(agent: string): Array<{ role: string; content: string }> {
   return _conversationHistory.get(agent) || [];
+}
+
+// Track last-turn timestamp per agent for ambient-context idle reporting.
+const _lastTurnAt: Map<string, Date> = new Map();
+
+function getLastInteractionTime(agent: string): Date | undefined {
+  return _lastTurnAt.get(agent);
+}
+
+function markInteraction(agent: string): void {
+  _lastTurnAt.set(agent, new Date());
+}
+
+// Fire-and-forget distillation. Runs in background; errors are logged, not thrown.
+function scheduleDistillation(userMessage: string, agentResponse: string, agent: string): void {
+  if (!agentResponse || agentResponse.length < 20) return;
+  setImmediate(async () => {
+    try {
+      const stats = await distillConversation(userMessage, agentResponse, agent);
+      if (stats.stored > 0) {
+        console.log(`[Distill] ${agent} | extracted=${stats.extracted} stored=${stats.stored} ${stats.durationMs}ms`);
+      } else if (stats.error) {
+        console.warn(`[Distill] ${agent} error: ${stats.error}`);
+      }
+    } catch (e) {
+      console.warn('[Distill] Unexpected:', (e as Error).message?.slice(0, 80));
+    }
+  });
 }
 
 function getAntonSystem(): string {
@@ -183,6 +213,11 @@ export async function process(
 
   const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : getAntonSystem();
   const contextParts = [basePrompt];
+
+  // Ambient context — time, day, idle, open items. Makes Anton feel aware.
+  const lastInteraction = getLastInteractionTime(agentName);
+  contextParts.push(`\n${buildAmbientContext({ lastInteractionAt: lastInteraction })}`);
+
   if (options?.context) contextParts.push(`\nContext: ${options.context}`);
   if (memoryContext) contextParts.push(`\n${memoryContext}`);
 
@@ -211,6 +246,8 @@ export async function process(
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);
+      markInteraction(agentName);
+      scheduleDistillation(message, finalText, agentName);
 
       try {
         storeConversation(sessionId, agentName, 'user', message, {
@@ -310,6 +347,8 @@ export async function process(
 
     addToHistory(agentName, 'user', message);
     addToHistory(agentName, 'assistant', finalText);
+    markInteraction(agentName);
+    scheduleDistillation(message, finalText, agentName);
 
     try {
       storeConversation(sessionId, agentName, 'user', message, {
@@ -354,6 +393,8 @@ export async function process(
 
         addToHistory(agentName, 'user', message);
         addToHistory(agentName, 'assistant', finalText);
+        markInteraction(agentName);
+        scheduleDistillation(message, finalText, agentName);
 
         try {
           storeConversation(sessionId, agentName, 'user', message, {
