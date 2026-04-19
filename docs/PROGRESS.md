@@ -9,7 +9,7 @@
 
 **Branch:** `phase4/web-ui` — 3 commits ahead of `main`
 **Active phase:** Phase 4 web UI in progress (scaffold + primitives + 1 module shipped; module ports pending)
-**Hardware target:** 64GB/1TB Mac Studio M4 Max — purchased, replacing 16GB Mac Mini
+**Hardware:** 16GB Mac Mini ("leopardracer") — Tier-1 routing active. 64GB Mac Studio evaluated 2026-04-19 but deferred.
 **Test baseline:** 640 pass — zero V1 flakes
 **Sim scenarios:** S1/S2/S3/S4/S5/S6/S8 + skill-loop-integration running in ms without Ollama
 **V1 memory:** 12 journal entries migrated to SQLite; all context spotlighted + ambient-wrapped

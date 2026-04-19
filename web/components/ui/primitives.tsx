@@ -1,7 +1,7 @@
 // Primitive UI components — ported from Design/anton/project/shared.jsx.
 // Inline styles match the prototype; tokens from globals.css drive all colors.
 
-import { DEPARTMENTS, type AgentStatus, type Risk, type TrustTier } from '@/lib/data';
+import { type AgentStatus, DEPARTMENTS, type Risk, type TrustTier } from '@/lib/data';
 
 export function DeptChip({ id, size = 'sm' }: { id: string; size?: 'sm' | 'md' }) {
   const d = DEPARTMENTS.find((x) => x.id === id);

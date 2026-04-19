@@ -9,18 +9,18 @@
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
 import { buildMemoryContext, buildSkillsContext, storeConversation, updateImplicitSignal } from '../memory/sqlite.js';
+import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
-import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
 import { evaluateTurn } from './evaluate.js';
 import { captureImplicitFeedback } from './feedback-capture.js';
-import { extractSkillCandidate } from './skill-extract.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
 import { isSimModeActive, nextSimResponse } from './sim-mode.js';
+import { extractSkillCandidate } from './skill-extract.js';
 import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
 
 export interface BrainResponse {

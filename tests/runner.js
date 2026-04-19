@@ -21,8 +21,8 @@
  * Report: data/logs/tests/full-suite-<date>-report.md
  */
 
-import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,82 +32,102 @@ const DATA_DIR = join(ANTON_ROOT, 'data');
 // ─── CLI argument parsing ─────────────────────────────────────
 const args = process.argv.slice(2);
 
-const DRY_RUN    = args.includes('--dry-run');
-const LIST_ONLY  = args.includes('--list');
-const RESUME     = args.includes('--resume');
-const SYNERGY    = !args.includes('--no-synergy'); // ON by default — agents communicate, delegate, hand off
+const DRY_RUN = args.includes('--dry-run');
+const LIST_ONLY = args.includes('--list');
+const RESUME = args.includes('--resume');
+const SYNERGY = !args.includes('--no-synergy'); // ON by default — agents communicate, delegate, hand off
 
-const deptArg       = args.find(a => a.startsWith('--dept='))?.split('=')[1];
-const blockArg      = args.find(a => a.startsWith('--block='))?.split('=')[1];
-const idArg         = args.find(a => a.startsWith('--id='))?.split('=')[1];
-const fromArg       = args.find(a => a.startsWith('--from='))?.split('=')[1];
-const toArg         = args.find(a => a.startsWith('--to='))?.split('=')[1];
-const difficultyArg = args.find(a => a.startsWith('--difficulty='))?.split('=')[1];
-const tagsArg       = args.find(a => a.startsWith('--tags='))?.split('=')[1];
-const parallelArg   = args.find(a => a.startsWith('--parallel='))?.split('=')[1];
-const timeoutArg    = args.find(a => a.startsWith('--timeout='))?.split('=')[1];
+const deptArg = args.find((a) => a.startsWith('--dept='))?.split('=')[1];
+const blockArg = args.find((a) => a.startsWith('--block='))?.split('=')[1];
+const idArg = args.find((a) => a.startsWith('--id='))?.split('=')[1];
+const fromArg = args.find((a) => a.startsWith('--from='))?.split('=')[1];
+const toArg = args.find((a) => a.startsWith('--to='))?.split('=')[1];
+const difficultyArg = args.find((a) => a.startsWith('--difficulty='))?.split('=')[1];
+const tagsArg = args.find((a) => a.startsWith('--tags='))?.split('=')[1];
+const parallelArg = args.find((a) => a.startsWith('--parallel='))?.split('=')[1];
+const timeoutArg = args.find((a) => a.startsWith('--timeout='))?.split('=')[1];
 
-const CONCURRENCY   = Math.max(1, parseInt(parallelArg || '1', 10));
-const TIMEOUT_MS    = Math.max(5000, parseInt(timeoutArg || '60', 10) * 1000);
+const CONCURRENCY = Math.max(1, parseInt(parallelArg || '1', 10));
+const TIMEOUT_MS = Math.max(5000, parseInt(timeoutArg || '60', 10) * 1000);
 
-const FILTER_DEPTS      = deptArg ? deptArg.toLowerCase().split(',').map(d => d.trim()) : null;
-const FILTER_BLOCKS     = blockArg ? blockArg.toUpperCase().split(',').map(b => b.trim()) : null;
-const FILTER_IDS        = idArg ? idArg.toUpperCase().split(',').map(i => i.trim()) : null;
+const FILTER_DEPTS = deptArg
+  ? deptArg
+      .toLowerCase()
+      .split(',')
+      .map((d) => d.trim())
+  : null;
+const FILTER_BLOCKS = blockArg
+  ? blockArg
+      .toUpperCase()
+      .split(',')
+      .map((b) => b.trim())
+  : null;
+const FILTER_IDS = idArg
+  ? idArg
+      .toUpperCase()
+      .split(',')
+      .map((i) => i.trim())
+  : null;
 const FILTER_DIFFICULTY = difficultyArg ? difficultyArg.toLowerCase() : null;
-const FILTER_TAGS       = tagsArg ? tagsArg.toLowerCase().split(',').map(t => t.trim()) : null;
+const FILTER_TAGS = tagsArg
+  ? tagsArg
+      .toLowerCase()
+      .split(',')
+      .map((t) => t.trim())
+  : null;
 
 // ─── Department map ───────────────────────────────────────────
 const DEPT_MAP = {
-  'anton-pa':    'anton-pa',
-  'pa':          'anton-pa',
-  'engineering': 'engineering',
-  'eng':         'engineering',
-  'marketing':   'marketing',
-  'mktg':        'marketing',
-  'seo':         'seo',
-  'automation':  'automation',
-  'auto':        'automation',
-  'data':        'data',
-  'growth':      'growth',
-  'cross-dept':  'cross-dept',
-  'cross':       'cross-dept',
+  'anton-pa': 'anton-pa',
+  pa: 'anton-pa',
+  engineering: 'engineering',
+  eng: 'engineering',
+  marketing: 'marketing',
+  mktg: 'marketing',
+  seo: 'seo',
+  automation: 'automation',
+  auto: 'automation',
+  data: 'data',
+  growth: 'growth',
+  'cross-dept': 'cross-dept',
+  cross: 'cross-dept',
 };
 
 const SCENARIO_FILE_MAP = {
-  'anton-pa':   './scenarios/anton-pa.js',
-  'engineering':'./scenarios/engineering.js',
-  'marketing':  './scenarios/marketing.js',
-  'seo':        './scenarios/seo.js',
-  'automation': './scenarios/automation.js',
-  'data':       './scenarios/data.js',
-  'growth':     './scenarios/growth.js',
+  'anton-pa': './scenarios/anton-pa.js',
+  engineering: './scenarios/engineering.js',
+  marketing: './scenarios/marketing.js',
+  seo: './scenarios/seo.js',
+  automation: './scenarios/automation.js',
+  data: './scenarios/data.js',
+  growth: './scenarios/growth.js',
   'cross-dept': './scenarios/cross-dept.js',
 };
 
 const DEPT_DISPLAY = {
-  'anton-pa':   'Anton PA',
-  'engineering':'Engineering',
-  'marketing':  'Marketing',
-  'seo':        'SEO',
-  'automation': 'Automation',
-  'data':       'Data',
-  'growth':     'Growth',
+  'anton-pa': 'Anton PA',
+  engineering: 'Engineering',
+  marketing: 'Marketing',
+  seo: 'SEO',
+  automation: 'Automation',
+  data: 'Data',
+  growth: 'Growth',
   'cross-dept': 'Cross-Dept',
 };
 
 // ─── Colors ───────────────────────────────────────────────────
 const C = {
-  reset:  '\x1b[0m',
-  bold:   '\x1b[1m',
-  dim:    '\x1b[2m',
-  red:    '\x1b[31m',
-  green:  '\x1b[32m',
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
   yellow: '\x1b[33m',
-  blue:   '\x1b[34m',
-  magenta:'\x1b[35m',
-  cyan:   '\x1b[36m',
-  white:  '\x1b[37m',
-  gray:   '\x1b[90m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+  white: '\x1b[37m',
+  gray: '\x1b[90m',
 };
 
 function color(c, text) {
@@ -124,7 +144,7 @@ mkdirSync(LOG_DIR, { recursive: true });
 
 const TODAY = new Date().toISOString().split('T')[0];
 const RUN_TS = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-const LOG_FILE    = join(LOG_DIR, `full-suite-${TODAY}.jsonl`);
+const LOG_FILE = join(LOG_DIR, `full-suite-${TODAY}.jsonl`);
 const REPORT_FILE = join(LOG_DIR, `full-suite-${TODAY}-report.md`);
 
 function appendLog(entry) {
@@ -160,9 +180,7 @@ async function loadScenarios() {
   const allScenarios = [];
   const warnings = [];
 
-  const deptKeys = FILTER_DEPTS
-    ? FILTER_DEPTS.map(d => DEPT_MAP[d]).filter(Boolean)
-    : Object.keys(SCENARIO_FILE_MAP);
+  const deptKeys = FILTER_DEPTS ? FILTER_DEPTS.map((d) => DEPT_MAP[d]).filter(Boolean) : Object.keys(SCENARIO_FILE_MAP);
 
   const uniqueDepts = [...new Set(deptKeys)];
 
@@ -193,40 +211,38 @@ function applyFilters(scenarios, passedIds) {
 
   // --block
   if (FILTER_BLOCKS) {
-    filtered = filtered.filter(s => FILTER_BLOCKS.some(b => s.block?.toUpperCase() === b));
+    filtered = filtered.filter((s) => FILTER_BLOCKS.some((b) => s.block?.toUpperCase() === b));
   }
 
   // --id
   if (FILTER_IDS) {
-    filtered = filtered.filter(s => FILTER_IDS.includes(s.id?.toUpperCase()));
+    filtered = filtered.filter((s) => FILTER_IDS.includes(s.id?.toUpperCase()));
   }
 
   // --from / --to (range within ordered list)
   if (fromArg || toArg) {
-    const ids = filtered.map(s => s.id);
-    const fromIdx = fromArg ? ids.findIndex(id => id?.toUpperCase() === fromArg.toUpperCase()) : 0;
-    const toIdx   = toArg   ? ids.findIndex(id => id?.toUpperCase() === toArg.toUpperCase())   : ids.length - 1;
+    const ids = filtered.map((s) => s.id);
+    const fromIdx = fromArg ? ids.findIndex((id) => id?.toUpperCase() === fromArg.toUpperCase()) : 0;
+    const toIdx = toArg ? ids.findIndex((id) => id?.toUpperCase() === toArg.toUpperCase()) : ids.length - 1;
     const start = fromIdx >= 0 ? fromIdx : 0;
-    const end   = toIdx   >= 0 ? toIdx   : filtered.length - 1;
+    const end = toIdx >= 0 ? toIdx : filtered.length - 1;
     filtered = filtered.slice(start, end + 1);
   }
 
   // --difficulty
   if (FILTER_DIFFICULTY) {
-    filtered = filtered.filter(s => s.difficulty === FILTER_DIFFICULTY);
+    filtered = filtered.filter((s) => s.difficulty === FILTER_DIFFICULTY);
   }
 
   // --tags
   if (FILTER_TAGS) {
-    filtered = filtered.filter(s =>
-      s.tags && FILTER_TAGS.some(tag => s.tags.includes(tag))
-    );
+    filtered = filtered.filter((s) => s.tags && FILTER_TAGS.some((tag) => s.tags.includes(tag)));
   }
 
   // --resume: skip already-passed
   if (RESUME && passedIds.size > 0) {
     const before = filtered.length;
-    filtered = filtered.filter(s => !passedIds.has(s.id));
+    filtered = filtered.filter((s) => !passedIds.has(s.id));
     const skipped = before - filtered.length;
     if (skipped > 0) {
       print(color(C.gray, `[Resume] Skipping ${skipped} already-passed scenarios`));
@@ -257,7 +273,7 @@ function resolveAgents(scenarios, TEAM) {
     }
   }
 
-  return resolved.filter(s => s._agent !== null);
+  return resolved.filter((s) => s._agent !== null);
 }
 
 // ─── Module-scoped subsystem refs (assigned in main, used by processHandoffs) ─
@@ -273,7 +289,7 @@ async function processHandoffs(member, response, fns, depth = 0) {
 
   // 1. Approval gate detection (log only — no Slack in test mode)
   const tail = response.slice(-200);
-  const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—\-]\s*(.+)/i);
+  const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—-]\s*(.+)/i);
   if (approvalMatch) {
     const entry = {
       type: 'approval_detected',
@@ -308,8 +324,14 @@ async function processHandoffs(member, response, fns, depth = 0) {
 
       try {
         const hResponse = await fns.ask(target, hMsg);
-        print(color(C.green, `      ✓ ${target.name} responded (${(hResponse?.length || 0)} chars)`));
-        appendLog({ type: 'handoff_result', from: member.name, to: target.name, status: 'pass', response_preview: (hResponse || '').slice(0, 200) });
+        print(color(C.green, `      ✓ ${target.name} responded (${hResponse?.length || 0} chars)`));
+        appendLog({
+          type: 'handoff_result',
+          from: member.name,
+          to: target.name,
+          status: 'pass',
+          response_preview: (hResponse || '').slice(0, 200),
+        });
         handoffs.push({ mechanism: 'SendMessage', from: member.name, to: target.name, response: hResponse });
 
         // Recurse — the target's response may trigger further handoffs
@@ -324,14 +346,16 @@ async function processHandoffs(member, response, fns, depth = 0) {
   }
 
   // 3. Text-parse handoffs — detect teammate names + action words in response
-  const hasActionContext = /\b(fix|bug|review|test|PTAL|pick up|handle|assign|merge|deploy|check|re-?test|ping me|ready for|can you|please)\b/i.test(response);
+  const hasActionContext =
+    /\b(fix|bug|review|test|PTAL|pick up|handle|assign|merge|deploy|check|re-?test|ping me|ready for|can you|please)\b/i.test(
+      response
+    );
   if (!hasActionContext || !_HANDOFF_RULES) return handoffs;
 
   // Build negative zones (won't, don't, can't, not, until, before, without)
   const negativePatterns = /(?:won't|don't|can't|not|until|before|without)\s+(?:\w+\s+){0,3}/gi;
   const negativeZones = [];
-  let neg;
-  while ((neg = negativePatterns.exec(response)) !== null) {
+  for (const neg of response.matchAll(negativePatterns)) {
     negativeZones.push({ start: neg.index, end: neg.index + neg[0].length + 20 });
   }
 
@@ -344,7 +368,7 @@ async function processHandoffs(member, response, fns, depth = 0) {
     if (!nameMatch) continue;
 
     const namePos = nameMatch.index;
-    const isNegative = negativeZones.some(z => namePos >= z.start && namePos <= z.end);
+    const isNegative = negativeZones.some((z) => namePos >= z.start && namePos <= z.end);
     if (isNegative) continue;
 
     const permitted = _HANDOFF_RULES[member.name] || [];
@@ -364,8 +388,14 @@ async function processHandoffs(member, response, fns, depth = 0) {
     try {
       const handoffPrompt = `${member.name} (${member.title}) just said this, and it's directed at you:\n\n"${response.slice(0, 1200)}"\n\nPick up what they're asking you to do. Respond naturally.`;
       const hResponse = await fns.ask(teamMember, handoffPrompt);
-      print(color(C.green, `      ✓ ${teamMember.name} responded (${(hResponse?.length || 0)} chars)`));
-      appendLog({ type: 'handoff_result', from: member.name, to: teamMember.name, status: 'pass', response_preview: (hResponse || '').slice(0, 200) });
+      print(color(C.green, `      ✓ ${teamMember.name} responded (${hResponse?.length || 0} chars)`));
+      appendLog({
+        type: 'handoff_result',
+        from: member.name,
+        to: teamMember.name,
+        status: 'pass',
+        response_preview: (hResponse || '').slice(0, 200),
+      });
       handoffs.push({ mechanism: 'text-parse', from: member.name, to: teamMember.name, response: hResponse });
 
       // Recurse
@@ -407,10 +437,7 @@ async function runScenario(s, fns) {
   });
 
   try {
-    const response = await Promise.race([
-      ask(s._agent, s.message),
-      timeoutPromise,
-    ]);
+    const response = await Promise.race([ask(s._agent, s.message), timeoutPromise]);
 
     clearTimeout(timeoutHandle);
     const elapsed = Date.now() - start;
@@ -493,18 +520,29 @@ function printScenarioResult(s, result, index, total) {
 
   let icon, statusColor;
   switch (result.status) {
-    case 'pass':    icon = '✓'; statusColor = C.green;   break;
-    case 'timeout': icon = '⏱'; statusColor = C.yellow;  break;
-    case 'error':   icon = '✗'; statusColor = C.red;     break;
-    default:        icon = '?'; statusColor = C.gray;
+    case 'pass':
+      icon = '✓';
+      statusColor = C.green;
+      break;
+    case 'timeout':
+      icon = '⏱';
+      statusColor = C.yellow;
+      break;
+    case 'error':
+      icon = '✗';
+      statusColor = C.red;
+      break;
+    default:
+      icon = '?';
+      statusColor = C.gray;
   }
 
   const parts = [
-    color(C.gray,   pct.padEnd(9)),
+    color(C.gray, pct.padEnd(9)),
     color(statusColor, icon),
-    color(C.cyan,   agent),
+    color(C.cyan, agent),
     title,
-    color(C.gray,   elapsed),
+    color(C.gray, elapsed),
   ];
 
   print(parts.join(' '));
@@ -533,10 +571,10 @@ async function runPool(scenarios, fns, concurrency) {
 
 // ─── Markdown report ──────────────────────────────────────────
 function buildMarkdownReport(scenarios, results, deptBreakdown, agentBreakdown, wallMs) {
-  const total    = results.length;
-  const passed   = results.filter(r => r.status === 'pass').length;
-  const failed   = results.filter(r => r.status === 'error').length;
-  const timeouts = results.filter(r => r.status === 'timeout').length;
+  const total = results.length;
+  const passed = results.filter((r) => r.status === 'pass').length;
+  const failed = results.filter((r) => r.status === 'error').length;
+  const timeouts = results.filter((r) => r.status === 'timeout').length;
   const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
 
   const lines = [];
@@ -585,9 +623,7 @@ function buildMarkdownReport(scenarios, results, deptBreakdown, agentBreakdown, 
   const agentEntries = Object.entries(agentBreakdown).sort((a, b) => b[1].total - a[1].total);
   for (const [agent, stats] of agentEntries) {
     const avgS = stats.count > 0 ? (stats.totalMs / stats.count / 1000).toFixed(1) : '-';
-    lines.push(
-      `| ${agent} | ${stats.total} | ${stats.pass} | ${stats.fail} | ${stats.timeout} | ${avgS} |`
-    );
+    lines.push(`| ${agent} | ${stats.total} | ${stats.pass} | ${stats.fail} | ${stats.timeout} | ${avgS} |`);
   }
   lines.push('');
 
@@ -604,17 +640,13 @@ function buildMarkdownReport(scenarios, results, deptBreakdown, agentBreakdown, 
     lines.push(`|------|----|-------|------|--------|`);
     for (const [i, [idx, r]] of slowest.entries()) {
       const s = scenarios[idx];
-      lines.push(
-        `| ${i + 1} | ${s.id} | ${s._agent?.name || '?'} | ${(r.elapsed / 1000).toFixed(1)}s | ${r.status} |`
-      );
+      lines.push(`| ${i + 1} | ${s.id} | ${s._agent?.name || '?'} | ${(r.elapsed / 1000).toFixed(1)}s | ${r.status} |`);
     }
     lines.push('');
   }
 
   // ── Failures: full response only for non-passing ──
-  const failures = results
-    .map((r, i) => ({ r, s: scenarios[i] }))
-    .filter(({ r }) => r.status !== 'pass');
+  const failures = results.map((r, i) => ({ r, s: scenarios[i] })).filter(({ r }) => r.status !== 'pass');
 
   if (failures.length > 0) {
     lines.push(`## Failures & Errors (${failures.length})`);
@@ -624,7 +656,9 @@ function buildMarkdownReport(scenarios, results, deptBreakdown, agentBreakdown, 
 
     for (const { r, s } of failures) {
       lines.push(`### ${s.id}: ${s.title || ''}`);
-      lines.push(`**Agent:** ${s._agent?.name || '?'}  |  **Block:** ${s.block}  |  **Dept:** ${DEPT_DISPLAY[s._dept] || s._dept}  |  **Status:** ${r.status}  |  **Time:** ${r.elapsed ? (r.elapsed / 1000).toFixed(1) + 's' : '-'}`);
+      lines.push(
+        `**Agent:** ${s._agent?.name || '?'}  |  **Block:** ${s.block}  |  **Dept:** ${DEPT_DISPLAY[s._dept] || s._dept}  |  **Status:** ${r.status}  |  **Time:** ${r.elapsed ? (r.elapsed / 1000).toFixed(1) + 's' : '-'}`
+      );
       lines.push('');
       lines.push(`**Message:**`);
       lines.push('```');
@@ -685,38 +719,58 @@ async function main() {
 
   if (allScenarios.length === 0) {
     print(color(C.red, 'No scenarios loaded. Check that scenario files exist in tests/scenarios/'));
-    print(color(C.gray, 'Expected files: anton-pa.js, engineering.js, marketing.js, seo.js, automation.js, data.js, growth.js, cross-dept.js'));
+    print(
+      color(
+        C.gray,
+        'Expected files: anton-pa.js, engineering.js, marketing.js, seo.js, automation.js, data.js, growth.js, cross-dept.js'
+      )
+    );
     process.exit(1);
   }
 
-  print(color(C.green, `  Loaded ${allScenarios.length} scenarios from ${Object.keys(SCENARIO_FILE_MAP).length} departments`));
+  print(
+    color(
+      C.green,
+      `  Loaded ${allScenarios.length} scenarios from ${Object.keys(SCENARIO_FILE_MAP).length} departments`
+    )
+  );
 
   // ── Init subsystems (skip for dry-run / list) ──
-  let ask, consumeHandoffs, trackRequest, getReport, logMessage, logResponse, logError, logHandoff, TEAM, HANDOFF_RULES, findByName;
+  let ask,
+    consumeHandoffs,
+    trackRequest,
+    getReport,
+    logMessage,
+    logResponse,
+    logError,
+    logHandoff,
+    TEAM,
+    HANDOFF_RULES,
+    findByName;
 
   if (!DRY_RUN && !LIST_ONLY) {
     print(color(C.cyan, 'Initializing subsystems...'));
 
-    const sessions   = await import('../src/sessions.js');
-    const analytics  = await import('../src/analytics.js');
-    const logger     = await import('../src/logger.js');
+    const sessions = await import('../src/sessions.js');
+    const analytics = await import('../src/analytics.js');
+    const logger = await import('../src/logger.js');
     const teamModule = await import('../src/team.js');
 
     sessions.init(ANTON_ROOT, DATA_DIR);
     analytics.initAnalytics(DATA_DIR);
     logger.initLogger(DATA_DIR);
 
-    ask           = sessions.ask;
+    ask = sessions.ask;
     consumeHandoffs = sessions.consumeHandoffs;
-    trackRequest  = analytics.trackRequest;
-    getReport     = analytics.getReport;
-    logMessage    = logger.logMessage;
-    logResponse   = logger.logResponse;
-    logError      = logger.logError;
-    logHandoff    = logger.logHandoff;
-    TEAM          = teamModule.TEAM;
+    trackRequest = analytics.trackRequest;
+    getReport = analytics.getReport;
+    logMessage = logger.logMessage;
+    logResponse = logger.logResponse;
+    logError = logger.logError;
+    logHandoff = logger.logHandoff;
+    TEAM = teamModule.TEAM;
     HANDOFF_RULES = teamModule.HANDOFF_RULES;
-    findByName    = teamModule.findByName;
+    findByName = teamModule.findByName;
 
     // Expose to module-scoped processHandoffs()
     _ask = ask;
@@ -766,7 +820,9 @@ async function main() {
       }
       const diff = s.difficulty ? color(C.gray, ` [${s.difficulty}]`) : '';
       const tags = s.tags?.length ? color(C.dim, ` #${s.tags.join(' #')}`) : '';
-      print(`      ${color(C.cyan, s.id.padEnd(12))} ${s._agent?.name?.padEnd(10) || '?'.padEnd(10)} ${(s.title || '').slice(0, 55)}${diff}${tags}`);
+      print(
+        `      ${color(C.cyan, s.id.padEnd(12))} ${s._agent?.name?.padEnd(10) || '?'.padEnd(10)} ${(s.title || '').slice(0, 55)}${diff}${tags}`
+      );
     }
     print('');
     return;
@@ -789,7 +845,9 @@ async function main() {
         lastBlock = s.block;
         print(color(C.yellow, `    Block ${s.block}: ${s.blockName || ''}`));
       }
-      print(`      ${color(C.cyan, s.id.padEnd(12))} -> ${s._agent?.name?.padEnd(10) || '?'.padEnd(10)} ${(s.title || '').slice(0, 55)}`);
+      print(
+        `      ${color(C.cyan, s.id.padEnd(12))} -> ${s._agent?.name?.padEnd(10) || '?'.padEnd(10)} ${(s.title || '').slice(0, 55)}`
+      );
     }
     print('');
     print(color(C.gray, `  Concurrency: ${CONCURRENCY}  |  Timeout: ${TIMEOUT_MS / 1000}s/scenario`));
@@ -799,9 +857,14 @@ async function main() {
 
   // ── Pre-run summary ──
   print('');
-  print(color(C.bold, `Running ${scenarios.length} scenarios  |  concurrency: ${CONCURRENCY}  |  timeout: ${TIMEOUT_MS / 1000}s`));
-  print(color(C.gray,  `JSONL log: ${LOG_FILE}`));
-  print(color(C.gray,  `Report:    ${REPORT_FILE}`));
+  print(
+    color(
+      C.bold,
+      `Running ${scenarios.length} scenarios  |  concurrency: ${CONCURRENCY}  |  timeout: ${TIMEOUT_MS / 1000}s`
+    )
+  );
+  print(color(C.gray, `JSONL log: ${LOG_FILE}`));
+  print(color(C.gray, `Report:    ${REPORT_FILE}`));
   print('');
 
   appendLog({
@@ -869,25 +932,29 @@ async function main() {
     const dept = s._dept;
     if (!deptBreakdown[dept]) deptBreakdown[dept] = { total: 0, pass: 0, fail: 0, timeout: 0 };
     deptBreakdown[dept].total++;
-    if (r.status === 'pass')    deptBreakdown[dept].pass++;
-    if (r.status === 'error')   deptBreakdown[dept].fail++;
+    if (r.status === 'pass') deptBreakdown[dept].pass++;
+    if (r.status === 'error') deptBreakdown[dept].fail++;
     if (r.status === 'timeout') deptBreakdown[dept].timeout++;
 
     // Agent
     const agentName = s._agent?.name || 'unknown';
-    if (!agentBreakdown[agentName]) agentBreakdown[agentName] = { total: 0, pass: 0, fail: 0, timeout: 0, totalMs: 0, count: 0 };
+    if (!agentBreakdown[agentName])
+      agentBreakdown[agentName] = { total: 0, pass: 0, fail: 0, timeout: 0, totalMs: 0, count: 0 };
     agentBreakdown[agentName].total++;
-    if (r.status === 'pass')    agentBreakdown[agentName].pass++;
-    if (r.status === 'error')   agentBreakdown[agentName].fail++;
+    if (r.status === 'pass') agentBreakdown[agentName].pass++;
+    if (r.status === 'error') agentBreakdown[agentName].fail++;
     if (r.status === 'timeout') agentBreakdown[agentName].timeout++;
-    if (r.elapsed) { agentBreakdown[agentName].totalMs += r.elapsed; agentBreakdown[agentName].count++; }
+    if (r.elapsed) {
+      agentBreakdown[agentName].totalMs += r.elapsed;
+      agentBreakdown[agentName].count++;
+    }
   }
 
-  const totalPassed   = results.filter(r => r.status === 'pass').length;
-  const totalFailed   = results.filter(r => r.status === 'error').length;
-  const totalTimeouts = results.filter(r => r.status === 'timeout').length;
-  const totalSkipped  = results.filter(r => r.status === 'skip').length;
-  const passRate      = results.length > 0 ? Math.round((totalPassed / results.length) * 100) : 0;
+  const totalPassed = results.filter((r) => r.status === 'pass').length;
+  const totalFailed = results.filter((r) => r.status === 'error').length;
+  const totalTimeouts = results.filter((r) => r.status === 'timeout').length;
+  const totalSkipped = results.filter((r) => r.status === 'skip').length;
+  const passRate = results.length > 0 ? Math.round((totalPassed / results.length) * 100) : 0;
 
   // ── Console summary ──
   print('');
@@ -899,9 +966,11 @@ async function main() {
   print(color(C.bold, '  By department:'));
   for (const [dept, stats] of Object.entries(deptBreakdown)) {
     const dPct = stats.total > 0 ? Math.round((stats.pass / stats.total) * 100) : 0;
-    const bar  = (dPct === 100 ? C.green : dPct >= 80 ? C.yellow : C.red);
+    const bar = dPct === 100 ? C.green : dPct >= 80 ? C.yellow : C.red;
     const name = (DEPT_DISPLAY[dept] || dept).padEnd(14);
-    print(`    ${color(bar, name)} ${stats.pass}/${stats.total} passed  (${dPct}%)  ${stats.fail ? color(C.red, `${stats.fail} errors`) : ''}  ${stats.timeout ? color(C.yellow, `${stats.timeout} timeouts`) : ''}`);
+    print(
+      `    ${color(bar, name)} ${stats.pass}/${stats.total} passed  (${dPct}%)  ${stats.fail ? color(C.red, `${stats.fail} errors`) : ''}  ${stats.timeout ? color(C.yellow, `${stats.timeout} timeouts`) : ''}`
+    );
   }
 
   print('');
@@ -912,12 +981,22 @@ async function main() {
     .slice(0, 10);
   for (const [i, [idx, r]] of slowest.entries()) {
     const s = scenarios[idx];
-    print(color(C.gray, `    ${String(i + 1).padStart(2)}. ${s.id.padEnd(12)} ${(s._agent?.name || '?').padEnd(10)} ${(r.elapsed / 1000).toFixed(1)}s`));
+    print(
+      color(
+        C.gray,
+        `    ${String(i + 1).padStart(2)}. ${s.id.padEnd(12)} ${(s._agent?.name || '?').padEnd(10)} ${(r.elapsed / 1000).toFixed(1)}s`
+      )
+    );
   }
 
   print('');
-  const statusIcon = totalFailed + totalTimeouts === 0 ? color(C.green, '✓ ALL PASSED') : color(C.red, `✗ ${totalFailed + totalTimeouts} FAILED`);
-  print(`  ${statusIcon}  —  ${totalPassed} passed, ${totalFailed} errors, ${totalTimeouts} timeouts${totalSkipped ? `, ${totalSkipped} skipped` : ''}  |  ${(wallMs / 1000).toFixed(0)}s wall time`);
+  const statusIcon =
+    totalFailed + totalTimeouts === 0
+      ? color(C.green, '✓ ALL PASSED')
+      : color(C.red, `✗ ${totalFailed + totalTimeouts} FAILED`);
+  print(
+    `  ${statusIcon}  —  ${totalPassed} passed, ${totalFailed} errors, ${totalTimeouts} timeouts${totalSkipped ? `, ${totalSkipped} skipped` : ''}  |  ${(wallMs / 1000).toFixed(0)}s wall time`
+  );
   print('');
 
   // ── Write markdown report ──
@@ -956,7 +1035,7 @@ async function main() {
   }
 }
 
-main().catch(e => {
+main().catch((e) => {
   print(color(C.red, `\n[Fatal] Runner crashed: ${e.message}`));
   console.error(e.stack);
   process.exit(1);

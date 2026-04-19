@@ -5,14 +5,13 @@
 // Approvals page) without dragging in the whole shell.
 
 import { useState } from 'react';
-import { APPROVALS } from '@/lib/data';
-import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/button';
 import { DeptChip, Kbd, RiskPip } from '@/components/ui/primitives';
+import { cn } from '@/lib/cn';
+import { APPROVALS } from '@/lib/data';
 
 function DiffRow({ row }: { row: [string, string, string?] }) {
-  const color =
-    row[0] === '+' ? 'text-ok' : row[0] === '-' ? 'text-error' : 'text-work';
+  const color = row[0] === '+' ? 'text-ok' : row[0] === '-' ? 'text-error' : 'text-work';
   return (
     <div className="mono small flex gap-2 py-0.5">
       <span className={cn('w-3', color)}>{row[0]}</span>
@@ -32,8 +31,7 @@ function AgentMonogram({ agent }: { agent: string }) {
 
 export function ApprovalTray() {
   const [expanded, setExpanded] = useState<number[]>([2]);
-  const toggle = (id: number) =>
-    setExpanded((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+  const toggle = (id: number) => setExpanded((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
 
   return (
     <div className="flex flex-col h-full">

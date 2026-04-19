@@ -15,7 +15,6 @@
  */
 
 export const scenarios = [
-
   // ─── MKT-A: Brand & Messaging ────────────────────────────────
   {
     id: 'MKT-A1',
