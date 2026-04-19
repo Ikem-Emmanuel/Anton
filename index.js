@@ -5,6 +5,7 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listMemories } from './src/memory/sqlite.js';
 import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
 import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
 import { initAudit } from './src/v1-archive/audit.js';
@@ -938,6 +939,7 @@ startPromise
 
       const webResult = initWeb({
         approvalsSource: allPendingApprovals,
+        memoriesSource: () => listMemories(50),
         askAgent: async (agentName, text, onHandoff) => {
           try {
             // Override: @claude forces Claude session
