@@ -615,7 +615,10 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
 | 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests         | 3        |
 | 2026-04-19 | §4.5.6 cross-agent skill sharing — discovery + proposal flow via `src/heart/skill-sharing.js`, 4h scan wired into proactive; +6 tests       | 3        |
-|            | **PHASE 3 COMPLETE** (bar two ergonomic follow-ups). NEXT: docs/PROGRESS.md refresh → open PR for `phase3/persona-unification`.             | —        |
+| 2026-04-19 | docs/PROGRESS.md refreshed — Phase 3 work log, updated test counts, fixed-in-Phase-3 bugs table, new Next Work Session                      | —        |
+| 2026-04-19 | Repo pushed to `github.com/Ikem-Emmanuel/Anton` (public) — pre-push hook grandfathered 4 pre-existing attribution SHAs                      | —        |
+| 2026-04-19 | **PR #1 MERGED** — Phase 3 (8 commits) → `phase4/web-ui` via merge commit `4300627`; source branch deleted                                  | 3        |
+|            | **PHASE 3 COMPLETE.** NEXT: consider `phase4/web-ui` → `main` PR, or start Phase 5/6, or pick up deferred follow-ups.                       | —        |
 
 ---
 
