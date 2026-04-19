@@ -1175,6 +1175,219 @@ export const USAGE_DAYS: UsageDay[] = [
   { d: 'Sun', v: 270 },
 ];
 
+export type ApprovalStatColor = 'ok' | 'work' | 'error' | 'secondary';
+
+export type ApprovalStat = [label: string, value: string, color: ApprovalStatColor];
+
+export type ApprovalPreviewStep = { t: string; d: string };
+
+export type ApprovalOption = {
+  id: string;
+  label: string;
+  pitch: string;
+  stats: ApprovalStat[];
+  tradeoffs: string[];
+  author: string;
+  preview: ApprovalPreviewStep[];
+};
+
+export const APPROVAL_OPTIONS: ApprovalOption[] = [
+  {
+    id: 'A',
+    label: 'Gentle onboarding (recommended)',
+    pitch: 'Prompt user on step 3. Local-model fallback. Default for waitlist graduates.',
+    stats: [
+      ['Time-to-first-value', '45s', 'ok'],
+      ['Abandonment', 'low', 'ok'],
+      ['Support load', '+5%', 'work'],
+      ['Dev effort', '2 days', 'secondary'],
+    ],
+    tradeoffs: ['Best for new users', 'Some friction at step 3', 'Cheapest to build'],
+    author: 'Marcus',
+    preview: [
+      { t: 'step 1', d: 'welcome · who this is for' },
+      { t: 'step 2', d: 'connect Slack (required)' },
+      { t: 'step 3', d: 'create workspace · prompt user' },
+      { t: 'step 4', d: 'meet the team · 3 agents pinned' },
+      { t: 'step 5', d: 'first delegation · guided' },
+    ],
+  },
+  {
+    id: 'B',
+    label: 'Zero-click onboarding',
+    pitch: 'Auto-creates workspace. Claude-forced first classification. Fastest to value.',
+    stats: [
+      ['Time-to-first-value', '18s', 'ok'],
+      ['Abandonment', 'lowest', 'ok'],
+      ['Support load', '+18%', 'error'],
+      ['Dev effort', '4 days', 'secondary'],
+    ],
+    tradeoffs: ['Fastest wow moment', 'Heavy Claude spend', 'Harder to debug support issues'],
+    author: 'Marcus',
+    preview: [
+      { t: 'step 1', d: 'welcome' },
+      { t: 'step 2', d: 'connect Slack' },
+      { t: 'step 3', d: 'workspace auto-created' },
+      { t: 'step 4', d: 'agents pre-pinned by heuristic' },
+      { t: 'step 5', d: 'first delegation · unguided' },
+    ],
+  },
+  {
+    id: 'C',
+    label: 'Terminal-first onboarding',
+    pitch: 'Shell-native users only. Five commands, no UI. Power-user path.',
+    stats: [
+      ['Time-to-first-value', '12s', 'ok'],
+      ['Abandonment', 'high for novices', 'error'],
+      ['Support load', 'none', 'ok'],
+      ['Dev effort', '1 day', 'ok'],
+    ],
+    tradeoffs: ['Zero-friction for shell users', 'Alienates non-technical', 'Lowest effort'],
+    author: 'Marcus',
+    preview: [
+      { t: 'cmd 1', d: 'anton init' },
+      { t: 'cmd 2', d: 'anton connect slack' },
+      { t: 'cmd 3', d: 'anton workspace new' },
+      { t: 'cmd 4', d: 'anton pin @marcus @sarah' },
+      { t: 'cmd 5', d: 'anton "draft a PRD for X"' },
+    ],
+  },
+];
+
+export type IntegrationStatus = 'ok' | 'warn' | 'error' | 'idle';
+export type IntegrationCategory =
+  | 'messaging'
+  | 'email'
+  | 'tasks'
+  | 'code'
+  | 'calendar'
+  | 'finance'
+  | 'docs'
+  | 'files'
+  | 'social'
+  | 'design';
+
+export type Integration = {
+  id: string;
+  name: string;
+  cat: IntegrationCategory;
+  status: IntegrationStatus;
+  note: string;
+  scopes: string[];
+  last: string | null;
+};
+
+export const INTEGRATIONS: Integration[] = [
+  {
+    id: 'slack',
+    name: 'Slack',
+    cat: 'messaging',
+    status: 'ok',
+    note: '2 workspaces · 14 channels scoped',
+    scopes: ['read', 'write', 'mention'],
+    last: 'live',
+  },
+  {
+    id: 'gmail',
+    name: 'Gmail',
+    cat: 'email',
+    status: 'ok',
+    note: 'noel@anton.computer · 1,284 threads',
+    scopes: ['read', 'draft', 'send w/ approval'],
+    last: '1m',
+  },
+  {
+    id: 'jira',
+    name: 'Jira',
+    cat: 'tasks',
+    status: 'ok',
+    note: 'ENG-* · PRD-* projects',
+    scopes: ['read', 'comment', 'transition'],
+    last: '3m',
+  },
+  {
+    id: 'asana',
+    name: 'Asana',
+    cat: 'tasks',
+    status: 'ok',
+    note: 'mirrored to SQLite tasks table',
+    scopes: ['read', 'write'],
+    last: '2m',
+  },
+  {
+    id: 'gh',
+    name: 'GitHub',
+    cat: 'code',
+    status: 'ok',
+    note: 'anton-computer/anton · PR + issues',
+    scopes: ['repo', 'issues', 'pull-requests'],
+    last: '32s',
+  },
+  {
+    id: 'cal',
+    name: 'Calendar',
+    cat: 'calendar',
+    status: 'ok',
+    note: 'Google Calendar · 2 calendars',
+    scopes: ['read', 'write'],
+    last: '5m',
+  },
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    cat: 'finance',
+    status: 'error',
+    note: 'API key expired 2h ago',
+    scopes: ['read', 'reports'],
+    last: '2h',
+  },
+  {
+    id: 'linear',
+    name: 'Linear',
+    cat: 'tasks',
+    status: 'idle',
+    note: 'available · not connected',
+    scopes: [],
+    last: null,
+  },
+  {
+    id: 'notion',
+    name: 'Notion',
+    cat: 'docs',
+    status: 'ok',
+    note: 'Personal OS workspace',
+    scopes: ['read', 'append'],
+    last: '14m',
+  },
+  {
+    id: 'drive',
+    name: 'Drive',
+    cat: 'files',
+    status: 'warn',
+    note: '1.2GB · re-index pending',
+    scopes: ['read'],
+    last: '1h',
+  },
+  {
+    id: 'x',
+    name: 'X / Twitter',
+    cat: 'social',
+    status: 'ok',
+    note: '@noel_anton · post w/ approval',
+    scopes: ['post', 'read timeline'],
+    last: '18m',
+  },
+  {
+    id: 'figma',
+    name: 'Figma',
+    cat: 'design',
+    status: 'idle',
+    note: 'available · not connected',
+    scopes: [],
+    last: null,
+  },
+];
+
 export const APPROVALS: Approval[] = [
   {
     id: 1,
