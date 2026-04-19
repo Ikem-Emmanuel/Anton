@@ -5,7 +5,7 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initWeb } from './src/spine/web.js';
+import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
 import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
 import { initAudit } from './src/v1-archive/audit.js';
 import { initBriefing } from './src/v1-archive/briefing.js';
@@ -115,6 +115,45 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 // overwrite each other — they queue and are presented one at a time.
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
 
+// Monotonic id for web-surfaced approval records. Kept separate from Slack's
+// `ts` because the web UI wants a numeric id it can pass to delete/resolve.
+let _approvalIdCounter = 0;
+
+// Guess a risk level from the action type + summary. Conservative default is
+// 'M' (medium) so nothing gets auto-silenced. `H` when anything irreversible
+// or external is in play, `L` only for clearly internal draft actions.
+function guessRisk(actionType, summary) {
+  const haystack = `${actionType || ''} ${summary || ''}`.toLowerCase();
+  if (/deploy|push.+prod|publish|send.*email|send.*slack|money|payment|delete/.test(haystack)) return 'H';
+  if (/send|post|schedule|charge|book/.test(haystack)) return 'M';
+  return 'L';
+}
+
+// Transform a backend approval entry into the shape the web Approval Tray
+// renders. Also adds the generated `id` back onto the entry so resolve can
+// reference it.
+function entryToWebApproval(entry) {
+  return {
+    id: entry.id,
+    agent: entry.member?.name || 'Anton',
+    dept: entry.member?.dept || 'eng',
+    risk: guessRisk(entry.actionType, entry.summary),
+    intent: entry.summary || '(no summary)',
+    why: entry.fullDraft ? entry.fullDraft.slice(0, 240) : null,
+    diff: null,
+  };
+}
+
+// Flattened list of all pending approvals across DM channels — used as the
+// approvalsSource callback for the web /api/approvals endpoint.
+function allPendingApprovals() {
+  const out = [];
+  for (const queue of pendingApprovals.values()) {
+    for (const entry of queue) out.push(entryToWebApproval(entry));
+  }
+  return out;
+}
+
 // ─── Init subsystems ─────────────────────────────────────────
 // V1 Memory (kept for backward compat during migration)
 initMemory(ANTON_ROOT, DATA_DIR);
@@ -216,11 +255,21 @@ async function handleApprovalRequest(member, actionType, summary, fullDraft, cha
   try {
     const dm = await openDM(client, NOEL_USER_ID);
 
-    // Queue the approval (multiple agents can request simultaneously)
-    const entry = { member, actionType, summary, fullDraft, channelId, ts };
+    // Queue the approval (multiple agents can request simultaneously). The
+    // `id` is monotonic so the web can refer to it stably; `dm` is kept for
+    // Slack routing when the user replies.
+    _approvalIdCounter += 1;
+    const entry = { id: _approvalIdCounter, member, actionType, summary, fullDraft, channelId, ts, dm };
     const queue = pendingApprovals.get(dm) || [];
     queue.push(entry);
     pendingApprovals.set(dm, queue);
+
+    // Broadcast to connected web clients so the Approval Tray lights up.
+    try {
+      emitApprovalCreated(entryToWebApproval(entry));
+    } catch (e) {
+      console.warn('[Anton] approval emit failed:', e.message?.slice(0, 60));
+    }
 
     // Only post to Noel if this is the first in queue (otherwise it's already waiting)
     if (queue.length === 1) {
@@ -745,6 +794,13 @@ if (SLACK_ENABLED)
             postApprovalDM(client, message.channel, queue[0], queue.length).catch(() => {});
           }
 
+          // Tell connected web clients so the tray drops this record.
+          try {
+            emitApprovalResolved(pending.id, approved ? 'approved' : 'denied');
+          } catch (e) {
+            console.warn('[Anton] approval.resolved emit failed:', e.message?.slice(0, 60));
+          }
+
           if (approved) {
             await postAs(
               client,
@@ -881,6 +937,7 @@ startPromise
       }
 
       const webResult = initWeb({
+        approvalsSource: allPendingApprovals,
         askAgent: async (agentName, text, onHandoff) => {
           try {
             // Override: @claude forces Claude session
