@@ -19,7 +19,7 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('fact','conversation','decision','pattern','preference')),
+    type TEXT NOT NULL,
     content TEXT NOT NULL,
     metadata TEXT DEFAULT '{}',
     importance REAL DEFAULT 0.5,
@@ -160,6 +160,39 @@ export function initSqliteMemory(dataDir: string): void {
 
   db = new Database(dbPath);
   db.exec(SCHEMA);
+
+  // Drop the old CHECK(type IN (...)) constraint on the `memories` table for
+  // DBs that pre-date the §4.6 V1-journal dual-write. Detection: sqlite_master
+  // stores the CREATE TABLE SQL; if it still contains CHECK(type IN, rebuild
+  // via the documented temp-table swap. One-shot; boots after this pay no
+  // cost since the sql column won't match.
+  try {
+    const row = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'memories'`).get() as
+      | { sql?: string }
+      | undefined;
+    if (row?.sql && /CHECK\s*\(\s*type\s+IN/i.test(row.sql)) {
+      console.log('[Memory/SQLite] Migrating: dropping legacy CHECK(type IN …) constraint');
+      db.exec(`
+        BEGIN;
+        CREATE TABLE memories_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agent TEXT NOT NULL,
+          type TEXT NOT NULL,
+          content TEXT NOT NULL,
+          metadata TEXT DEFAULT '{}',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          checksum TEXT
+        );
+        INSERT INTO memories_new (id, agent, type, content, metadata, created_at, checksum)
+          SELECT id, agent, type, content, metadata, created_at, checksum FROM memories;
+        DROP TABLE memories;
+        ALTER TABLE memories_new RENAME TO memories;
+        COMMIT;
+      `);
+    }
+  } catch (e) {
+    console.warn('[Memory/SQLite] CHECK-drop migration skipped:', (e as Error).message?.slice(0, 80));
+  }
 
   try {
     db.exec(FTS_SCHEMA);
