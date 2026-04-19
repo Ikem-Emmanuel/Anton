@@ -166,12 +166,22 @@ const DEFAULT_TASKS = [
   },
 ];
 
-export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource, resolveApproval, port = 3000 }) {
+export function initWeb({
+  askAgent,
+  approvalsSource,
+  memoriesSource,
+  tasksSource,
+  eventsSource,
+  resolveApproval,
+  port = 3000,
+}) {
   // Each source is an optional async callback returning the current records.
   // Omit and the fallback mock is used — keeps the UI live during dev.
   const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
   const readMemories = memoriesSource || (() => DEFAULT_MEMORIES);
   const readTasks = tasksSource || (() => DEFAULT_TASKS);
+  // Events default to the in-process ring buffer populated by emitEventLogged.
+  const readEvents = eventsSource || (() => getRecentEvents());
   // resolveApproval({id, decision}) notifies the underlying agent + clears
   // the pending-queue entry. When not wired, the endpoint 501s so the web
   // UI can display a helpful error instead of a generic failure.
@@ -255,6 +265,21 @@ export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource
         res.end(JSON.stringify({ tasks: tasks || [] }));
       } catch (e) {
         console.error('[Web] /api/tasks error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/events — recent activity log (last 200 events, newest first).
+    // Shape mirrors web/lib/data/activity.ts `ActivityEvent` type.
+    if (req.method === 'GET' && req.url === '/api/events') {
+      try {
+        const events = await readEvents();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ events: events || [] }));
+      } catch (e) {
+        console.error('[Web] /api/events error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
         res.end(JSON.stringify({ error: 'Internal error' }));
       }
@@ -458,4 +483,23 @@ export const emitApprovalResolved = (id, resolution) => emit('approval.resolved'
 export const emitMemoryWritten = (memory) => emit('memory.written', memory);
 export const emitTaskCreated = (task) => emit('task.created', task);
 export const emitTaskUpdated = (task) => emit('task.updated', task);
-export const emitEventLogged = (event) => emit('event.logged', event);
+
+// Activity log — ring buffer of the last 200 events. Web hydrates via
+// GET /api/events; subsequent changes arrive as event.logged WS messages.
+// The ring is intentionally in-process + non-durable — it's a short-term
+// window for the UI, not a replacement for audit logging.
+const EVENT_RING_MAX = 200;
+const _eventRing = [];
+
+export function emitEventLogged(event) {
+  // Prepend so readers get newest-first without reversing. slice from the
+  // tail to evict old entries past EVENT_RING_MAX.
+  _eventRing.unshift(event);
+  if (_eventRing.length > EVENT_RING_MAX) _eventRing.length = EVENT_RING_MAX;
+  emit('event.logged', event);
+}
+
+/** Snapshot of the in-process event ring. Used by GET /api/events fallback. */
+export function getRecentEvents(limit = EVENT_RING_MAX) {
+  return _eventRing.slice(0, limit);
+}
