@@ -607,6 +607,282 @@ export const CALENDAR_PROPOSALS: CalendarProposal[] = [
   { t: 'Decline "Vendor pitch · Mon"', r: 'duplicate of Tues investor call', conf: 'suggested' },
 ];
 
+export type DocFolder = 'all' | 'product' | 'marketing' | 'board' | 'data' | 'eng' | 'fundraise' | 'personal';
+export const DOC_FOLDERS: DocFolder[] = [
+  'all',
+  'product',
+  'marketing',
+  'board',
+  'data',
+  'eng',
+  'fundraise',
+  'personal',
+];
+
+export type DocKind = 'md' | 'pdf' | 'sheet';
+export type DocTagColor = 'work' | 'tertiary' | 'info' | 'accent' | 'ok';
+
+export type Document = {
+  id: number;
+  name: string;
+  author: string;
+  kind: DocKind;
+  edited: string;
+  size: string;
+  tag: string;
+  tagColor: DocTagColor;
+  folder: Exclude<DocFolder, 'all'>;
+  /** Anton's one-paragraph summary shown above the body. */
+  summary: string;
+};
+
+export const DOCUMENTS: Document[] = [
+  {
+    id: 0,
+    name: 'Onboarding v3 — PRD',
+    author: 'Marcus',
+    kind: 'md',
+    edited: '2m',
+    size: '4.1KB',
+    tag: 'needs review',
+    tagColor: 'work',
+    folder: 'product',
+    summary:
+      'Marcus drafted a 6-section PRD. §3 auth flow and §5 error states have open questions flagged for you. No external commitments.',
+  },
+  {
+    id: 1,
+    name: 'Creator-tier pricing analysis',
+    author: 'Alex',
+    kind: 'md',
+    edited: '14m',
+    size: '8.7KB',
+    tag: 'draft',
+    tagColor: 'tertiary',
+    folder: 'product',
+    summary:
+      "Alex proposes three tiers ($9 / $19 / $49) with analysis of comp set. Uses data from Priya's cohort pull.",
+  },
+  {
+    id: 2,
+    name: 'Launch email · v3',
+    author: 'Sarah',
+    kind: 'md',
+    edited: '22m',
+    size: '1.2KB',
+    tag: 'needs review',
+    tagColor: 'work',
+    folder: 'marketing',
+    summary: "Sarah's final v3 copy. Kai signed off on SEO tone. Ready to send to 2,340 subs once you approve.",
+  },
+  {
+    id: 3,
+    name: 'Q1 launch retro',
+    author: 'Noel',
+    kind: 'md',
+    edited: '1h',
+    size: '2.8KB',
+    tag: 'personal',
+    tagColor: 'info',
+    folder: 'personal',
+    summary: 'Summary generated from document content. Key points surfaced above. Full text follows.',
+  },
+  {
+    id: 4,
+    name: 'Board deck · April',
+    author: 'Anton',
+    kind: 'pdf',
+    edited: '3h',
+    size: '1.8MB',
+    tag: 'assembled',
+    tagColor: 'accent',
+    folder: 'board',
+    summary: 'Anton assembled the April board deck from team updates + financials. Ready for your review.',
+  },
+  {
+    id: 5,
+    name: 'Retention cohort · week 16',
+    author: 'Priya',
+    kind: 'sheet',
+    edited: '5h',
+    size: '42KB',
+    tag: 'fresh',
+    tagColor: 'ok',
+    folder: 'data',
+    summary: 'Priya rebuilt the weekly retention cohort; day-1 activation up 18% vs last week.',
+  },
+  {
+    id: 6,
+    name: 'Engineering weekly',
+    author: 'Marcus',
+    kind: 'md',
+    edited: '1d',
+    size: '3.4KB',
+    tag: 'archived',
+    tagColor: 'tertiary',
+    folder: 'eng',
+    summary: "Marcus's weekly eng summary. Archived because the next cycle started.",
+  },
+  {
+    id: 7,
+    name: 'Series A deck',
+    author: 'Noel',
+    kind: 'pdf',
+    edited: '2d',
+    size: '2.1MB',
+    tag: 'shared',
+    tagColor: 'info',
+    folder: 'fundraise',
+    summary: 'Shared with Spark Capital. Anton tracked opens + time-spent-per-slide.',
+  },
+  {
+    id: 8,
+    name: 'Brand voice guide',
+    author: 'Sarah',
+    kind: 'md',
+    edited: '1w',
+    size: '5.9KB',
+    tag: 'canon',
+    tagColor: 'accent',
+    folder: 'marketing',
+    summary: "Canon reference. Sarah's brand voice guide — all agent-drafted copy is auto-checked against it.",
+  },
+];
+
+export type StudyStatus = 'done' | 'running' | 'needs review';
+export type StudyDepth = 'quick' | 'medium' | 'deep';
+
+export type Study = {
+  id: number;
+  q: string;
+  status: StudyStatus;
+  depth: StudyDepth;
+  who: string;
+  t: string;
+  sources: number;
+  /** Runtime display (e.g. "8m 22s" or "running…"). */
+  runtime: string;
+  /** Progress for running studies. */
+  pct?: number;
+  /** The rendered answer body. */
+  answer: string;
+  /** Ordered reasoning chain. */
+  reasoning: string[];
+  /** Source citations. */
+  sourceList: string[];
+};
+
+export const STUDIES: Study[] = [
+  {
+    id: 0,
+    q: 'What would creator-tier pricing look like for our market?',
+    status: 'done',
+    depth: 'deep',
+    who: 'Alex',
+    t: '1h',
+    sources: 14,
+    runtime: '8m 22s',
+    answer:
+      'A three-tier structure at $9 / $19 / $49 aligns with comp-set anchors (Raycast $8, Notion $10, Arc $20). At $19/mo we can support up to 500 local-agent operations/day while maintaining ~40% gross margin. Recommend free tier capped at 50 ops/day with a visible usage meter — this converted 11% in the closest analog (Raycast Pro).',
+    reasoning: [
+      'Pulled comp-set pricing from 9 direct and adjacent tools',
+      'Cross-referenced with our cohort LTV from Priya',
+      'Modeled three scenarios, ran sensitivity on conversion rate',
+      'Stress-tested gross margin at 80/20 free/paid split',
+    ],
+    sourceList: [
+      'Raycast pricing page',
+      'Notion billing FAQ',
+      'Stripe Atlas pricing guide 2024',
+      'Priya · retention cohort v3',
+      'Arc Browser press kit',
+      'Hacker News thread · Feb 2025',
+    ],
+  },
+  {
+    id: 1,
+    q: 'How is Readwise positioning against Reader and Notion?',
+    status: 'done',
+    depth: 'medium',
+    who: 'Sarah',
+    t: '4h',
+    sources: 9,
+    runtime: '3m 18s',
+    answer:
+      "Readwise is positioning on breadth of capture (everything you read ends up here). Reader is positioning on reading experience. Notion is positioning on structured thinking. The white space: what you do with it. That's where Anton sits.",
+    reasoning: [
+      'Reviewed public homepage copy + onboarding flows',
+      'Compared feature matrices across all three tools',
+      'Pulled positioning signals from investor letters + podcasts',
+    ],
+    sourceList: ['Readwise homepage', 'Reader beta announcement', 'Notion AI launch post', 'Lenny podcast · Jan 2025'],
+  },
+  {
+    id: 2,
+    q: 'Retention cohorts for launch week — early patterns',
+    status: 'running',
+    depth: 'deep',
+    who: 'Priya',
+    t: '12m',
+    sources: 0,
+    runtime: 'running…',
+    pct: 38,
+    answer: 'Priya is running the retention SQL now. Early signal: day-1 activation up 18% vs last week. Day-7 TBD.',
+    reasoning: ['Running SQL across week-16 cohort', 'Cross-referencing with launch email open data'],
+    sourceList: [],
+  },
+  {
+    id: 3,
+    q: 'Anna Kou — public writing, recent talks',
+    status: 'done',
+    depth: 'quick',
+    who: 'Noel',
+    t: '1d',
+    sources: 6,
+    runtime: '44s',
+    answer:
+      'Anna is VP Eng at Spark. Recent posts focus on on-device ML inference costs. Spoke at Strange Loop last year on local-first architecture.',
+    reasoning: ['Scanned public blog + newsletter archive', 'Pulled conference talks from last 18 months'],
+    sourceList: ['Personal blog', 'Strange Loop 2024 talk', 'Twitter / X'],
+  },
+  {
+    id: 4,
+    q: 'Legal: GDPR implications of on-device memory',
+    status: 'needs review',
+    depth: 'deep',
+    who: 'Diana',
+    t: '2d',
+    sources: 18,
+    runtime: '14m 02s',
+    answer:
+      'On-device memory meaningfully reduces but does not eliminate data-controller obligations. Diana flagged three questions that need external counsel review before we advertise "GDPR-native" positioning.',
+    reasoning: [
+      'Mapped our data flows against GDPR Articles 5, 6, 32',
+      'Compared against on-device precedent (Apple, Signal)',
+      'Identified three gray areas for external counsel review',
+    ],
+    sourceList: ['GDPR full text', 'Apple privacy whitepaper', 'Signal protocol docs'],
+  },
+  {
+    id: 5,
+    q: 'State of local-first LLM inference on Apple Silicon',
+    status: 'done',
+    depth: 'deep',
+    who: 'Ada',
+    t: '3d',
+    sources: 22,
+    runtime: '11m 45s',
+    answer:
+      'M-series unified memory is transformative for 13B–70B class models. MLX closes the gap with CUDA for batch=1 inference. Ollama + llama.cpp remain the easiest deploy target.',
+    reasoning: [
+      'Benchmarked MLX vs llama.cpp on M4 Max',
+      'Reviewed Ollama + LM Studio + Jan architectures',
+      'Pulled memory/throughput curves from published datasets',
+    ],
+    sourceList: ['MLX repo', 'Ollama blog', 'llama.cpp perf dashboards', 'MacRumors M-series benchmarks'],
+  },
+];
+
 export const APPROVALS: Approval[] = [
   {
     id: 1,

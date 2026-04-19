@@ -10,19 +10,12 @@ import ActivityTimeline from '@/components/modules/activity-timeline';
 import Briefing from '@/components/modules/briefing';
 import Calendar from '@/components/modules/calendar';
 import Chat from '@/components/modules/chat';
+import Documents from '@/components/modules/documents';
 import Inbox from '@/components/modules/inbox';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
-import {
-  ApprovalsHub,
-  Documents,
-  Expenses,
-  IntegrationsHub,
-  People,
-  Research,
-  Travel,
-  Usage,
-} from '@/components/modules/placeholders';
+import { ApprovalsHub, Expenses, IntegrationsHub, People, Travel, Usage } from '@/components/modules/placeholders';
+import Research from '@/components/modules/research';
 import Settings from '@/components/modules/settings';
 import Tasks from '@/components/modules/tasks';
 import DeptChart from '@/components/modules/team';
