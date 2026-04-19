@@ -1,16 +1,18 @@
 'use client';
-// WebShell — SRP: compose Titlebar + LeftRail + route view + ApprovalTray +
-// CommandBar + Cmd+K palette. Knows nothing about individual modules;
-// consumes from @/lib/nav (nav config) and @/lib/routes (route registry).
-// New modules register there, not here. Dependency-inverted.
+// ShellChrome — URL-driven app frame. Composes Titlebar + LeftRail + route view +
+// ApprovalTray + CommandBar + Cmd+K palette. Active route comes from usePathname,
+// so nav is URL-native (back/forward, deep-linkable). Module rendering moved to
+// per-route page.tsx; this component only owns the chrome.
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ApprovalTray } from '@/components/layout/approval-tray';
 import { CommandPalette } from '@/components/layout/command-palette';
 import { Kbd } from '@/components/ui/primitives';
 import { cn } from '@/lib/cn';
 import { isSection, NAV_ITEMS, type Route } from '@/lib/nav';
-import { ROUTE_VIEWS } from '@/lib/routes';
+import { ROUTE_TRAY } from '@/lib/routes';
 
 function Titlebar({ now, onOpenPalette }: { now: string; onOpenPalette: () => void }) {
   return (
@@ -32,7 +34,7 @@ function Titlebar({ now, onOpenPalette }: { now: string; onOpenPalette: () => vo
   );
 }
 
-function LeftRail({ active, onNav }: { active: Route; onNav: (r: Route) => void }) {
+function LeftRail({ active }: { active: Route | null }) {
   return (
     <nav className="w-[220px] border-r border-border-subtle bg-page flex flex-col min-h-0">
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-px">
@@ -52,12 +54,12 @@ function LeftRail({ active, onNav }: { active: Route; onNav: (r: Route) => void 
           }
           const on = active === i.id;
           return (
-            <button
-              type="button"
+            <Link
               key={i.id}
-              onClick={() => onNav(i.id)}
+              href={`/${i.id}`}
+              prefetch={false}
               className={cn(
-                'flex items-center gap-2.5 px-2.5 py-[5px] rounded-md text-left text-[13px] cursor-pointer transition-colors',
+                'flex items-center gap-2.5 px-2.5 py-[5px] rounded-md text-left text-[13px] cursor-pointer transition-colors no-underline',
                 on ? 'bg-hover text-primary' : 'bg-transparent text-secondary hover:bg-hover/40'
               )}
             >
@@ -65,7 +67,7 @@ function LeftRail({ active, onNav }: { active: Route; onNav: (r: Route) => void 
               <span className="flex-1">{i.label}</span>
               {i.badge ? <span className="mono small text-work">{i.badge}</span> : null}
               <span className="mono small text-tertiary text-[10px]">{i.k}</span>
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -102,8 +104,18 @@ function CommandBar() {
   );
 }
 
-export function WebShell() {
-  const [active, setActive] = useState<Route>('mc');
+/** Pull the route segment out of a pathname like `/chat` → `chat`. */
+function routeFromPath(path: string): Route | null {
+  const seg = path.split('/').filter(Boolean)[0];
+  return (seg as Route) ?? null;
+}
+
+export function ShellChrome({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const active = routeFromPath(pathname);
+  const trayMode = active ? ROUTE_TRAY[active] : 'normal';
+
   const [now, setNow] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -126,15 +138,16 @@ export function WebShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const view = ROUTE_VIEWS[active];
+  // Keep router reference alive for future programmatic nav from palette.
+  void router;
 
   return (
     <div className="h-full flex flex-col bg-page">
       <Titlebar now={now} onOpenPalette={() => setPaletteOpen(true)} />
       <div className="flex-1 flex min-h-0">
-        <LeftRail active={active} onNav={setActive} />
-        <main className="flex-1 min-w-0 bg-page flex flex-col">{view.render}</main>
-        {view.tray === 'normal' && (
+        <LeftRail active={active} />
+        <main className="flex-1 min-w-0 bg-page flex flex-col">{children}</main>
+        {trayMode === 'normal' && (
           <aside className="w-[320px] border-l border-border-subtle bg-page">
             <ApprovalTray />
           </aside>
