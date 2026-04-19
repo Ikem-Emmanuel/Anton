@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import { emitMemoryWritten } from '../spine/web.js';
 
 let db: InstanceType<typeof Database> | null = null;
 
@@ -151,6 +152,37 @@ export function initSqliteMemory(dataDir: string): void {
 
 // ---- Store ----
 
+// Map a persisted memory to the shape the web UI renders. Backend stores
+// `{agent, type, content, metadata}`; the web's Memory type is
+// `{type, title, src, hl, conf}`. The `conversation` fallback exists because
+// the SQLite CHECK constraint also allows `pattern`, which we haven't
+// exposed to the UI yet — treat unknown types as conversation.
+type WebMemoryType = 'preference' | 'decision' | 'fact' | 'conversation';
+type WebMemoryHl = 'yellow' | 'coral' | 'blue';
+
+function toWebMemory(
+  agent: string,
+  type: string,
+  content: string
+): {
+  type: WebMemoryType;
+  title: string;
+  src: string;
+  hl: WebMemoryHl;
+  conf: number;
+} {
+  const webType: WebMemoryType =
+    type === 'preference' || type === 'decision' || type === 'fact' ? type : 'conversation';
+  const hl: WebMemoryHl = webType === 'preference' ? 'yellow' : webType === 'decision' ? 'coral' : 'blue';
+  return {
+    type: webType,
+    title: content.length > 160 ? `${content.slice(0, 157)}…` : content,
+    src: `${agent} · just now`,
+    hl,
+    conf: 3,
+  };
+}
+
 export function storeMemory(agent: string, type: string, content: string, metadata?: object): number {
   if (!db) throw new Error('SQLite not initialized');
 
@@ -170,6 +202,14 @@ export function storeMemory(agent: string, type: string, content: string, metada
       agent
     );
   } catch {}
+
+  // Broadcast to connected web clients so the Memory Browser updates live.
+  // emit() is a no-op when the WSS isn't initialized (e.g. unit tests).
+  try {
+    emitMemoryWritten(toWebMemory(agent, type, content));
+  } catch (e) {
+    console.warn('[Memory/SQLite] emit failed:', (e as Error).message?.slice(0, 60));
+  }
 
   return Number(result.lastInsertRowid);
 }
