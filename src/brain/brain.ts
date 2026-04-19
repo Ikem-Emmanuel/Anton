@@ -16,6 +16,7 @@ import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
 import { evaluateTurn } from './evaluate.js';
 import { captureImplicitFeedback } from './feedback-capture.js';
+import { extractSkillCandidate } from './skill-extract.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
@@ -142,7 +143,9 @@ function scheduleDistillation(userMessage: string, agentResponse: string, agent:
 }
 
 // Fire-and-forget outcome evaluation (Phase 3.5 §4.5.2). Writes a verdict
-// row to turn_evaluations that §4.5.4 skill refinement + Phase 6 DPO read.
+// row to turn_evaluations. On a `good` verdict, also kicks off skill
+// extraction (§4.5.4/§4.5.7) so successful approaches become reusable
+// templates without manual curation.
 function scheduleEvaluation(
   conversationId: number | null,
   userMessage: string,
@@ -157,6 +160,23 @@ function scheduleEvaluation(
         console.log(
           `[Eval] ${agent} → ${res.verdict} (task=${res.scores?.task_addressed.toFixed(2)} role=${res.scores?.role_appropriate.toFixed(2)} hall=${res.scores?.hallucination_free.toFixed(2)} act=${res.scores?.action_ready.toFixed(2)}) ${res.durationMs}ms`
         );
+
+        // Good verdicts become skill candidates (§4.5.4 + §4.5.7).
+        if (res.verdict === 'good') {
+          setImmediate(async () => {
+            try {
+              const skill = await extractSkillCandidate(userMessage, agentResponse, agent);
+              if (skill.stored) {
+                const lineage = skill.supersededId ? ` (supersedes #${skill.supersededId})` : ' (new)';
+                console.log(`[Skill] ${agent} stored #${skill.skillId}${lineage} in ${skill.durationMs}ms`);
+              } else if (skill.error) {
+                console.warn(`[Skill] ${agent} extract error: ${skill.error}`);
+              }
+            } catch (e) {
+              console.warn('[Skill] Unexpected:', (e as Error).message?.slice(0, 80));
+            }
+          });
+        }
       } else if (res.error) {
         console.warn(`[Eval] ${agent} error: ${res.error}`);
       }
