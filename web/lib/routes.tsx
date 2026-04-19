@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import ActivityTimeline from '@/components/modules/activity-timeline';
 import Briefing from '@/components/modules/briefing';
 import Chat from '@/components/modules/chat';
+import Inbox from '@/components/modules/inbox';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
 import {
@@ -16,15 +17,14 @@ import {
   Calendar,
   Documents,
   Expenses,
-  Inbox,
   IntegrationsHub,
   People,
   Research,
-  Tasks,
   Travel,
   Usage,
 } from '@/components/modules/placeholders';
 import Settings from '@/components/modules/settings';
+import Tasks from '@/components/modules/tasks';
 import DeptChart from '@/components/modules/team';
 import type { Route } from './nav';
 
