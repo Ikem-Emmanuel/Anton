@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-cd "$(dirname "$0")/../../" || { echo "Error: could not cd to repo root" >&2; exit 1; }
+cd "$(dirname "$0")/../" || { echo "Error: could not cd to repo root" >&2; exit 1; }
 
 claude --model opus -p "
 Create an agent team called 'data'.
@@ -12,6 +12,6 @@ Spawn these teammates:
 3. A teammate named 'eng' using the data--data-engineer agent type. Use Sonnet.
 
 Require plan approval for ml before model training.
-Write insights to .anton/shared/data-to-all/.
+Write insights to data/shared/data-to-all/.
 Wait for all teammates. When done, clean up the team.
 "

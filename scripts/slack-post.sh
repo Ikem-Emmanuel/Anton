@@ -1,7 +1,7 @@
 #!/bin/bash
 # Post a message to a Slack channel.
-# Usage: bash .anton/scripts/slack-post.sh <channel-name> "message"
-# Example: bash .anton/scripts/slack-post.sh anton-engineering "[Backend] Starting: health endpoint"
+# Usage: bash scripts/slack-post.sh <channel-name> "message"
+# Example: bash scripts/slack-post.sh anton-engineering "[Backend] Starting: health endpoint"
 #
 # Requires SLACK_BOT_TOKEN in environment.
 
@@ -9,7 +9,7 @@ set -euo pipefail
 
 CHANNEL_NAME="${1:-}"
 MESSAGE="${2:-}"
-CHANNEL_MAP=".anton/slack-channels.env"
+CHANNEL_MAP="slack-channels.env"
 
 if [ -z "$CHANNEL_NAME" ] || [ -z "$MESSAGE" ]; then
   echo "Usage: slack-post.sh <channel-name> \"message\""
@@ -18,7 +18,7 @@ if [ -z "$CHANNEL_NAME" ] || [ -z "$MESSAGE" ]; then
 fi
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
-  [ -f ".anton/.env" ] && source .anton/.env
+  [ -f ".env" ] && source .env
   if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
     echo "Error: SLACK_BOT_TOKEN not set"
     exit 1
