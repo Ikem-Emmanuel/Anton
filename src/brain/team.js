@@ -1,290 +1,34 @@
-// ─── Team Directory ──────────────────────────────────────────
-// Single source of truth for all team members
+// V1 team directory — delegates to the unified agent roster in config/agents/.
+// Before the unification this file had 27 agent records inline that duplicated
+// personality/title/tools data with config/personas.json and src/brain/personas.ts.
+// Now TEAM is built from the same source the V2 brain reads — single source of
+// truth. HANDOFF_RULES stays here since it's V1-specific routing policy, not
+// agent identity.
 
-// Base tools everyone gets
-const BASE_TOOLS = ['Read', 'Grep', 'Glob'];
-// Tools for agents who write code
-const DEV_TOOLS = [...BASE_TOOLS, 'Bash', 'Write', 'Edit', 'SendMessage'];
-// Tools for leads who plan but don't code
-const LEAD_TOOLS = [...BASE_TOOLS, 'Bash', 'SendMessage'];
-// Asana MCP tools for task management
-const ASANA_TOOLS = [
-  'mcp__claude_ai_Asana__get_tasks',
-  'mcp__claude_ai_Asana__get_task',
-  'mcp__claude_ai_Asana__create_task_preview',
-  'mcp__claude_ai_Asana__create_task_confirm',
-  'mcp__claude_ai_Asana__update_tasks',
-  'mcp__claude_ai_Asana__get_project',
-  'mcp__claude_ai_Asana__get_projects',
-  'mcp__claude_ai_Asana__search_tasks_preview',
-  'mcp__claude_ai_Asana__search_objects',
-  'mcp__claude_ai_Asana__get_me',
-  'mcp__claude_ai_Asana__add_comment',
-];
+import { AGENTS_BY_ID, ALL_AGENTS, DEPT_LEADS as UNIFIED_DEPT_LEADS } from '../../config/agents/index.js';
 
-export const TEAM = {
-  // Engineering
-  marcus: {
-    name: 'Marcus',
-    title: 'Tech Lead',
-    dept: 'eng',
-    agent: 'eng--tech-lead',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  sarah: {
-    name: 'Sarah',
-    title: 'Product Manager',
-    dept: 'eng',
-    agent: 'eng--product-owner',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  james: {
-    name: 'James',
-    title: 'Backend Dev',
-    dept: 'eng',
-    agent: 'eng--backend-developer',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  elena: {
-    name: 'Elena',
-    title: 'Frontend Dev',
-    dept: 'eng',
-    agent: 'eng--frontend-developer',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  kai: {
-    name: 'Kai',
-    title: 'Mobile Dev',
-    dept: 'eng',
-    agent: 'eng--mobile-developer',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  priya: {
-    name: 'Priya',
-    title: 'QA Engineer',
-    dept: 'eng',
-    agent: 'eng--qa-engineer',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: false,
-    canReview: true,
-  },
-  omar: {
-    name: 'Omar',
-    title: 'DevOps',
-    dept: 'eng',
-    agent: 'eng--devops-engineer',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  // Marketing
-  diana: {
-    name: 'Diana',
-    title: 'CMO',
-    dept: 'mktg',
-    agent: 'mktg--cmo',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  alex: {
-    name: 'Alex',
-    title: 'Content Writer',
-    dept: 'mktg',
-    agent: 'mktg--content-writer',
-    tools: [...BASE_TOOLS, 'Write', 'Edit'],
-    canCode: false,
-    canPlan: false,
-  },
-  mia: {
-    name: 'Mia',
-    title: 'Social Media',
-    dept: 'mktg',
-    agent: 'mktg--social-media-manager',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  lucas: {
-    name: 'Lucas',
-    title: 'Email Marketing',
-    dept: 'mktg',
-    agent: 'mktg--email-marketing',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  // SEO
-  nina: {
-    name: 'Nina',
-    title: 'SEO Lead',
-    dept: 'seo',
-    agent: 'seo--seo-lead',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  raj: {
-    name: 'Raj',
-    title: 'Content SEO',
-    dept: 'seo',
-    agent: 'seo--content-seo',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  yuki: {
-    name: 'Yuki',
-    title: 'SEO Analytics',
-    dept: 'seo',
-    agent: 'seo--seo-analytics',
-    tools: [...BASE_TOOLS],
-    canCode: false,
-    canPlan: false,
-  },
-  // Automation
-  felix: {
-    name: 'Felix',
-    title: 'Automation Lead',
-    dept: 'auto',
-    agent: 'auto--automation-lead',
-    tools: [...DEV_TOOLS, ...ASANA_TOOLS],
-    canCode: true,
-    canPlan: true,
-  },
-  zara: {
-    name: 'Zara',
-    title: 'Workflows',
-    dept: 'auto',
-    agent: 'auto--workflow-agent',
-    tools: [...DEV_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  theo: {
-    name: 'Theo',
-    title: 'Integrations',
-    dept: 'auto',
-    agent: 'auto--integration-agent',
-    tools: [...DEV_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  // Data
-  ada: {
-    name: 'Ada',
-    title: 'Data Lead',
-    dept: 'data',
-    agent: 'data--data-lead',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  ben: {
-    name: 'Ben',
-    title: 'Data Analyst',
-    dept: 'data',
-    agent: 'data--data-analyst',
-    tools: [...BASE_TOOLS, 'Bash'],
-    canCode: false,
-    canPlan: false,
-  },
-  iris: {
-    name: 'Iris',
-    title: 'ML Engineer',
-    dept: 'data',
-    agent: 'data--ml-engineer',
-    tools: [...DEV_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  carlos: {
-    name: 'Carlos',
-    title: 'Data Engineer',
-    dept: 'data',
-    agent: 'data--data-engineer',
-    tools: [...DEV_TOOLS],
-    canCode: true,
-    canPlan: false,
-  },
-  // Growth
-  nadia: {
-    name: 'Nadia',
-    title: 'Growth Lead',
-    dept: 'growth',
-    agent: 'growth--growth-lead',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-  sam: {
-    name: 'Sam',
-    title: 'Tracking',
-    dept: 'growth',
-    agent: 'growth--tracking-taxonomy-agent',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  leo: {
-    name: 'Leo',
-    title: 'Attribution',
-    dept: 'growth',
-    agent: 'growth--attribution-agent',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  maya: {
-    name: 'Maya',
-    title: 'Experiments',
-    dept: 'growth',
-    agent: 'growth--experimentation-agent',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  dante: {
-    name: 'Dante',
-    title: 'Campaigns',
-    dept: 'growth',
-    agent: 'growth--campaign-segmentation-agent',
-    tools: [...BASE_TOOLS, 'Write'],
-    canCode: false,
-    canPlan: false,
-  },
-  // Coordination
-  riley: {
-    name: 'Riley',
-    title: 'Scrum Master',
-    dept: 'coord',
-    agent: 'scrum-master',
-    tools: [...LEAD_TOOLS, ...ASANA_TOOLS],
-    canCode: false,
-    canPlan: true,
-  },
-};
+// Build TEAM keyed by lowercase id, dropping fields V1 doesn't read. V1 consumers
+// expect `{name, title, dept, agent, tools, canCode, canPlan, canReview?}`.
+function toV1Member(a) {
+  const v1 = {
+    name: a.name,
+    title: a.title,
+    dept: a.dept,
+    agent: a.agentId,
+    tools: a.tools,
+    canCode: a.canCode,
+    canPlan: a.canPlan,
+  };
+  if (a.canReview) v1.canReview = a.canReview;
+  return v1;
+}
 
-export const DEPT_LEADS = {
-  eng: 'marcus',
-  mktg: 'diana',
-  seo: 'nina',
-  auto: 'felix',
-  data: 'ada',
-  growth: 'nadia',
-  coord: 'riley',
-};
+export const TEAM = Object.fromEntries(
+  // V1 TEAM has never included Anton — keep that contract.
+  ALL_AGENTS.filter((a) => a.id !== 'anton').map((a) => [a.id, toV1Member(a)])
+);
+
+export const DEPT_LEADS = UNIFIED_DEPT_LEADS;
 
 export function findByName(name) {
   const lower = name.toLowerCase();
@@ -307,35 +51,7 @@ export function getDeptLead(dept) {
 // Any target NOT in an agent's array is blocked even if their name appears in a response.
 export const HANDOFF_RULES = {
   // Anton (PA) — can reach EVERYONE. Anton is the operating system layer.
-  Anton: [
-    'Marcus',
-    'Sarah',
-    'James',
-    'Elena',
-    'Kai',
-    'Priya',
-    'Omar',
-    'Riley',
-    'Diana',
-    'Alex',
-    'Mia',
-    'Lucas',
-    'Nina',
-    'Raj',
-    'Yuki',
-    'Felix',
-    'Zara',
-    'Theo',
-    'Ada',
-    'Ben',
-    'Iris',
-    'Carlos',
-    'Nadia',
-    'Sam',
-    'Leo',
-    'Maya',
-    'Dante',
-  ],
+  Anton: AGENTS_BY_ID.anton ? ALL_AGENTS.filter((a) => a.id !== 'anton').map((a) => a.name) : [],
   // Engineering
   Marcus: ['James', 'Elena', 'Kai', 'Omar', 'Priya', 'Sarah', 'Riley', 'Diana', 'Ada', 'Nadia', 'Nina', 'Felix'],
   Sarah: ['James', 'Elena', 'Kai', 'Omar', 'Priya', 'Marcus', 'Riley'],
