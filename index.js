@@ -5,7 +5,7 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listMemories } from './src/memory/sqlite.js';
+import { listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
 import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
 import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
 import { initAudit } from './src/v1-archive/audit.js';
@@ -978,9 +978,43 @@ startPromise
         console.warn(`[Web] Brain not available (${e.message?.slice(0, 60)}). Using Claude-only mode.`);
       }
 
+      // Seed the kanban if it's empty so a fresh install has something to
+      // render out of the box. Real brain-driven tasks accumulate on top.
+      const seeded = seedTasksIfEmpty([
+        {
+          title: 'Review launch email copy',
+          owner: 'Noel',
+          actor: 'Sarah',
+          col: 'incoming',
+          age: '22m',
+          risk: 'M',
+          why: 'Waiting on your approval before send',
+        },
+        {
+          title: 'Draft PRD · onboarding v3',
+          owner: 'Marcus',
+          actor: 'Marcus',
+          col: 'flight',
+          age: '1h',
+          pct: 68,
+          step: 'writing §5 error flows',
+        },
+        { title: 'Pushed v1.2 to staging', owner: 'James', actor: 'James', col: 'done', age: '6m' },
+        {
+          title: 'Deploy v1.2 to production',
+          owner: 'James',
+          actor: 'James',
+          col: 'blocked',
+          age: '42m',
+          why: 'needs your approval (red tier)',
+        },
+      ]);
+      if (seeded > 0) console.log(`[Anton] Seeded ${seeded} demo tasks.`);
+
       const webResult = initWeb({
         approvalsSource: allPendingApprovals,
         memoriesSource: () => listMemories(50),
+        tasksSource: () => listTasks(50),
         resolveApproval: resolveApprovalFromWeb,
         askAgent: async (agentName, text, onHandoff) => {
           try {
