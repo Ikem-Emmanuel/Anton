@@ -6,8 +6,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { FilterChip } from '@/components/ui/filter-chip';
+import { useEvents } from '@/hooks/use-events';
 import { cn } from '@/lib/cn';
-import { ACTIVITY, type ActivityType } from '@/lib/data';
+import type { ActivityType } from '@/lib/data';
 
 const TYPE_COLOR: Record<ActivityType, string> = {
   tool: 'text-info border-l-info',
@@ -23,14 +24,28 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 const VERBOSITY_LABEL = ['Summary', 'Normal', 'Full trace'];
 const AGENT_FILTERS = ['Marcus', 'James', 'Ada', 'Kai', 'Priya', 'Sarah'];
 
+// Index-based detail pages were SSG'd from build-time ACTIVITY. Live events
+// streaming in from WS don't have matching static routes; only indices that
+// match the baseline ACTIVITY array are safe to link. Larger indices render
+// without a link until /event/[id] is made dynamic (follow-up).
+const BASELINE_EVENT_COUNT = 9;
+
 export default function ActivityTimeline() {
   const [verbosity, setVerbosity] = useState(1);
+  const { events, loading, error } = useEvents();
+
+  const status = error
+    ? `offline · showing cached · ${events.length} events`
+    : loading
+      ? 'loading…'
+      : `${events.length} events`;
+
   return (
     <div className="px-8 py-6 h-full overflow-auto">
       <div className="flex items-center justify-between mb-[18px]">
         <div>
           <div className="mono caps text-tertiary">ACTIVITY</div>
-          <div className="text-[22px] font-medium tracking-[-0.01em]">247 events today</div>
+          <div className="text-[22px] font-medium tracking-[-0.01em]">{status}</div>
         </div>
         <div className="flex items-center gap-2">
           <span className="mono small text-tertiary">verbosity</span>
@@ -54,35 +69,42 @@ export default function ActivityTimeline() {
         ))}
       </div>
 
-      {ACTIVITY.map((a, i) => {
+      {events.map((a, i) => {
         const colorClass = TYPE_COLOR[a.type];
         const [textClass, borderClass] = colorClass.split(' ');
-        return (
-          <Link key={`${a.t}-${a.agent}-${i}`} href={`/event/${i}`} className="block">
-            <div
-              className={cn(
-                'px-3.5 py-2.5 mb-1 cursor-pointer border border-border-subtle border-l-2 bg-surface hover:bg-hover',
-                borderClass
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <span className="mono small text-tertiary w-[60px]">{a.t}</span>
-                <span className={cn('mono small caps w-16', textClass)}>{a.type}</span>
-                <span className="text-[13px] w-[72px]">{a.agent}</span>
-                <span className="mono small text-secondary flex-1">{a.text}</span>
-                {verbosity >= 1 && a.detail && <span className="mono small text-tertiary">{a.detail}</span>}
-              </div>
-              {verbosity >= 2 && (
-                <div className="mono small mt-2 pt-2 border-t border-dashed border-border-subtle text-tertiary pl-[72px]">
-                  reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
-                  <br />
-                  tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
-                  <br />
-                  parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
-                </div>
-              )}
+        const rowBody = (
+          <div
+            className={cn(
+              'px-3.5 py-2.5 mb-1 border border-border-subtle border-l-2 bg-surface',
+              i < BASELINE_EVENT_COUNT && 'cursor-pointer hover:bg-hover',
+              borderClass
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span className="mono small text-tertiary w-[60px]">{a.t}</span>
+              <span className={cn('mono small caps w-16', textClass)}>{a.type}</span>
+              <span className="text-[13px] w-[72px]">{a.agent}</span>
+              <span className="mono small text-secondary flex-1">{a.text}</span>
+              {verbosity >= 1 && a.detail && <span className="mono small text-tertiary">{a.detail}</span>}
             </div>
+            {verbosity >= 2 && (
+              <div className="mono small mt-2 pt-2 border-t border-dashed border-border-subtle text-tertiary pl-[72px]">
+                reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
+                <br />
+                tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
+                <br />
+                parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
+              </div>
+            )}
+          </div>
+        );
+        const key = `${a.t}-${a.agent}-${i}`;
+        return i < BASELINE_EVENT_COUNT ? (
+          <Link key={key} href={`/event/${i}`} className="block">
+            {rowBody}
           </Link>
+        ) : (
+          <div key={key}>{rowBody}</div>
         );
       })}
     </div>
