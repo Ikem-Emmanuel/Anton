@@ -2,7 +2,7 @@
 // system prompt. This is what makes Anton feel aware rather than stateless.
 // Pure function, reads from SQLite state, runs in <1ms.
 
-import { getMemoryStats } from '../memory/sqlite.js';
+import { buildUserModelContext, getMemoryStats } from '../memory/sqlite.js';
 
 function describeTimeOfDay(hour: number): string {
   if (hour < 5) return 'late night';
@@ -57,5 +57,12 @@ export function buildAmbientContext(options?: AmbientContextOptions): string {
     }
   } catch {}
 
-  return `[AMBIENT]\n${parts.join(' ')}`;
+  // User model (Phase 3.5 §4.5.5) — high-confidence rows only, caps at 6 lines.
+  let userModelBlock = '';
+  try {
+    userModelBlock = buildUserModelContext();
+  } catch {}
+
+  const ambientSection = `[AMBIENT]\n${parts.join(' ')}`;
+  return userModelBlock ? `${ambientSection}\n\n${userModelBlock}` : ambientSection;
 }

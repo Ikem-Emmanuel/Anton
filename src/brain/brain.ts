@@ -8,13 +8,14 @@
 // config/models.ts. Hardware upgrades change only that file. No model string hardcoded anywhere.
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
-import { buildMemoryContext, buildSkillsContext, storeConversation } from '../memory/sqlite.js';
+import { buildMemoryContext, buildSkillsContext, storeConversation, updateImplicitSignal } from '../memory/sqlite.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
 import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
 import { evaluateTurn } from './evaluate.js';
+import { captureImplicitFeedback } from './feedback-capture.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
@@ -89,12 +90,38 @@ function getHistory(agent: string): Array<{ role: string; content: string }> {
 // Track last-turn timestamp per agent for ambient-context idle reporting.
 const _lastTurnAt: Map<string, Date> = new Map();
 
+// Per-agent last agent-turn: lets us capture implicit feedback against it
+// when the user's next message arrives.
+const _lastAgentTurn: Map<string, { text: string; convId: number }> = new Map();
+
 function getLastInteractionTime(agent: string): Date | undefined {
   return _lastTurnAt.get(agent);
 }
 
 function markInteraction(agent: string): void {
   _lastTurnAt.set(agent, new Date());
+}
+
+function rememberAgentTurn(agent: string, text: string, convId: number | null): void {
+  if (convId) _lastAgentTurn.set(agent, { text, convId });
+}
+
+// Called at the START of brain.process() before any LLM work. Reads the prior
+// agent turn for this persona (if any), derives accepted/corrected/ambiguous
+// signal from the current user message, and writes it to the prior turn's
+// turn_evaluations row so it composes with the async §4.5.2 verdict.
+function captureAndStoreFeedback(agent: string, currentUserText: string): void {
+  const prior = _lastAgentTurn.get(agent);
+  if (!prior) return;
+  try {
+    const signal = captureImplicitFeedback(prior.text, currentUserText);
+    updateImplicitSignal(prior.convId, signal);
+    if (signal !== 'ambiguous') {
+      console.log(`[Feedback] ${agent} turn#${prior.convId} → ${signal}`);
+    }
+  } catch {}
+  // Consume the last-turn record so we don't double-score.
+  _lastAgentTurn.delete(agent);
 }
 
 // Fire-and-forget distillation. Runs in background; errors are logged, not thrown.
@@ -213,6 +240,10 @@ export async function process(
 ): Promise<BrainResponse> {
   const start = Date.now();
   const agentName = options?.agent || 'Anton';
+
+  // Implicit feedback (Phase 3.5 §4.5.3): before handling the new turn,
+  // score the previous agent turn against this user message.
+  captureAndStoreFeedback(agentName, message);
 
   // Simulation mode short-circuit — consume pre-recorded fixture response.
   // Used for deterministic multi-agent scenario testing without Ollama.
@@ -369,6 +400,7 @@ export async function process(
         console.warn('[Brain] Memory store failed (claude path):', (e as Error).message?.slice(0, 60));
       }
       scheduleEvaluation(agentTurnId, message, finalText, agentName);
+      rememberAgentTurn(agentName, finalText, agentTurnId);
 
       return {
         text: finalText,
@@ -538,6 +570,7 @@ export async function process(
         });
       } catch {}
       scheduleEvaluation(agentTurnId, message, finalText, agentName);
+      rememberAgentTurn(agentName, finalText, agentTurnId);
 
       return {
         text: finalText,

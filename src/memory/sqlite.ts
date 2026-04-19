@@ -66,6 +66,18 @@ const SCHEMA = `
     evaluated_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Phase 3.5 §4.5.5 — structured user model across 4 Hermes dimensions.
+  CREATE TABLE IF NOT EXISTS user_model (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dimension TEXT NOT NULL CHECK(dimension IN ('output_format','decision','task_pattern','feedback')),
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0.5,
+    evidence_count INTEGER DEFAULT 1,
+    last_confirmed_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(dimension, key)
+  );
+
   -- Phase 3.5 §4.5.1 — named skill library keyed on context_pattern → approach.
   CREATE TABLE IF NOT EXISTS skills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +104,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_turn_evals_verdict ON turn_evaluations(verdict);
   CREATE INDEX IF NOT EXISTS idx_skills_owner ON skills(owner_agent, deprecated);
   CREATE INDEX IF NOT EXISTS idx_skills_shared ON skills(shared, deprecated);
+  CREATE INDEX IF NOT EXISTS idx_user_model_dim ON user_model(dimension, confidence);
 `;
 
 // FTS5 virtual tables for full-text search (separate so they don't block table creation)
@@ -401,6 +414,98 @@ export function buildSkillsContext(request: string, agent: string, topK = 3): st
     lines.push(`- ${s.title} (${(rate * 100).toFixed(0)}% success over ${s.success_count + s.failure_count} uses):`);
     lines.push(`  Steps: ${stepsStr}`);
     if (pitfallsStr) lines.push(`  Watch: ${pitfallsStr}`);
+  }
+  return lines.join('\n');
+}
+
+// ---- User Model (Phase 3.5 §4.5.5) ----
+//
+// Four Hermes dimensions: output_format (terse vs verbose, bullets vs prose),
+// decision (what Noel chose when offered options), task_pattern (what Noel
+// does at what times), feedback (trend signals from §4.5.3). Each entry is
+// a (dimension, key, value) triple with a confidence score that grows with
+// evidence_count. Only high-confidence rows get injected into ambient.
+
+export type UserModelDimension = 'output_format' | 'decision' | 'task_pattern' | 'feedback';
+
+export interface UserModelEntry {
+  id: number;
+  dimension: UserModelDimension;
+  key: string;
+  value: string;
+  confidence: number;
+  evidence_count: number;
+  last_confirmed_at: string;
+}
+
+// Upsert: insert new or bump confidence/evidence on existing (dim, key).
+// Evolution rule: each confirmation bumps evidence_count by 1 and nudges
+// confidence toward 1.0 via a simple moving average.
+export function upsertUserModelEntry(
+  dimension: UserModelDimension,
+  key: string,
+  value: string,
+  observedConfidence = 0.7
+): number {
+  if (!db) throw new Error('SQLite not initialized');
+
+  const existing = db
+    .prepare('SELECT id, confidence, evidence_count FROM user_model WHERE dimension = ? AND key = ?')
+    .get(dimension, key) as { id: number; confidence: number; evidence_count: number } | undefined;
+
+  if (existing) {
+    // Weighted update: each new observation pulls confidence toward observedConfidence.
+    const newEvidence = existing.evidence_count + 1;
+    const newConfidence = (existing.confidence * existing.evidence_count + observedConfidence) / newEvidence;
+    db.prepare(
+      `UPDATE user_model
+       SET value = ?, confidence = ?, evidence_count = ?, last_confirmed_at = datetime('now')
+       WHERE id = ?`
+    ).run(value, newConfidence, newEvidence, existing.id);
+    return existing.id;
+  }
+
+  const result = db
+    .prepare(
+      `INSERT INTO user_model (dimension, key, value, confidence, evidence_count)
+       VALUES (?, ?, ?, ?, 1)`
+    )
+    .run(dimension, key, value, observedConfidence);
+  return Number(result.lastInsertRowid);
+}
+
+export function getUserModelEntries(options?: {
+  dimension?: UserModelDimension;
+  minConfidence?: number;
+  limit?: number;
+}): UserModelEntry[] {
+  if (!db) return [];
+  const minConfidence = options?.minConfidence ?? 0.5;
+  const limit = options?.limit ?? 20;
+
+  let sql = 'SELECT * FROM user_model WHERE confidence >= ?';
+  const params: (string | number)[] = [minConfidence];
+  if (options?.dimension) {
+    sql += ' AND dimension = ?';
+    params.push(options.dimension);
+  }
+  sql += ' ORDER BY confidence DESC, evidence_count DESC LIMIT ?';
+  params.push(limit);
+
+  return db.prepare(sql).all(...params) as UserModelEntry[];
+}
+
+// Build compact [USER MODEL] prompt block — max 6 lines, only high-confidence.
+export function buildUserModelContext(minConfidence = 0.65, maxLines = 6): string {
+  if (!db) return '';
+  const entries = getUserModelEntries({ minConfidence, limit: maxLines });
+  if (entries.length === 0) return '';
+
+  const lines = ['[USER MODEL]'];
+  for (const e of entries) {
+    lines.push(
+      `- ${e.dimension}.${e.key} = ${e.value.slice(0, 80)} (conf ${e.confidence.toFixed(2)}, n=${e.evidence_count})`
+    );
   }
   return lines.join('\n');
 }
