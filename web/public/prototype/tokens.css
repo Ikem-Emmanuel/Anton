@@ -1,0 +1,131 @@
+/* ANTON — design tokens (from §4) */
+:root {
+  /* Warm-dark (default) */
+  --bg-page:       #0F0D0B;
+  --bg-surface:    #1A1714;
+  --bg-hover:      #221E1A;
+  --bg-raised:     #2A2622;
+
+  --text-primary:  #F0EDE8;
+  --text-secondary:#9E968E;
+  --text-tertiary: #6B645D;
+  --text-disabled: #413D38;
+
+  --border-subtle: #221F1B;
+  --border-default:#2A2724;
+  --border-strong: #3A3632;
+
+  --accent:        #C4943A;   /* gold */
+  --accent-soft:   rgba(196,148,58,0.14);
+
+  --ok:            #3D9970;
+  --work:          #E8A03A;
+  --error:         #D95F5F;
+  --info:          #6B8FC4;
+
+  /* Highlight palette (Readwise-inspired) */
+  --hl-yellow:     #FBDA83;
+  --hl-coral:      #E4938E;
+  --hl-blue:       #8DBBFF;
+
+  /* Type */
+  --font-sans: "Söhne", "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Berkeley Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --r-chip: 6px;
+  --r-card: 8px;
+  --r-panel:12px;
+  --r-hard: 0px;
+
+  /* Motion */
+  --t-fast: 120ms cubic-bezier(.2,.8,.2,1);
+  --t-mid:  200ms cubic-bezier(.4,0,.2,1);
+  --t-slow: 300ms cubic-bezier(.2,.8,.2,1);
+}
+
+/* True-dark theme */
+html[data-theme="true-dark"] {
+  --bg-page:       #000000;
+  --bg-surface:    #0A0A0A;
+  --bg-hover:      #141414;
+  --bg-raised:     #1A1A1A;
+  --text-primary:  #FFFFFF;
+  --text-secondary:#A0A0A0;
+  --text-tertiary: #666666;
+  --border-subtle: #141414;
+  --border-default:#1F1F1F;
+  --border-strong: #2C2C2C;
+}
+
+/* Light theme (inverted semantically, warm paper) */
+html[data-theme="light"] {
+  --bg-page:       #F3EEE4;
+  --bg-surface:    #FBF7EE;
+  --bg-hover:      #EDE6D7;
+  --bg-raised:     #FFFFFF;
+  --text-primary:  #1A1612;
+  --text-secondary:#4E463C;
+  --text-tertiary: #887F72;
+  --text-disabled: #BCB3A4;
+  --border-subtle: #E2D9C7;
+  --border-default:#CFC4AD;
+  --border-strong: #A89B80;
+  --accent-soft:   rgba(146,94,11,0.12);
+  --accent:        #925E0B;
+  --ok:            #2F7554;
+  --work:          #B67A1C;
+  --error:         #B53F3F;
+  --info:          #4B6FA3;
+  --hl-yellow:     #F5D26B;
+  --hl-coral:      #D47A74;
+  --hl-blue:       #6AA3EB;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid var(--bg-page);
+}
+
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background: var(--bg-page); color: var(--text-primary); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+::selection { background: var(--accent-soft); color: var(--text-primary); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 6px; border: 2px solid var(--bg-page); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* Ambient pulse (§4.5) */
+@keyframes antonPulse {
+  0%, 100% { opacity: .6; }
+  50%      { opacity: 1; }
+}
+.pulse { animation: antonPulse 2000ms ease-in-out infinite; }
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slideInUp 180ms cubic-bezier(.2,.8,.2,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Utility */
+.mono { font-family: var(--font-mono); letter-spacing: 0.01em; }
+.small { font-size: 12px; line-height: 1.4; }
+.caps  { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+
+/* Dot */
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot-ok   { background: var(--ok); }
+.dot-work { background: var(--work); }
+.dot-err  { background: var(--error); }
+.dot-idle { background: var(--text-tertiary); }
+
+/* Focus ring */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
