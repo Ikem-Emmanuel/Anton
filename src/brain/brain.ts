@@ -9,6 +9,7 @@
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
 import { buildMemoryContext, buildSkillsContext, storeConversation, updateImplicitSignal } from '../memory/sqlite.js';
+import { emitEventLogged } from '../spine/web.js';
 import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
@@ -42,6 +43,36 @@ export interface BrainResponse {
     route: string;
     reason: string;
   };
+}
+
+// Map an AgentAction type to the ActivityType the web timeline renders.
+// Keeps brain semantics (HANDOFF/ASK/BLOCK/APPROVE/REJECT/DONE) decoupled
+// from the UI vocabulary.
+function actionToActivityType(type: string): string {
+  if (type === 'HANDOFF' || type === 'ASK') return 'handoff';
+  if (type === 'DONE') return 'complete';
+  if (type === 'BLOCK' || type === 'APPROVE' || type === 'REJECT') return 'approval';
+  return 'system';
+}
+
+// Log + broadcast the full action list. Replaces the inline console.log +
+// avoids the web timeline needing to poll for activity. emit is a no-op
+// when the WSS isn't running (sim mode, tests, offline CLI).
+function reportActions(actions: AgentAction[], agentName: string): void {
+  if (actions.length === 0) return;
+  const summary = actions.map((a) => `${a.type}${a.target ? `:${a.target}` : ''}`).join(', ');
+  console.log(`[Actions] ${summary}`);
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  for (const a of actions) {
+    const headline = `${a.type}${a.target ? `:${a.target}` : ''}`;
+    emitEventLogged({
+      t: ts,
+      agent: agentName,
+      type: actionToActivityType(a.type),
+      text: a.content ? `${headline} — ${a.content.slice(0, 100)}` : headline,
+      detail: null,
+    });
+  }
 }
 
 // Parse all action tags from an agent response. Validates HANDOFF and ASK targets
@@ -393,10 +424,7 @@ export async function process(
       console.log(
         `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${result.tokensOut}t | ${durationMs}ms`
       );
-      if (actionsFromText.length > 0) {
-        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-        console.log(`[Actions] ${summary}`);
-      }
+      reportActions(actionsFromText, agentName);
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);
@@ -501,10 +529,7 @@ export async function process(
       `[${selfEscalated ? 'CLAUDE' : 'LOCAL'}] ${agentName} | ${intent}/${complexity} depth=${depth} | ${result.tokensOut}t | ${durationMs}ms | conf=${confidence.toFixed(2)} | ${reason}`
     );
 
-    if (actionsFromText.length > 0) {
-      const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-      console.log(`[Actions] ${summary}`);
-    }
+    reportActions(actionsFromText, agentName);
 
     addToHistory(agentName, 'user', message);
     addToHistory(agentName, 'assistant', finalText);
@@ -565,10 +590,7 @@ export async function process(
       const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({ agent, message: msg }));
 
       console.log(`[CLAUDE] ${agentName} | ${failureReason} fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
-      if (actionsFromText.length > 0) {
-        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-        console.log(`[Actions] ${summary}`);
-      }
+      reportActions(actionsFromText, agentName);
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);
