@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { emitMemoryWritten } from '../spine/web.js';
+import { emitMemoryWritten, emitTaskCreated, emitTaskUpdated } from '../spine/web.js';
 
 let db: InstanceType<typeof Database> | null = null;
 
@@ -97,6 +97,26 @@ const SCHEMA = `
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Phase 4.5.3 — kanban tasks. Shape mirrors web/lib/data/tasks.ts so no
+  -- read-time transformation is needed. 'owner' is the name responsible for
+  -- the next move (Noel or an agent name); 'actor' is who's currently on it
+  -- (often same as owner, diverges when Anton works on Noel's behalf).
+  -- 'col' drives the FOR YOU / IN FLIGHT / DONE / BLOCKED layout.
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    col TEXT NOT NULL CHECK(col IN ('incoming','flight','done','blocked')),
+    age TEXT NOT NULL DEFAULT 'just now',
+    risk TEXT CHECK(risk IN ('L','M','H')),
+    why TEXT,
+    pct INTEGER,
+    step TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_memories_agent ON memories(agent, type);
   CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
   CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
@@ -106,6 +126,8 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_skills_owner ON skills(owner_agent, deprecated);
   CREATE INDEX IF NOT EXISTS idx_skills_shared ON skills(shared, deprecated);
   CREATE INDEX IF NOT EXISTS idx_user_model_dim ON user_model(dimension, confidence);
+  CREATE INDEX IF NOT EXISTS idx_tasks_col ON tasks(col);
+  CREATE INDEX IF NOT EXISTS idx_tasks_actor ON tasks(actor, col);
 `;
 
 // FTS5 virtual tables for full-text search (separate so they don't block table creation)
@@ -212,6 +234,172 @@ export function storeMemory(agent: string, type: string, content: string, metada
   }
 
   return Number(result.lastInsertRowid);
+}
+
+// ---- Tasks ----------------------------------------------------------------
+// Kanban items. Shape mirrors web/lib/data/tasks.ts. createTask /
+// updateTask / transitionTask broadcast task.created / task.updated so the
+// web board stays live. listTasks is the `tasksSource` for GET /api/tasks.
+
+export type TaskCol = 'incoming' | 'flight' | 'done' | 'blocked';
+export type TaskRisk = 'L' | 'M' | 'H';
+
+export type TaskRow = {
+  id: number;
+  title: string;
+  owner: string;
+  actor: string;
+  col: TaskCol;
+  age: string;
+  risk?: TaskRisk;
+  why?: string;
+  pct?: number;
+  step?: string;
+};
+
+type TaskRaw = {
+  id: number;
+  title: string;
+  owner: string;
+  actor: string;
+  col: TaskCol;
+  age: string;
+  risk: TaskRisk | null;
+  why: string | null;
+  pct: number | null;
+  step: string | null;
+};
+
+function rawToTask(r: TaskRaw): TaskRow {
+  const out: TaskRow = { id: r.id, title: r.title, owner: r.owner, actor: r.actor, col: r.col, age: r.age };
+  if (r.risk) out.risk = r.risk;
+  if (r.why) out.why = r.why;
+  if (r.pct != null) out.pct = r.pct;
+  if (r.step) out.step = r.step;
+  return out;
+}
+
+export function createTask(input: {
+  title: string;
+  owner: string;
+  actor: string;
+  col: TaskCol;
+  age?: string;
+  risk?: TaskRisk;
+  why?: string;
+  pct?: number;
+  step?: string;
+}): TaskRow {
+  if (!db) throw new Error('SQLite not initialized');
+  const result = db
+    .prepare(
+      `INSERT INTO tasks (title, owner, actor, col, age, risk, why, pct, step)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      input.title,
+      input.owner,
+      input.actor,
+      input.col,
+      input.age || 'just now',
+      input.risk || null,
+      input.why || null,
+      input.pct ?? null,
+      input.step || null
+    );
+  const task = getTask(Number(result.lastInsertRowid));
+  if (task) {
+    try {
+      emitTaskCreated(task);
+    } catch (e) {
+      console.warn('[Memory/SQLite] task.created emit failed:', (e as Error).message?.slice(0, 60));
+    }
+  }
+  return task ?? rawToTask({ id: Number(result.lastInsertRowid), ...input, age: input.age || 'just now' } as TaskRaw);
+}
+
+export function getTask(id: number): TaskRow | null {
+  if (!db) return null;
+  const row = db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRaw | undefined;
+  return row ? rawToTask(row) : null;
+}
+
+export function updateTask(
+  id: number,
+  patch: Partial<Pick<TaskRow, 'title' | 'owner' | 'actor' | 'col' | 'age' | 'risk' | 'why' | 'pct' | 'step'>>
+): TaskRow | null {
+  if (!db) return null;
+  const keys = Object.keys(patch) as Array<keyof typeof patch>;
+  if (keys.length === 0) return getTask(id);
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => patch[k] ?? null);
+  db.prepare(`UPDATE tasks SET ${setClause}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);
+  const task = getTask(id);
+  if (task) {
+    try {
+      emitTaskUpdated(task);
+    } catch (e) {
+      console.warn('[Memory/SQLite] task.updated emit failed:', (e as Error).message?.slice(0, 60));
+    }
+  }
+  return task;
+}
+
+/** Convenience wrapper for the common case of moving a task between columns. */
+export function transitionTask(
+  id: number,
+  newCol: TaskCol,
+  extra?: { why?: string; pct?: number; step?: string }
+): TaskRow | null {
+  return updateTask(id, { col: newCol, ...(extra || {}) });
+}
+
+/** Newest tasks first. Used as the `tasksSource` callback from index.js. */
+export function listTasks(limit = 50): TaskRow[] {
+  if (!db) return [];
+  const rows = db.prepare(`SELECT * FROM tasks ORDER BY updated_at DESC, id DESC LIMIT ?`).all(limit) as TaskRaw[];
+  return rows.map(rawToTask);
+}
+
+/** Count of rows. Used to know whether to seed demo data on first boot. */
+export function countTasks(): number {
+  if (!db) return 0;
+  const row = db.prepare(`SELECT COUNT(*) AS c FROM tasks`).get() as { c: number };
+  return row.c;
+}
+
+/**
+ * Insert a batch of demo tasks if the table is empty. Silently no-ops
+ * otherwise. Called once at boot so a fresh install has a non-empty
+ * kanban to look at; real brain-driven tasks accumulate on top of these
+ * and push them out once they're older than the listTasks limit.
+ */
+export function seedTasksIfEmpty(rows: Array<Omit<TaskRow, 'id'>>): number {
+  if (!db) return 0;
+  if (countTasks() > 0) return 0;
+  const stmt = db.prepare(
+    `INSERT INTO tasks (title, owner, actor, col, age, risk, why, pct, step)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  let inserted = 0;
+  const tx = db.transaction((batch: Array<Omit<TaskRow, 'id'>>) => {
+    for (const r of batch) {
+      stmt.run(
+        r.title,
+        r.owner,
+        r.actor,
+        r.col,
+        r.age || 'just now',
+        r.risk || null,
+        r.why || null,
+        r.pct ?? null,
+        r.step || null
+      );
+      inserted += 1;
+    }
+  });
+  tx(rows);
+  return inserted;
 }
 
 // List the most recent memories in the shape the web UI renders. Newest
