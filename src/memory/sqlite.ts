@@ -54,17 +54,58 @@ const SCHEMA = `
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Phase 3.5 §4.5.2 — per-turn outcome evaluation, one row per conversations row.
+  CREATE TABLE IF NOT EXISTS turn_evaluations (
+    conversation_id INTEGER PRIMARY KEY,
+    verdict TEXT NOT NULL CHECK(verdict IN ('good','neutral','bad')),
+    task_addressed REAL NOT NULL,
+    role_appropriate REAL NOT NULL,
+    hallucination_free REAL NOT NULL,
+    action_ready REAL NOT NULL,
+    implicit_signal TEXT CHECK(implicit_signal IN ('accepted','corrected','ambiguous',NULL)),
+    evaluated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Phase 3.5 §4.5.1 — named skill library keyed on context_pattern → approach.
+  CREATE TABLE IF NOT EXISTS skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    context_pattern TEXT NOT NULL,
+    approach TEXT NOT NULL,                 -- JSON: {steps, artifacts_expected, pitfalls}
+    owner_agent TEXT NOT NULL,
+    success_count INTEGER DEFAULT 0,
+    failure_count INTEGER DEFAULT 0,
+    source_task_id TEXT,
+    supersedes_id INTEGER REFERENCES skills(id),
+    deprecated INTEGER DEFAULT 0,
+    shared INTEGER DEFAULT 0,
+    tags TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_memories_agent ON memories(agent, type);
   CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
   CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
   CREATE INDEX IF NOT EXISTS idx_conversations_agent ON conversations(agent);
   CREATE INDEX IF NOT EXISTS idx_training_rating ON training_data(rating);
+  CREATE INDEX IF NOT EXISTS idx_turn_evals_verdict ON turn_evaluations(verdict);
+  CREATE INDEX IF NOT EXISTS idx_skills_owner ON skills(owner_agent, deprecated);
+  CREATE INDEX IF NOT EXISTS idx_skills_shared ON skills(shared, deprecated);
 `;
 
-// FTS5 virtual table for full-text search (separate so it doesn't block table creation)
+// FTS5 virtual tables for full-text search (separate so they don't block table creation)
 const FTS_SCHEMA = `
   CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
     content, type, agent,
+    content_rowid='id',
+    tokenize='porter unicode61'
+  );
+
+  -- FTS5 on skill context_pattern — used by retrieveApplicableSkills for
+  -- keyword-based similarity (vec embeddings come in Phase 3 §4.2).
+  CREATE VIRTUAL TABLE IF NOT EXISTS skills_fts USING fts5(
+    context_pattern, title, tags,
     content_rowid='id',
     tokenize='porter unicode61'
   );
@@ -184,6 +225,184 @@ export function storeTrainingData(
     );
 
   return Number(result.lastInsertRowid);
+}
+
+// ---- Turn evaluations (Phase 3.5 §4.5.2) ----
+
+export interface TurnEvaluation {
+  conversation_id: number;
+  verdict: 'good' | 'neutral' | 'bad';
+  task_addressed: number;
+  role_appropriate: number;
+  hallucination_free: number;
+  action_ready: number;
+  implicit_signal: 'accepted' | 'corrected' | 'ambiguous' | null;
+}
+
+export function storeTurnEvaluation(ev: TurnEvaluation): void {
+  if (!db) throw new Error('SQLite not initialized');
+  db.prepare(
+    `INSERT INTO turn_evaluations
+     (conversation_id, verdict, task_addressed, role_appropriate, hallucination_free, action_ready, implicit_signal)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(conversation_id) DO UPDATE SET
+       verdict=excluded.verdict,
+       task_addressed=excluded.task_addressed,
+       role_appropriate=excluded.role_appropriate,
+       hallucination_free=excluded.hallucination_free,
+       action_ready=excluded.action_ready,
+       implicit_signal=COALESCE(excluded.implicit_signal, implicit_signal)`
+  ).run(
+    ev.conversation_id,
+    ev.verdict,
+    ev.task_addressed,
+    ev.role_appropriate,
+    ev.hallucination_free,
+    ev.action_ready,
+    ev.implicit_signal
+  );
+}
+
+export function getTurnEvaluation(conversationId: number): TurnEvaluation | null {
+  if (!db) return null;
+  const row = db.prepare('SELECT * FROM turn_evaluations WHERE conversation_id = ?').get(conversationId);
+  return (row as TurnEvaluation) || null;
+}
+
+export function updateImplicitSignal(conversationId: number, signal: 'accepted' | 'corrected' | 'ambiguous'): void {
+  if (!db) return;
+  db.prepare('UPDATE turn_evaluations SET implicit_signal = ? WHERE conversation_id = ?').run(signal, conversationId);
+}
+
+// ---- Skills (Phase 3.5 §4.5.1) ----
+
+export interface Skill {
+  id: number;
+  title: string;
+  context_pattern: string;
+  approach: string; // JSON string
+  owner_agent: string;
+  success_count: number;
+  failure_count: number;
+  source_task_id: string | null;
+  supersedes_id: number | null;
+  deprecated: number;
+  shared: number;
+  tags: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
+
+export function storeSkill(params: {
+  title: string;
+  context_pattern: string;
+  approach: object;
+  owner_agent: string;
+  source_task_id?: string;
+  supersedes_id?: number;
+  tags?: string[];
+}): number {
+  if (!db) throw new Error('SQLite not initialized');
+  const result = db
+    .prepare(
+      `INSERT INTO skills
+       (title, context_pattern, approach, owner_agent, source_task_id, supersedes_id, tags)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      params.title,
+      params.context_pattern,
+      JSON.stringify(params.approach),
+      params.owner_agent,
+      params.source_task_id || null,
+      params.supersedes_id || null,
+      JSON.stringify(params.tags || [])
+    );
+
+  const id = Number(result.lastInsertRowid);
+  try {
+    db.prepare('INSERT INTO skills_fts (rowid, context_pattern, title, tags) VALUES (?, ?, ?, ?)').run(
+      id,
+      params.context_pattern,
+      params.title,
+      JSON.stringify(params.tags || [])
+    );
+  } catch {}
+  return id;
+}
+
+// Retrieve up to topK non-deprecated skills relevant to a request.
+// Considers agent's own skills + shared skills. Ranks by FTS5 match quality.
+export function retrieveApplicableSkills(request: string, agent: string, topK = 3): Skill[] {
+  if (!db) return [];
+
+  // Escape FTS5 special chars by wrapping tokens in double quotes.
+  const cleanedQuery = request
+    .slice(0, 200)
+    .replace(/[^\w\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t.length > 2)
+    .map((t) => `"${t}"`)
+    .join(' OR ');
+
+  if (!cleanedQuery) return [];
+
+  try {
+    return db
+      .prepare(
+        // SQLite FTS5 rank is NEGATIVE (more-negative = better match).
+        // Laplace-smoothed success rate: (success + 1) / (total + 2)
+        // gives zero-use skills a neutral 0.5 baseline instead of 0,
+        // so an unproven skill can still surface. Final sort: match
+        // strength first (most-negative rank), then success rate.
+        `SELECT s.*
+         FROM skills_fts fts
+         JOIN skills s ON s.id = fts.rowid
+         WHERE skills_fts MATCH ?
+           AND s.deprecated = 0
+           AND (s.owner_agent = ? OR s.shared = 1)
+         ORDER BY
+           fts.rank ASC,
+           (CAST(s.success_count + 1 AS REAL) / (s.success_count + s.failure_count + 2)) DESC
+         LIMIT ?`
+      )
+      .all(cleanedQuery, agent, topK) as Skill[];
+  } catch {
+    return [];
+  }
+}
+
+export function markSkillUsed(id: number, outcome: 'success' | 'failure'): void {
+  if (!db) return;
+  const col = outcome === 'success' ? 'success_count' : 'failure_count';
+  db.prepare(`UPDATE skills SET ${col} = ${col} + 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+}
+
+export function deprecateSkill(id: number): void {
+  if (!db) return;
+  db.prepare(`UPDATE skills SET deprecated = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+}
+
+// Build the [APPLICABLE SKILLS] prompt block — injected by brain.ts
+// alongside [ORG MEMORY] and [AMBIENT].
+export function buildSkillsContext(request: string, agent: string, topK = 3): string {
+  const skills = retrieveApplicableSkills(request, agent, topK);
+  if (skills.length === 0) return '';
+
+  const lines: string[] = ['[APPLICABLE SKILLS]'];
+  for (const s of skills) {
+    const approach = JSON.parse(s.approach);
+    const stepsStr = Array.isArray(approach.steps)
+      ? approach.steps.slice(0, 4).join(' → ')
+      : String(approach.steps || '').slice(0, 200);
+    const pitfallsStr = Array.isArray(approach.pitfalls) ? approach.pitfalls.slice(0, 2).join('; ') : '';
+    const rate = s.success_count / Math.max(1, s.success_count + s.failure_count);
+    lines.push(`- ${s.title} (${(rate * 100).toFixed(0)}% success over ${s.success_count + s.failure_count} uses):`);
+    lines.push(`  Steps: ${stepsStr}`);
+    if (pitfallsStr) lines.push(`  Watch: ${pitfallsStr}`);
+  }
+  return lines.join('\n');
 }
 
 // ---- Search ----
