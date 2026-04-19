@@ -5,12 +5,12 @@
 import type { ReactNode } from 'react';
 import ActivityTimeline from '@/components/modules/activity-timeline';
 import Briefing from '@/components/modules/briefing';
+import Chat from '@/components/modules/chat';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
 import {
   ApprovalsHub,
   Calendar,
-  Chat,
   Documents,
   Expenses,
   Inbox,
