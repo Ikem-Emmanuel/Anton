@@ -549,6 +549,23 @@ export function listTasks(limit = 50): TaskRow[] {
   return rows.map(rawToTask);
 }
 
+/** Tasks that have sat in `flight` longer than `hoursStale`. Used by the
+ *  proactive stalled-task surfacer (§4.3) to notify Noel when work appears
+ *  stuck. Sorted oldest-first. */
+export function findStalledTasks(hoursStale: number, limit = 10): TaskRow[] {
+  if (!db) return [];
+  const rows = db
+    .prepare(
+      `SELECT * FROM tasks
+         WHERE col = 'flight'
+           AND datetime(updated_at) < datetime('now', ?)
+         ORDER BY updated_at ASC
+         LIMIT ?`
+    )
+    .all(`-${hoursStale} hours`, limit) as TaskRaw[];
+  return rows.map(rawToTask);
+}
+
 /** Count of rows. Used to know whether to seed demo data on first boot. */
 export function countTasks(): number {
   if (!db) return 0;

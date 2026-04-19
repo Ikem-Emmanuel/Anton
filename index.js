@@ -19,6 +19,7 @@ import {
   stopTeam,
   teamStatus,
 } from './src/heart/orchestrator.js';
+import { initProactive } from './src/heart/proactive.js';
 import {
   cancelJob,
   formatTime,
@@ -34,8 +35,9 @@ import { checkGitState, getHealthSnapshot, initWatcher } from './src/heart/watch
 import { initContext } from './src/memory/context.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory/memory-v1.js';
 import { ask, consumeHandoffs, init as initSessions } from './src/memory/sessions.js';
-import { listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
+import { findStalledTasks, listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
 import { getReport, initAnalytics, trackRequest } from './src/nervous/analytics.js';
+import { eventBus } from './src/nervous/eventbus.js';
 import { initLogger, logError, logMessage, logResponse } from './src/nervous/logger.js';
 import { initPriority } from './src/nervous/priority.js';
 import { channelToDept } from './src/nervous/router.js';
@@ -1097,6 +1099,21 @@ startPromise
 
     // Priority engine — maps events to notification severity
     initPriority({ notifyNoel });
+
+    // Proactive trigger loop (§4.3) — EOD summary 18:00, event scan every 15m,
+    // stalled-task surfacer every 1h. Lazy brain import keeps boot fast when
+    // only the Slack path is enabled.
+    initProactive({
+      scheduleJob,
+      cancelJob,
+      notifyNoel,
+      findStalledTasks,
+      getEventHistory: () => eventBus.getHistory(200),
+      brainProcess: async (msg, opts) => {
+        const brainModule = await import('./src/brain/brain.ts');
+        return brainModule.process(msg, opts);
+      },
+    });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const startupFile = join(DATA_DIR, '.last-startup');

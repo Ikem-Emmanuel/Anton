@@ -32,7 +32,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
 - ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
 - ~~sqlite-vec not installed~~ — **DONE 2026-04-19**. Hybrid FTS5+vector retrieval with RRF merge; brain uses it per turn. §4.2.
-- **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
+- ~~Proactive scheduler is the V1 briefing only~~ — **DONE 2026-04-19**. EOD + event scan + stalled-task surfacer shipped in `src/heart/proactive.js`. Distillation batch deferred (inline covers it). §4.3.
 - **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
 - **Langfuse / observability** — nothing yet. Logs are `console.log`.
 - **Voice / finance / self-training / mobile** — all post-Phase-4.
@@ -198,15 +198,17 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] 6 tests in `src/memory/sqlite-vec.test.ts` cover indexing, semantic ranking, RRF merging, limit, FTS5 fallback
 - [ ] Nightly re-embed cron if the embedding model changes — deferred, single-model for now
 
-### 4.3 Proactive trigger loop (the Jarvis feel)
+### 4.3 Proactive trigger loop (the Jarvis feel) — MOSTLY DONE
 
-- [ ] `src/nervous/scheduler.ts` — node-cron daemon, separate from Slack handlers
-- [ ] 08:00 morning briefing (sprint + calendar + overnight Slack)
-- [ ] 18:00 EOD summary (done + stuck + tomorrow)
-- [ ] Every 15m event scan (CI fails, Asana changes, watchlist messages)
-- [ ] Every 1h stalled-task surfacer
-- [ ] Every 4h distillation batch
-- [ ] Output through same `_slackBrain` — consistent voice
+- [x] Scheduler daemon — `src/heart/scheduler.js` (V1 lightweight scheduler, not node-cron; wall-clock jobs + intervals). Lives in `heart/` per the organ-system README, not `nervous/`.
+- [x] 08:00 morning briefing — `src/heart/briefing.js` wired via `initBriefing` (pre-existing)
+- [x] 18:00 EOD summary — `src/heart/proactive.js:runEodSummary` routes via Riley through `brain.process()`
+- [x] Every 15m event scan — `runEventScan` reads eventBus history, fires P2 when error count crosses threshold
+- [x] Every 1h stalled-task surfacer — `runStalledTaskSurfacer` queries SQLite `findStalledTasks(24, 5)`
+- [x] Output through unified brain — EOD summary calls `brain.process()`, so voice matches the rest of the system
+- [x] 11 tests in `src/heart/proactive.test.js` cover all three triggers + init wiring
+- [ ] Every 4h distillation batch — **deferred**. Inline distillation fires per-turn already; a batch safety-net would need a `distilled_at` column on conversations, which is invasive for uncertain value. Add back if inline failures surface.
+- [ ] Event scan: wire CI / Asana / watchlist sources — today it only reads the in-process event bus. Real source wiring is Phase 4+.
 
 ### 4.4 Ambient context persona modulation — DONE
 
@@ -607,7 +609,8 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
 | 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
 | 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
-|            | **NEXT: §4.3 proactive trigger loop → §4.5.6 cross-agent skill sharing → persona prompt injection perf benchmark. Branch phase3/\*.**       | 3        |
+| 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests         | 3        |
+|            | **NEXT: §4.5.6 cross-agent skill sharing → docs/PROGRESS.md refresh → consider merging `phase3/persona-unification` back to main.**         | 3        |
 
 ---
 
