@@ -7,14 +7,16 @@
 
 ## 📍 Current State (2026-04-19)
 
-**Branch:** `phase2/memory`  
-**Active phase:** Phase 3A + 3B + 3.5 complete — ready for Phase 4 (UI) or Phase 3 refinements  
-**Test baseline:** 609 pass / 1 skipped — zero V1 flakes  
-**Sim scenarios:** 11 multi-agent tests (S1/S2/S4) running in ~7 ms without Ollama  
-**V1 memory:** 12 journal entries migrated to SQLite; all context spotlighted + ambient-wrapped  
-**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits  
-**Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs) — 4 commits  
+**Branch:** `phase4/web-ui` — 3 commits ahead of `main`
+**Active phase:** Phase 4 web UI in progress (scaffold + primitives + 1 module shipped; module ports pending)
+**Hardware target:** 64GB/1TB Mac Studio M4 Max — purchased, replacing 16GB Mac Mini
+**Test baseline:** 640 pass — zero V1 flakes
+**Sim scenarios:** S1/S2/S3/S4/S5/S6/S8 + skill-loop-integration running in ms without Ollama
+**V1 memory:** 12 journal entries migrated to SQLite; all context spotlighted + ambient-wrapped
+**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits
+**Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs) — 4 commits
 **Phase 3A / 3B:** ✅ COMPLETE — action tags + state machine + simulation mode
+**Phase 4:** 🟡 In progress — Next.js 15 + Tailwind v4 scaffold, 5 UI primitives, shell + nav config + route registry (DIP). Remaining: Chat, Approval Detail, Tasks/Inbox/Calendar/Docs/Research/People/Expenses/Travel/Usage modules, Mobile shell, Settings sub-tabs, TweaksPanel, Onboarding, App Router wiring, API routes
 
 ### Phase status overview
 
