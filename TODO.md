@@ -33,7 +33,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
 - ~~sqlite-vec not installed~~ — **DONE 2026-04-19**. Hybrid FTS5+vector retrieval with RRF merge; brain uses it per turn. §4.2.
 - ~~Proactive scheduler is the V1 briefing only~~ — **DONE 2026-04-19**. EOD + event scan + stalled-task surfacer shipped in `src/heart/proactive.js`. Distillation batch deferred (inline covers it). §4.3.
-- **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
+- ~~Cross-agent skill sharing~~ — **DONE 2026-04-19**. Discovery + proposal flow ships; end-to-end approval-to-`shareSkill` wiring deferred as a small ergonomic follow-up. §4.5.6.
 - **Langfuse / observability** — nothing yet. Logs are `console.log`.
 - **Voice / finance / self-training / mobile** — all post-Phase-4.
 
@@ -294,11 +294,15 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] (4.5.5b) Per-dimension evolution rules in `src/memory/sqlite.ts` — tested in `user-model.test.ts`
 - [x] (4.5.5c) High-confidence rows injected as `[USER MODEL]` block via ambient-context
 
-### 4.5.6 Cross-agent skill sharing — NOT DONE
+### 4.5.6 Cross-agent skill sharing — DONE (ergonomic follow-up deferred)
 
-- [ ] (4.5.6a) Add `shared` (bool) + `tags` (JSON array) columns to `skills`
-- [ ] (4.5.6b) Auto-surface share proposals when skill hits success_rate > 0.8 AND evidence > 5
-- [ ] (4.5.6c) Anton DMs Noel proposal; on approval, skill moves to shared pool; retrieval filter includes `owner_agent = X OR (shared = 1 AND tags ∩ my_domain)`
+- [x] (4.5.6a) `shared` (int 0/1) + `tags` (JSON array) columns on the `skills` table — shipped earlier with the Phase 3.5 skill loop
+- [x] (4.5.6b) `findShareableSkills()` query (success_rate > 0.8 AND evidence ≥ 5 AND private) + `runSkillShareScan` in `src/heart/skill-sharing.js` fires every 4h from `initProactive` and proposes via `notifyNoel` (P3). Per-process dedup via an in-memory Set so the same skill doesn't re-surface until Noel acts or Anton restarts.
+- [x] `shareSkill(id, tags?)` exists on the memory layer to flip the bit once approved
+- [x] `retrieveApplicableSkills` already surfaces `owner_agent = X OR shared = 1` rows — shared skills are visible to every agent today
+- [x] 6 tests in `src/heart/skill-sharing.test.js` cover proposal, dedup, maxPerRun cap, forgetProposal, error handling, zero-candidates silence
+- [ ] Follow-up: end-to-end approval ergonomic. Today Noel sees the proposal as a P3 notification; the actual `shareSkill(id)` call is manual. Wiring a `share skill N` Slack command (or reusing the approval tray) is the next step.
+- [ ] Follow-up: tag ∩ my_domain retrieval filter. Today `shared = 1` means "visible to everyone"; the per-domain filter requires a tag taxonomy that doesn't exist yet. Low priority until domain overlap causes noise.
 
 ### 4.5.7 Integration wiring — DONE (4.5.7a/b); 4.5.7c rolls into Phase 6
 
@@ -610,7 +614,8 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
 | 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
 | 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests         | 3        |
-|            | **NEXT: §4.5.6 cross-agent skill sharing → docs/PROGRESS.md refresh → consider merging `phase3/persona-unification` back to main.**         | 3        |
+| 2026-04-19 | §4.5.6 cross-agent skill sharing — discovery + proposal flow via `src/heart/skill-sharing.js`, 4h scan wired into proactive; +6 tests       | 3        |
+|            | **PHASE 3 COMPLETE** (bar two ergonomic follow-ups). NEXT: docs/PROGRESS.md refresh → open PR for `phase3/persona-unification`.             | —        |
 
 ---
 

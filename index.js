@@ -35,7 +35,13 @@ import { checkGitState, getHealthSnapshot, initWatcher } from './src/heart/watch
 import { initContext } from './src/memory/context.js';
 import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory/memory-v1.js';
 import { ask, consumeHandoffs, init as initSessions } from './src/memory/sessions.js';
-import { findStalledTasks, listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
+import {
+  findShareableSkills,
+  findStalledTasks,
+  listMemories,
+  listTasks,
+  seedTasksIfEmpty,
+} from './src/memory/sqlite.js';
 import { getReport, initAnalytics, trackRequest } from './src/nervous/analytics.js';
 import { eventBus } from './src/nervous/eventbus.js';
 import { initLogger, logError, logMessage, logResponse } from './src/nervous/logger.js';
@@ -1108,6 +1114,7 @@ startPromise
       cancelJob,
       notifyNoel,
       findStalledTasks,
+      findShareableSkills,
       getEventHistory: () => eventBus.getHistory(200),
       brainProcess: async (msg, opts) => {
         const brainModule = await import('./src/brain/brain.ts');
