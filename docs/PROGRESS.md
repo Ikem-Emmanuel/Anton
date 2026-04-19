@@ -8,27 +8,32 @@
 ## 📍 Current State (2026-04-19)
 
 **Branch:** `phase2/memory`  
-**Active phase:** Phase 3 (Jarvis feel) — **2 of 6 items shipped**  
-**Test baseline:** 497 pass / 1 pre-existing V1 flake / 67 new brain+memory tests  
-**Smoke test:** 9 of 9 routing cases pass end-to-end against live Ollama  
-**V1 memory:** 12 journal entries migrated to SQLite; memory context spotlighted + ambient-wrapped  
-**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits landed
+**Active phase:** Phase 3A + 3B + 3.5 complete — ready for Phase 4 (UI) or Phase 3 refinements  
+**Test baseline:** 609 pass / 1 skipped — zero V1 flakes  
+**Sim scenarios:** 11 multi-agent tests (S1/S2/S4) running in ~7 ms without Ollama  
+**V1 memory:** 12 journal entries migrated to SQLite; all context spotlighted + ambient-wrapped  
+**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits  
+**Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs) — 4 commits  
+**Phase 3A / 3B:** ✅ COMPLETE — action tags + state machine + simulation mode
 
 ### Phase status overview
 
-| Phase                         | Status                | Progress                                                           |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------ |
-| 0 — Foundation                | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5                                |
-| 1 — Brain Core + Routing      | ✅ Verified working   | Behavioral issues fixed in Phase 2.5                               |
-| 2 — Memory (SQLite)           | ✅ SQLite done        | RAG/vault/LightRAG deferred                                        |
-| **2.5 — Stabilize**           | ✅ Complete           | 10/10 items shipped (5 commits)                                    |
-| **3 — Intelligence + Jarvis** | 🟡 In progress        | §4.1 distillation + §4.4 ambient done; §4.2/§4.3/§4.5/§4.6 pending |
-| 4 — Web + Mobile              | ⏳ Design brief done  | Implementation blocked on 3                                        |
-| 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                                 |
-| 6 — Self-Training             | ⏳ Not started        |                                                                    |
-| 7 — Voice                     | ⏳ Not started        |                                                                    |
-| 8 — Finance                   | ⏳ Not started        |                                                                    |
-| 9 — Production hardening      | ⏳ Not started        |                                                                    |
+| Phase                         | Status                | Progress                                                      |
+| ----------------------------- | --------------------- | ------------------------------------------------------------- |
+| 0 — Foundation                | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5                           |
+| 1 — Brain Core + Routing      | ✅ Verified working   | Behavioral issues fixed in Phase 2.5                          |
+| 2 — Memory (SQLite)           | ✅ SQLite done        | RAG/vault/LightRAG deferred                                   |
+| **2.5 — Stabilize**           | ✅ Complete           | 10/10 items shipped                                           |
+| **3A — Feedback primitives**  | ✅ Complete           | action tags, state machine, hop/retry caps                    |
+| **3B — Simulation mode**      | ✅ Complete           | ANTON_SIM_MODE + 3 scenarios (S1/S2/S4)                       |
+| **3 — Intelligence + Jarvis** | 🟡 Partial            | §4.1 distill + §4.4 ambient done; §4.2/§4.3/§4.5/§4.6 pending |
+| **3.5 — Skill Loop**          | ✅ Complete           | 7/7 Hermes gaps closed — all 6 learning-loop legs shipped     |
+| 4 — Web + Mobile              | ⏳ Design brief done  | Implementation blocked on 3                                   |
+| 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                            |
+| 6 — Self-Training             | ⏳ Not started        |                                                               |
+| 7 — Voice                     | ⏳ Not started        |                                                               |
+| 8 — Finance                   | ⏳ Not started        |                                                               |
+| 9 — Production hardening      | ⏳ Not started        |                                                               |
 
 ---
 
@@ -176,6 +181,46 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 ---
 
 ## 📝 Recent Work Log
+
+### 2026-04-19 — Phase 3.5 Skill Loop complete + Phase 3A/3B shipped
+
+Six commits landing feedback loops, simulation mode, and the full Skill Loop:
+
+1. Phase 3A feedback primitives (`3ad7c05`) — action tag parser (HANDOFF / ASK /
+   BLOCK / APPROVE / REJECT / DONE) and task state machine with authority
+   enforcement. 40 new tests.
+2. Phase 3B simulation mode (`e8a13ea`) — `ANTON_SIM_MODE=1` swaps
+   `brain.process()` for fixture reader. First scenario S1 (ship user login)
+   runs a 12-step delegation chain in 3 ms.
+3. Brain wiring + S2/S4 fixtures (`51b682c`) — `extractAgentActions` replaces
+   legacy `extractHandoffs`; BrainResponse.actions exposes full vocabulary.
+   S2 blocker-escalation and S4 QA retry-exhaustion added. 11 sim tests green.
+4. Skill library + outcome evaluation (`e973ae6`) — Phase 3.5 §4.5.1 skills
+   table with FTS5 retrieval + success-rate ranking; §4.5.2 4-criteria judge
+   pass writing verdicts to turn_evaluations. [APPLICABLE SKILLS] prompt block
+   injection.
+5. Implicit feedback + user model (`56fe92c`) — §4.5.3 3-stage feedback-capture
+   pipeline wired at brain.process entry; §4.5.5 user_model table with 4
+   Hermes dimensions and moving-average confidence evolution; [USER MODEL]
+   injection alongside [AMBIENT].
+6. Skill extraction, refinement, sharing (`eb07b55`) — §4.5.7 extractSkillCandidate
+   fires on `good` verdict; §4.5.4 supersedes_id lineage chain; §4.5.6
+   findShareableSkills + shareSkill data layer (threshold: success_rate > 0.8
+   AND evidence >= 5). Cross-agent retrieval working.
+
+Complete Hermes learning loop now in place:
+
+- execute (brain.process)
+- extract (distill §4.1 + skill-extract §4.5.7)
+- evaluate (judge §4.5.2 + implicit feedback §4.5.3)
+- refine (supersedes chain §4.5.4)
+- retrieve (retrieveApplicableSkills §4.5.1)
+
+Full system prompt now carries [AMBIENT] + [USER MODEL] + [ORG MEMORY] +
+[APPLICABLE SKILLS] for every invocation.
+
+Tests: 497 → 609 (+112 new). Sim scenarios: 7 ms end-to-end, zero Ollama
+dependency for CI.
 
 ### 2026-04-19 — Phase 3 kickoff (§4.1 + §4.4)
 
