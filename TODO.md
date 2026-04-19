@@ -399,13 +399,13 @@
 - [x] `web/hooks/use-tasks.ts` — REST hydrate + subscribe to `task.created` / `task.updated`
 - [x] Components consume hooks (loading / `offline · showing cached` / live count states)
 
-### 5.5.3 Brain-side emit wiring (PENDING — makes the transport actually live)
+### 5.5.3 Brain-side emit wiring (PARTIAL — memory + activity + approvals live; tasks + memoriesSource pending)
 
-- [ ] `src/memory/sqlite.ts` — call `emitMemoryWritten(record)` at the end of `storeMemory()` / `storeConversation()` success paths
-- [ ] `src/brain/brain.ts` — when agent output contains `AWAITING_APPROVAL:`, insert into an approvals store and call `emitApprovalCreated(approval)`
-- [ ] `src/brain/state-machine.ts` — on state transitions (TODO → IN_FLIGHT → DONE / BLOCKED), call `emitTaskUpdated(task)`
-- [ ] `src/brain/brain.ts` (activity log) — call `emitEventLogged(event)` on every action-tag, tool call, handoff
-- [ ] Wire `index.js` → `initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource })` to pass real callbacks pulled from the live stores (replaces `DEFAULT_*` mocks)
+- [x] `src/memory/sqlite.ts` — `emitMemoryWritten(record)` fires after every successful `storeMemory()` insert (commit d643122)
+- [x] `src/brain/brain.ts` — `reportActions()` helper consolidates the action-log and emits `event.logged` per action (HANDOFF / ASK / BLOCK / APPROVE / REJECT / DONE), replacing the two duplicated log blocks (commit a941ee4)
+- [x] `index.js` — Slack approval gate now mirrors to web: `emitApprovalCreated` on queue, `emitApprovalResolved` on yes/no reply; `approvalsSource` passed to `initWeb` so GET /api/approvals returns the live queue instead of DEFAULT_APPROVALS (commit cd9ca99)
+- [ ] `src/brain/state-machine.ts` — on state transitions (TODO → IN_FLIGHT → DONE / BLOCKED), call `emitTaskUpdated(task)` — requires a task store first (no persistence layer for tasks yet)
+- [ ] Wire `memoriesSource` + `tasksSource` callbacks into `initWeb` so GET /api/memories and /api/tasks also pull real state (currently DEFAULT_MEMORIES / DEFAULT_TASKS mocks)
 
 ### 5.5.4 Approve / reject POST endpoints (PENDING)
 
