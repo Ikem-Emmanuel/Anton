@@ -166,12 +166,16 @@ const DEFAULT_TASKS = [
   },
 ];
 
-export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource, port = 3000 }) {
+export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource, resolveApproval, port = 3000 }) {
   // Each source is an optional async callback returning the current records.
   // Omit and the fallback mock is used — keeps the UI live during dev.
   const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
   const readMemories = memoriesSource || (() => DEFAULT_MEMORIES);
   const readTasks = tasksSource || (() => DEFAULT_TASKS);
+  // resolveApproval({id, decision}) notifies the underlying agent + clears
+  // the pending-queue entry. When not wired, the endpoint 501s so the web
+  // UI can display a helpful error instead of a generic failure.
+  const handleResolve = resolveApproval || null;
 
   _server = createServer(async (req, res) => {
     // CORS preflight
@@ -190,6 +194,37 @@ export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource
         res.end(JSON.stringify({ approvals: approvals || [] }));
       } catch (e) {
         console.error('[Web] /api/approvals error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // POST /api/approvals/:id/approve|reject — Noel resolving an approval
+    // from the web UI. Forwards to resolveApproval so the agent gets told;
+    // returns {ok, id, decision}. 501 if resolveApproval wasn't wired.
+    const resolveMatch =
+      req.method === 'POST' && req.url && req.url.match(/^\/api\/approvals\/(\d+)\/(approve|reject)$/);
+    if (resolveMatch) {
+      const id = Number.parseInt(resolveMatch[1], 10);
+      const decision = resolveMatch[2] === 'approve' ? 'approved' : 'denied';
+      if (!handleResolve) {
+        res.writeHead(501, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'resolveApproval not wired on initWeb' }));
+        return;
+      }
+      try {
+        const result = await handleResolve({ id, decision });
+        if (!result || result.ok === false) {
+          const reason = result?.reason || 'unknown';
+          res.writeHead(reason === 'not_found' ? 404 : 500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+          res.end(JSON.stringify({ error: reason }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ ok: true, id, decision }));
+      } catch (e) {
+        console.error('[Web] resolve approval error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
         res.end(JSON.stringify({ error: 'Internal error' }));
       }

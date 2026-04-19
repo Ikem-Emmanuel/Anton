@@ -155,6 +155,47 @@ function allPendingApprovals() {
   return out;
 }
 
+// resolveApproval callback for the web: Noel clicked Approve/Reject in the
+// tray. Finds the entry by id, removes it from its queue, emits
+// approval.resolved, and fires the agent notification in the background.
+// Returns {ok} or {ok:false, reason:'not_found'}.
+//
+// Note: unlike the Slack DM path, this doesn't post a confirmation message
+// to Slack. Users watching the Slack thread won't see "Approved." appear.
+// Acceptable for MVP — web parity can be added later if needed.
+async function resolveApprovalFromWeb({ id, decision }) {
+  let foundEntry = null;
+  for (const [dm, queue] of pendingApprovals.entries()) {
+    const idx = queue.findIndex((e) => e.id === id);
+    if (idx === -1) continue;
+    foundEntry = queue[idx];
+    queue.splice(idx, 1);
+    if (queue.length === 0) pendingApprovals.delete(dm);
+    else pendingApprovals.set(dm, queue);
+    break;
+  }
+  if (!foundEntry) return { ok: false, reason: 'not_found' };
+
+  try {
+    emitApprovalResolved(id, decision);
+  } catch (e) {
+    console.warn('[Anton] approval.resolved emit failed:', e.message?.slice(0, 60));
+  }
+
+  // Tell the agent. Fire-and-forget — the HTTP response shouldn't block on
+  // a full agent turn, and any error is logged, not surfaced to the user.
+  const approved = decision === 'approved';
+  const message = approved
+    ? `Noel approved your ${foundEntry.actionType} request: "${foundEntry.summary}". Please execute it now. Original draft:\n${(foundEntry.fullDraft || '').slice(0, 1000)}`
+    : `Noel denied your ${foundEntry.actionType} request: "${foundEntry.summary}". Do not proceed. Stand by.`;
+
+  trackedAsk(foundEntry.member, message, `approval-${decision}-web`).catch((e) => {
+    console.warn('[Anton] agent notify failed:', e.message?.slice(0, 80));
+  });
+
+  return { ok: true };
+}
+
 // ─── Init subsystems ─────────────────────────────────────────
 // V1 Memory (kept for backward compat during migration)
 initMemory(ANTON_ROOT, DATA_DIR);
@@ -940,6 +981,7 @@ startPromise
       const webResult = initWeb({
         approvalsSource: allPendingApprovals,
         memoriesSource: () => listMemories(50),
+        resolveApproval: resolveApprovalFromWeb,
         askAgent: async (agentName, text, onHandoff) => {
           try {
             // Override: @claude forces Claude session
