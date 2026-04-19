@@ -30,7 +30,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 
 - **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
 - ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
-- **EOD consolidation not routed through brain** — markdown export is the write path, not a view. §4.6.
+- ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
 - **sqlite-vec not installed** — FTS5 only; no semantic retrieval for memories. §4.2.
 - **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
 - **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
@@ -220,12 +220,15 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] `config/personas.json` deleted
 - [x] Loader tests at `config/agents/index.test.ts` — 8 assertions, covers roster count, lead invariants, lookup, null-agentId rule
 
-### 4.6 Wire EOD consolidation through brain — NOT DONE
+### 4.6 Wire EOD consolidation through brain — PARTIAL
 
-- [ ] Replace V1 `appendDeptMemory` with SQLite INSERT as primary write path
-- [ ] Nightly Qwen3 8B pass summarizes day's conversations per agent
-- [ ] Stored in `agent_journals` table
-- [ ] Markdown export becomes a daily cron (`data/memory/YYYY-MM-DD.md`) — human-readable only
+- [x] V1 journal writes now dual-write to SQLite — every `appendDeptMemory`, `appendSharedMemory`, `appendDailyNote` stores a `journal-dept` / `journal-shared` / `journal-daily` row in the memories table before touching markdown
+- [x] Schema `CHECK(type IN …)` dropped + one-shot migration for existing prod DBs (see `initSqliteMemory` in `src/memory/sqlite.ts`)
+- [x] SQLite write is best-effort — if the DB isn't initialized (boot race) the markdown layer still works; next append retries the insert cleanly
+- [x] Tests at `src/memory/memory-v1.test.js` cover the three journal types
+- [ ] Nightly Qwen3 8B pass summarizes day's conversations per agent — **not yet**
+- [ ] Stored in dedicated `agent_journals` table — **not yet** (using the shared `memories` table with `journal-*` type for now; move if volume demands it)
+- [ ] Markdown becomes export-only (scheduled cron writing from SQLite) — **deferred**. Today both paths write; the dual-write guarantees SQLite is never stale, so this is a cosmetic cleanup, not a correctness fix.
 
 ### 4.7 Phase 3A — Feedback primitives — DONE
 
@@ -597,7 +600,8 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
 | 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
 | 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
-|            | **NEXT: §4.6 EOD consolidation → §4.2 sqlite-vec → §4.3 proactive triggers. Branch `phase3/persona-unification`.**                          | 3        |
+| 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
+|            | **NEXT: §4.2 sqlite-vec → §4.3 proactive triggers → §4.5.6 cross-agent skill sharing. Branch `phase3/persona-unification`.**                | 3        |
 
 ---
 

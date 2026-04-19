@@ -1,9 +1,24 @@
 // ─── Shared Memory ──────────────────────────────────────────
-// Plain Markdown files for cross-agent knowledge sharing.
-// No database, no graph — just files that agents can read.
+// Dual-write store — SQLite is the source of truth, markdown is a
+// human-readable export. Every append* call writes a row to the
+// memories table first (so buildMemoryContext sees it immediately)
+// and then appends to the markdown file (so Noel can skim by eye).
+// The SQLite write is best-effort: a failure logs and continues to
+// markdown; the markdown layer must never block on DB state.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { storeMemory } from './sqlite.js';
+
+function storeToSqlite(agent, type, content, metadata) {
+  try {
+    storeMemory(agent, type, content, metadata);
+  } catch (e) {
+    // SQLite not initialized yet (early boot) or schema mismatch — log and
+    // keep going so the markdown write still lands.
+    console.warn('[Memory/V1] SQLite write skipped:', e.message?.slice(0, 80));
+  }
+}
 
 let _antonRoot;
 let sharedMemoryFile;
@@ -37,6 +52,7 @@ export function readSharedMemory() {
  * Append an entry to shared memory with timestamp and author.
  */
 export function appendSharedMemory(agentName, content) {
+  storeToSqlite(agentName, 'journal-shared', content, { scope: 'org' });
   const timestamp = new Date().toISOString().split('T')[0];
   const entry = `\n## [${timestamp}] ${agentName}\n${content.trim()}\n`;
   try {
@@ -65,6 +81,7 @@ export function readDeptMemory(dept) {
  * Append to department memory.
  */
 export function appendDeptMemory(dept, agentName, content) {
+  storeToSqlite(agentName, 'journal-dept', content, { scope: 'dept', dept });
   const dir = join(deptDir, dept);
   mkdirSync(dir, { recursive: true });
   const file = join(dir, 'MEMORY.md');
@@ -96,6 +113,7 @@ export function getDailyNote(date) {
  */
 export function appendDailyNote(content) {
   const date = new Date().toISOString().split('T')[0];
+  storeToSqlite('Anton', 'journal-daily', content, { scope: 'daily', date });
   const file = join(dailyDir, `${date}.md`);
   const entry = `\n- **${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}** ${content.trim()}\n`;
   try {
