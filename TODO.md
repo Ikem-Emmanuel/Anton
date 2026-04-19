@@ -143,13 +143,13 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] SAME `systemPrompt` built once at `brain.ts:450` and used by BOTH local responder and Claude — voice drift fixed
 - [x] Claude results written to SQLite via `storeConversation()` on the Claude path
 
-### 3.8 Eval harness — NOT DONE (only genuinely open Phase 2.5 item)
+### 3.8 Eval harness — DONE
 
-- [ ] Convert `tests/brain-e2e.md` checklist into `tests/brain.eval.ts`
-- [ ] 20 test cases minimum, assertable via `vitest`
-- [ ] Cases: greeting, simple Q, code-block, long-input, explicit handoff, yes/no approval, schedule, research request
-- [ ] Asserts: intent, needsClaude, handoffs, handledLocally, latency budgets per depth
-- [ ] Add to `npm test`
+- [x] `tests/brain.eval.test.ts` — 31 assertable cases, runs in CI under 200ms via mocked LLM
+- [x] Three parts: §A pre-gate (16 cases), §B action-tag extraction (9 cases), §C end-to-end process() with mocked chat/classify/claude-fallback (6 cases)
+- [x] Covers: greeting, approval, code-block, long-input, @claude / @local prefix, schedule intent, explicit handoff, invalid handoff target, classifier-driven Claude routing, latency budget
+- [x] Asserts: intent, needsClaude, handoffs, handledLocally, durationMs
+- [x] Wired into `npm test` via the default vitest glob
 
 ### 3.9 Memory spotlighting — DONE (verify wiring)
 
@@ -167,9 +167,9 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] Ollama hang does not block Slack handler (circuit breaker fires)
 - [x] Same question produces same voice regardless of local/Claude path (unified `systemPrompt`)
 - [x] Schema-constrained classifier (format: schema) — no soft JSON mode when schema set
-- [ ] **NOT YET** — Greeting round-trip < 5s on 16GB (needs measurement; §3.8 eval harness would verify)
-- [ ] **NOT YET** — 20 eval cases green in CI (§3.8)
-- [ ] **NOT YET** — Code-block route-to-Claude verified by assertable test (§3.8)
+- [x] 20+ eval cases green in CI (§3.8 — 31 actual cases)
+- [x] Code-block route-to-Claude verified by assertable test (§3.8 §C)
+- [x] Greeting bypass-classifier verified (§3.8 §A) — full-latency end-to-end measurement against live 16GB Ollama still pending (separate perf benchmark, not in eval harness scope)
 
 ---
 
@@ -565,34 +565,35 @@ Upgrade path = edit `config/models.ts` only.
 
 ## 14. Progress Log
 
-| Date       | What                                                                                                                                           | Phase    |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                           | V1       |
-| 2026-04-14 | V2 architecture researched and documented                                                                                                      | Planning |
-| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                            | Planning |
-| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                       | Hardware |
-| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                              | 0        |
-| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                      | 0        |
-| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                       | 0        |
-| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                          | 1        |
-| 2026-04-14 | Brain wired into Slack + web paths                                                                                                             | 1        |
-| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                         | 1        |
-| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                        | 1        |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                       | 4.5      |
-| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                                  | 2        |
-| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                        | 2        |
-| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                        | 1        |
-| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                          | 2.5      |
-| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                              | 2.5      |
-| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                                | 2.5      |
-| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                                 | 4        |
-| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                           | —        |
-| 2026-04-18 | Phase 3.5 skill loop shipped — skills + evaluate + feedback-capture + user_model + skill-extract modules all landed with tests                 | 3.5      |
-| 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                             | 2.5      |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                       | 4.5      |
-| 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints    | 4.5      |
-| 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                             | —        |
-|            | **NEXT: §3.8 brain eval harness (assertable) → then §4.5 persona unification + §4.2 sqlite-vec + §4.6 EOD consolidation → stop claiming done** | 2.5+3    |
+| Date       | What                                                                                                                                        | Phase    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                        | V1       |
+| 2026-04-14 | V2 architecture researched and documented                                                                                                   | Planning |
+| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                         | Planning |
+| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                    | Hardware |
+| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                           | 0        |
+| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                   | 0        |
+| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                    | 0        |
+| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                       | 1        |
+| 2026-04-14 | Brain wired into Slack + web paths                                                                                                          | 1        |
+| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                      | 1        |
+| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                     | 1        |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
+| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                               | 2        |
+| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                     | 2        |
+| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                     | 1        |
+| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                       | 2.5      |
+| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                           | 2.5      |
+| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                             | 2.5      |
+| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                              | 4        |
+| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                        | —        |
+| 2026-04-18 | Phase 3.5 skill loop shipped — skills + evaluate + feedback-capture + user_model + skill-extract modules all landed with tests              | 3.5      |
+| 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                          | 2.5      |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
+| 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints | 4.5      |
+| 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
+| 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
+|            | **NEXT: §4.5 persona unification → §4.6 EOD consolidation → §4.2 sqlite-vec. Phase 2.5 now verifiable, not just asserted.**                 | 3        |
 
 ---
 
