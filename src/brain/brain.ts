@@ -8,7 +8,13 @@
 // config/models.ts. Hardware upgrades change only that file. No model string hardcoded anywhere.
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
-import { buildMemoryContext, buildSkillsContext, storeConversation, updateImplicitSignal } from '../memory/sqlite.js';
+import {
+  buildMemoryContext,
+  buildSkillsContext,
+  createTask,
+  storeConversation,
+  updateImplicitSignal,
+} from '../memory/sqlite.js';
 import { emitEventLogged } from '../spine/web.js';
 import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { buildAmbientContext } from './ambient-context.js';
@@ -55,9 +61,42 @@ function actionToActivityType(type: string): string {
   return 'system';
 }
 
-// Log + broadcast the full action list. Replaces the inline console.log +
-// avoids the web timeline needing to poll for activity. emit is a no-op
-// when the WSS isn't running (sim mode, tests, offline CLI).
+// Map an action to a kanban task row when that makes sense. Returns null
+// when the action doesn't correspond to persistent work (e.g. APPROVE /
+// REJECT — those close approvals, not tasks). Design v1: every qualifying
+// action creates its own task row. Lifecycle tracking (linking a DONE to
+// the HANDOFF that started it) needs task_ids on action tags — deferred.
+function actionToTaskInput(a: AgentAction, speaker: string): Parameters<typeof createTask>[0] | null {
+  const title = a.content ? a.content.slice(0, 140) : `${a.type}${a.target ? `:${a.target}` : ''}`;
+  if (a.type === 'HANDOFF' && a.target) {
+    return { title, owner: a.target, actor: a.target, col: 'flight' };
+  }
+  if (a.type === 'ASK') {
+    // ASK to Noel lands in the FOR YOU column; ASK to another agent is flight.
+    const target = a.target || 'Noel';
+    const toNoel = target === 'Noel';
+    return {
+      title,
+      owner: toNoel ? 'Noel' : target,
+      actor: toNoel ? speaker : target,
+      col: toNoel ? 'incoming' : 'flight',
+      why: toNoel ? a.content : undefined,
+    };
+  }
+  if (a.type === 'DONE') {
+    return { title: `${speaker} completed: ${title}`, owner: speaker, actor: speaker, col: 'done' };
+  }
+  if (a.type === 'BLOCK') {
+    return { title, owner: speaker, actor: speaker, col: 'blocked', why: a.content };
+  }
+  return null;
+}
+
+// Log + broadcast the full action list and persist qualifying actions as
+// kanban tasks. Replaces the inline console.log, drives the web timeline,
+// and keeps the Tasks board in sync. All side effects tolerate a missing
+// WSS / SQLite (sim mode, tests, offline CLI) — emit() and createTask()
+// both no-op when uninitialized.
 function reportActions(actions: AgentAction[], agentName: string): void {
   if (actions.length === 0) return;
   const summary = actions.map((a) => `${a.type}${a.target ? `:${a.target}` : ''}`).join(', ');
@@ -72,6 +111,14 @@ function reportActions(actions: AgentAction[], agentName: string): void {
       text: a.content ? `${headline} — ${a.content.slice(0, 100)}` : headline,
       detail: null,
     });
+    const taskInput = actionToTaskInput(a, agentName);
+    if (taskInput) {
+      try {
+        createTask(taskInput);
+      } catch (e) {
+        console.warn(`[Brain] createTask failed for ${a.type}:`, (e as Error).message?.slice(0, 80));
+      }
+    }
   }
 }
 
