@@ -10,8 +10,8 @@
  *   createHandler(deps) → handle(text, channelId, channelName, ts, userId)
  */
 
-import { TEAM, getDeptMembers, findByName, HANDOFF_RULES } from './team.js';
-import { route, isEveryoneRequest, detectCollaboration, channelToDept } from './router.js';
+import { channelToDept, detectCollaboration, isEveryoneRequest, route } from '../nervous/router.js';
+import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './team.js';
 
 // ─── Intent classification ────────────────────────────────────
 const INTENT_PATTERNS = [
@@ -147,7 +147,10 @@ export function createHandler(deps) {
   // ── Approval gate ──
   async function postApprovalDM(client, dm, entry, queueLength = 0) {
     const { member, actionType, summary, fullDraft } = entry;
-    const preview = fullDraft.replace(/AWAITING_APPROVAL:.+/i, '').trim().slice(0, 600);
+    const preview = fullDraft
+      .replace(/AWAITING_APPROVAL:.+/i, '')
+      .trim()
+      .slice(0, 600);
     const queueNote = queueLength > 1 ? ` _(${queueLength - 1} more queued after this)_` : '';
     await postAs(
       client,
@@ -157,7 +160,7 @@ export function createHandler(deps) {
       `*Approval needed* — ${member.name} (${member.title})${queueNote}\n` +
         `*Action:* ${actionType}\n*Summary:* ${summary}\n\n` +
         `*Draft:*\n${preview}\n\n` +
-        `Reply *yes* to approve or *no* to deny.`,
+        `Reply *yes* to approve or *no* to deny.`
     );
   }
 
@@ -176,25 +179,33 @@ export function createHandler(deps) {
         await postApprovalDM(client, dm, entry, queue.length);
       }
       // 15-min auto-deny
-      setTimeout(() => {
-        const current = pendingApprovals.get(dm) || [];
-        const idx = current.indexOf(entry);
-        if (idx === -1) return;
-        current.splice(idx, 1);
-        if (current.length === 0) {
-          pendingApprovals.delete(dm);
-        } else {
-          pendingApprovals.set(dm, current);
-          if (idx === 0) postApprovalDM(client, dm, current[0], current.length).catch(() => {});
-        }
-        postAs(client, { name: 'Anton' }, dm, undefined,
-          `Approval for ${member.name}'s ${actionType} request timed out (15 min). Automatically denied.`
-        ).catch(() => {});
-        trackedAsk(member,
-          `Your ${actionType} request timed out — Noel didn't respond within 15 minutes. Request cancelled.`,
-          'approval-timeout'
-        ).catch(() => {});
-      }, 15 * 60 * 1000);
+      setTimeout(
+        () => {
+          const current = pendingApprovals.get(dm) || [];
+          const idx = current.indexOf(entry);
+          if (idx === -1) return;
+          current.splice(idx, 1);
+          if (current.length === 0) {
+            pendingApprovals.delete(dm);
+          } else {
+            pendingApprovals.set(dm, current);
+            if (idx === 0) postApprovalDM(client, dm, current[0], current.length).catch(() => {});
+          }
+          postAs(
+            client,
+            { name: 'Anton' },
+            dm,
+            undefined,
+            `Approval for ${member.name}'s ${actionType} request timed out (15 min). Automatically denied.`
+          ).catch(() => {});
+          trackedAsk(
+            member,
+            `Your ${actionType} request timed out — Noel didn't respond within 15 minutes. Request cancelled.`,
+            'approval-timeout'
+          ).catch(() => {});
+        },
+        15 * 60 * 1000
+      );
     } catch (e) {
       console.error('[Anton] Failed to send approval request:', e.message?.slice(0, 100));
     }
@@ -218,20 +229,26 @@ export function createHandler(deps) {
     }
 
     if (approved) {
-      await postAs(client, { name: 'Anton' }, dmChannelId, undefined,
-        `Approved. Telling ${pending.member.name} to proceed.`);
+      await postAs(
+        client,
+        { name: 'Anton' },
+        dmChannelId,
+        undefined,
+        `Approved. Telling ${pending.member.name} to proceed.`
+      );
       const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
-      const result = await trackedAsk(pending.member,
+      const result = await trackedAsk(
+        pending.member,
         `Noel approved your ${pending.actionType} request: "${pending.summary}". ` +
-        `Please execute it now. Original draft:\n${pending.fullDraft.slice(0, 1000)}`,
+          `Please execute it now. Original draft:\n${pending.fullDraft.slice(0, 1000)}`,
         'approval-approved'
       );
       await replaceTyping(client, pending.member, h, result || 'executing...');
     } else {
-      await postAs(client, { name: 'Anton' }, dmChannelId, undefined,
-        `Denied. Notifying ${pending.member.name}.`);
+      await postAs(client, { name: 'Anton' }, dmChannelId, undefined, `Denied. Notifying ${pending.member.name}.`);
       const h = await postTyping(client, pending.member, pending.channelId, pending.ts);
-      const r = await trackedAsk(pending.member,
+      const r = await trackedAsk(
+        pending.member,
         `Noel denied your ${pending.actionType} request: "${pending.summary}". Do not proceed. Stand by.`,
         'approval-denied'
       );
@@ -249,7 +266,7 @@ export function createHandler(deps) {
         const handle_ = await postTyping(client, member, channelId, ts);
         const response = await trackedAsk(
           member,
-          `Team was asked: "${text}". Give YOUR short personal response. 2-3 sentences. Be yourself.`,
+          `Team was asked: "${text}". Give YOUR short personal response. 2-3 sentences. Be yourself.`
         );
         if (response && NO_REPLY_RE.test(response.trim())) {
           await replaceTyping(client, member, handle_, null);
@@ -260,7 +277,9 @@ export function createHandler(deps) {
         console.error(`[Anton] ${member.name} group fail:`, e.message?.slice(0, 100));
       }
     }
-    try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+    try {
+      await addReaction(client, channelId, ts, 'white_check_mark');
+    } catch {}
   }
 
   // ── Collaboration handler ──
@@ -268,14 +287,14 @@ export function createHandler(deps) {
     const h1 = await postTyping(client, collab.from, channelId, ts);
     const question = await trackedAsk(
       collab.from,
-      `You need to ask ${collab.to.name} (${collab.to.title}) about: ${collab.topic}. What's your question?`,
+      `You need to ask ${collab.to.name} (${collab.to.title}) about: ${collab.topic}. What's your question?`
     );
     await replaceTyping(client, collab.from, h1, question || collab.topic);
 
     const h2 = await postTyping(client, collab.to, channelId, ts);
     const answer = await trackedAsk(
       collab.to,
-      `${collab.from.name} asks you: "${question || collab.topic}". Answer directly.`,
+      `${collab.from.name} asks you: "${question || collab.topic}". Answer directly.`
     );
     await replaceTyping(client, collab.to, h2, answer || 'hmm, let me think about that');
 
@@ -283,11 +302,13 @@ export function createHandler(deps) {
       const h3 = await postTyping(client, collab.from, channelId, ts);
       const summary = await trackedAsk(
         collab.from,
-        `${collab.to.name} said: "${answer}". Briefly react or say what you'll do with this info.`,
+        `${collab.to.name} said: "${answer}". Briefly react or say what you'll do with this info.`
       );
       await replaceTyping(client, collab.from, h3, summary || 'got it, thanks');
     }
-    try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+    try {
+      await addReaction(client, channelId, ts, 'white_check_mark');
+    } catch {}
   }
 
   // ── Agent action handler (cascade-safe) ──
@@ -296,25 +317,31 @@ export function createHandler(deps) {
 
     // Approval gate — only check last 200 chars (injection prevention)
     const tail = response.slice(-200);
-    const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—\-]\s*(.+)/i);
+    const approvalMatch = tail.match(/AWAITING_APPROVAL:\s*([\w_]+)\s*[—-]\s*(.+)/i);
     if (approvalMatch) {
       await handleApprovalRequest(
-        member, approvalMatch[1].trim(), approvalMatch[2].trim(),
-        response, channelId, ts, client,
+        member,
+        approvalMatch[1].trim(),
+        approvalMatch[2].trim(),
+        response,
+        channelId,
+        ts,
+        client
       );
       return;
     }
 
     // Text-parse handoffs (safety-net)
     const hasActionContext =
-      /\b(fix|bug|review|test|PTAL|pick up|handle|assign|merge|deploy|check|re-?test|ping me|ready for)\b/i.test(response);
+      /\b(fix|bug|review|test|PTAL|pick up|handle|assign|merge|deploy|check|re-?test|ping me|ready for)\b/i.test(
+        response
+      );
     const alreadyDispatched = new Set();
 
     if (hasActionContext) {
       const negativePatterns = /(?:won't|don't|can't|not|until|before|without)\s+(?:\w+\s+){0,3}/gi;
       const negativeZones = [];
-      let neg;
-      while ((neg = negativePatterns.exec(response)) !== null) {
+      for (const neg of response.matchAll(negativePatterns)) {
         negativeZones.push({ start: neg.index, end: neg.index + neg[0].length + 20 });
       }
 
@@ -347,7 +374,7 @@ export function createHandler(deps) {
               const followUp = await trackedAsk(
                 target,
                 `${member.name} (${member.title}) just said this, and it's directed at you:\n\n"${response.slice(0, 1200)}"\n\nPick up what they're asking you to do. Respond naturally.`,
-                'auto-handoff',
+                'auto-handoff'
               );
               await replaceTyping(client, target, h, followUp || 'got it, looking at it now');
               if (followUp) await handleAgentAction(target, followUp, channelId, ts, client, depth + 1);
@@ -366,29 +393,49 @@ export function createHandler(deps) {
     if (setMatch) {
       const parsed = parseTimeStr(setMatch[1]);
       if (!parsed) {
-        await postAs(client, { name: 'Anton' }, channelId, ts,
-          `Couldn't parse that time. Try "set standup at 9am" or "set standup at 14:30".`);
+        await postAs(
+          client,
+          { name: 'Anton' },
+          channelId,
+          ts,
+          `Couldn't parse that time. Try "set standup at 9am" or "set standup at 14:30".`
+        );
         return true;
       }
       const { hours, minutes } = parsed;
       scheduleJob('daily-standup', hours, minutes, deps.runScheduledStandup || (() => {}));
-      await postAs(client, { name: 'Anton' }, channelId, ts,
-        `Standup set for ${formatTime(hours, minutes)} daily. Riley will DM you.`);
+      await postAs(
+        client,
+        { name: 'Anton' },
+        channelId,
+        ts,
+        `Standup set for ${formatTime(hours, minutes)} daily. Riley will DM you.`
+      );
       return true;
     }
 
     if (/\bcancel\s+standup\b/i.test(text)) {
       const cancelled = cancelJob('daily-standup');
-      await postAs(client, { name: 'Anton' }, channelId, ts,
-        cancelled ? 'Standup cancelled.' : 'No standup scheduled.');
+      await postAs(
+        client,
+        { name: 'Anton' },
+        channelId,
+        ts,
+        cancelled ? 'Standup cancelled.' : 'No standup scheduled.'
+      );
       return true;
     }
 
     if (/\bwhen\s+is\s+standup|what\s+time\s+is\s+standup/i.test(text)) {
       const jobs = listJobs();
       const standup = jobs.find((j) => j.id === 'daily-standup');
-      await postAs(client, { name: 'Anton' }, channelId, ts,
-        standup ? `Standup is at ${standup.time} daily.` : 'No standup scheduled.');
+      await postAs(
+        client,
+        { name: 'Anton' },
+        channelId,
+        ts,
+        standup ? `Standup is at ${standup.time} daily.` : 'No standup scheduled.'
+      );
       return true;
     }
 
@@ -397,7 +444,9 @@ export function createHandler(deps) {
 
   // ── Main handle function ──
   async function handle(text, channelId, channelName, ts, userId, client) {
-    try { await addReaction(client, channelId, ts, 'eyes'); } catch {}
+    try {
+      await addReaction(client, channelId, ts, 'eyes');
+    } catch {}
 
     // Security: only process messages from Noel or bots
     if (NOEL_USER_ID && userId !== NOEL_USER_ID && userId !== 'unknown') {
@@ -408,7 +457,9 @@ export function createHandler(deps) {
     // ── 0. System shutdown/restart ──
     if (/\b(kill all|shut(ting)?\s*down|go (to )?sleep|goodnight|stop everything|shutdown)\b/i.test(text)) {
       await postAs(client, { name: 'Anton' }, channelId, ts, `Shutting down. Goodnight.`);
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return { action: 'shutdown' };
     }
 
@@ -426,20 +477,26 @@ export function createHandler(deps) {
       !/\b(build|create|fix|implement)\b/i.test(text)
     ) {
       await postAs(client, { name: 'Anton' }, channelId, ts, getReport());
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
     // ── Board ──
     if (/\b(board|sprint board|task board|show board)\b/i.test(text)) {
       await postAs(client, { name: 'Anton' }, channelId, ts, getBoardReport());
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
     // ── Schedule commands ──
     if (await handleScheduleCommand(text, channelId, ts, client)) {
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
@@ -464,7 +521,9 @@ export function createHandler(deps) {
       } catch {
         await replaceTyping(client, TEAM.riley, h, 'trouble pulling status right now, try again');
       }
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
@@ -473,7 +532,9 @@ export function createHandler(deps) {
       const h = await postTyping(client, { name: 'Anton' }, channelId, ts);
       const r = await askAnton(text, 'Let me think about that.');
       await replaceTyping(client, { name: 'Anton' }, h, r);
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
@@ -497,9 +558,10 @@ export function createHandler(deps) {
         .filter((m) => new RegExp(`\\b${m.name}\\b`, 'i').test(text))
         .map((m) => m.name);
       const names = mentioned.join(' or ');
-      await postAs(client, { name: 'Anton' }, channelId, ts,
-        `Who do you want — ${names}? Address them directly.`);
-      try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+      await postAs(client, { name: 'Anton' }, channelId, ts, `Who do you want — ${names}? Address them directly.`);
+      try {
+        await addReaction(client, channelId, ts, 'white_check_mark');
+      } catch {}
       return;
     }
 
@@ -515,14 +577,17 @@ export function createHandler(deps) {
 
       if (response && NO_REPLY_RE.test(response.trim())) {
         await replaceTyping(client, member, handle_, null);
-        try { await addReaction(client, channelId, ts, 'eyes'); } catch {}
+        try {
+          await addReaction(client, channelId, ts, 'eyes');
+        } catch {}
         return;
       }
 
-      await replaceTyping(client, member, handle_,
-        response || 'sorry, having trouble — try again or ask Marcus');
+      await replaceTyping(client, member, handle_, response || 'sorry, having trouble — try again or ask Marcus');
       if (response) {
-        try { await addReaction(client, channelId, ts, 'white_check_mark'); } catch {}
+        try {
+          await addReaction(client, channelId, ts, 'white_check_mark');
+        } catch {}
         await handleAgentAction(member, response, channelId, ts, client, 0);
       }
     } catch (e) {

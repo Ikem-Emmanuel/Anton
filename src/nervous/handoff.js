@@ -9,7 +9,7 @@
 //
 // The system handles routing — agents just be themselves.
 
-import { findByName, HANDOFF_RULES, TEAM } from './team.js';
+import { findByName, HANDOFF_RULES, TEAM } from '../brain/team.js';
 
 // Delegation verb patterns — "ask Elena", "ping Marcus", "loop in James"
 const DELEGATION_VERBS = [

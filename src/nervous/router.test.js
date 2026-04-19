@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { route, isEveryoneRequest, channelToDept } from './router.js';
-import { TEAM } from './team.js';
+import { describe, expect, it } from 'vitest';
+import { TEAM } from '../brain/team.js';
+import { channelToDept, isEveryoneRequest, route } from './router.js';
 
 describe('route — direct address at message start', () => {
   it('"James, fix the bug" routes to james', () => {

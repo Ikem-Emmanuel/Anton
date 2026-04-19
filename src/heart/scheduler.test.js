@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mkdirSync } from 'node:fs';
-import { parseTimeStr, formatTime, scheduleJob, cancelJob, listJobs, init } from './scheduler.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { cancelJob, formatTime, init, listJobs, parseTimeStr, scheduleJob } from './scheduler.js';
 
 // Use a fresh tmp directory per test run
 const testRoot = join(tmpdir(), `anton-scheduler-test-${process.pid}`);

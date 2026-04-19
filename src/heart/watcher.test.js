@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { eventBus } from './eventbus.js';
+import { eventBus } from '../nervous/eventbus.js';
 import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from './watcher.js';
 
 // Mock systeminformation

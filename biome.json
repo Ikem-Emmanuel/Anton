@@ -30,7 +30,6 @@
       "!**/data",
       "!**/coverage",
       "!**/.claude",
-      "!**/v1-archive",
       "!**/web/.next",
       "!**/web/public/prototype",
       "!**/Design"

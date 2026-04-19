@@ -4,25 +4,25 @@
  * Uses a real temp directory for persistence. All logic is pure JS — no SDK calls.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  initTaskQueue,
-  createTask,
-  getTask,
-  updateTask,
-  moveTask,
   addComment,
-  getTasksForAgent,
-  getNextTask,
-  getBlockedTasks,
+  createTask,
   getActiveTasks,
   getAllTasks,
-  getSprintSummary,
+  getBlockedTasks,
   getBoardReport,
+  getNextTask,
+  getSprintSummary,
+  getTask,
+  getTasksForAgent,
+  initTaskQueue,
+  moveTask,
+  updateTask,
 } from './taskqueue.js';
 
 let testDir;
@@ -34,7 +34,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  try { rmSync(testDir, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(testDir, { recursive: true, force: true });
+  } catch {}
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -107,7 +109,7 @@ describe('updateTask', () => {
     const t = createTask({ title: 'Original title' });
     const originalUpdated = t.updatedAt;
 
-    await new Promise(r => setTimeout(r, 5)); // ensure timestamp differs
+    await new Promise((r) => setTimeout(r, 5)); // ensure timestamp differs
     const updated = updateTask(t.id, { title: 'New title', priority: 'P1' });
 
     expect(updated.title).toBe('New title');
@@ -251,7 +253,7 @@ describe('getTasksForAgent', () => {
 
     const jamesTasks = getTasksForAgent('James');
     expect(jamesTasks).toHaveLength(2);
-    expect(jamesTasks.every(t => t.assignee === 'James')).toBe(true);
+    expect(jamesTasks.every((t) => t.assignee === 'James')).toBe(true);
   });
 
   it('excludes done tasks', () => {

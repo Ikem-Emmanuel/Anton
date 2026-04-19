@@ -15,7 +15,7 @@ import {
 } from './context.js';
 
 // Mock memory module
-vi.mock('./memory.js', () => ({
+vi.mock('./memory-v1.js', () => ({
   readSharedMemory: vi.fn(() => 'Shared memory: Sprint 8 started.'),
   readDeptMemory: vi.fn((dept) => (dept === 'eng' ? 'Engineering: Auth module shipped.' : '')),
   getDailyNote: vi.fn(() => 'Daily: Marcus reviewed 3 PRs.'),
@@ -66,7 +66,7 @@ describe('context', () => {
     });
 
     it('returns empty string when no memory exists', async () => {
-      const { readSharedMemory, readDeptMemory, getDailyNote } = await import('./memory.js');
+      const { readSharedMemory, readDeptMemory, getDailyNote } = await import('./memory-v1.js');
       readSharedMemory.mockReturnValueOnce('');
       readDeptMemory.mockReturnValueOnce('');
       getDailyNote.mockReturnValueOnce('');

@@ -5,19 +5,13 @@
  * Resets module state between tests by re-importing after temp dir changes.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // We import the module once but reset state by calling initAnalytics with a fresh dir each test.
-import {
-  initAnalytics,
-  trackRequest,
-  trackSession,
-  getReport,
-  getStats,
-} from './analytics.js';
+import { getReport, getStats, initAnalytics, trackRequest, trackSession } from './analytics.js';
 
 let testDir;
 
@@ -28,7 +22,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  try { rmSync(testDir, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(testDir, { recursive: true, force: true });
+  } catch {}
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -47,7 +43,7 @@ describe('initAnalytics', () => {
     expect(stats.totals.tokens_est).toBe(0);
   });
 
-  it('has today\'s date', () => {
+  it("has today's date", () => {
     const stats = getStats();
     const today = new Date().toISOString().split('T')[0];
     expect(stats.date).toBe(today);
@@ -113,7 +109,7 @@ describe('trackRequest', () => {
     // Fixed: use deterministic start times relative to now
     const now = Date.now();
     trackRequest('Omar', now - 1000, true, 0); // 1000ms
-    trackRequest('Omar', now - 500, true, 0);  // 500ms (approx)
+    trackRequest('Omar', now - 500, true, 0); // 500ms (approx)
 
     const agent = getStats().agents['Omar'];
     // avg should be roughly (1000 + 500) / 2 = 750ms — not exact due to Date.now() calls inside
@@ -162,7 +158,7 @@ describe('getReport', () => {
     expect(report.length).toBeGreaterThan(0);
   });
 
-  it('includes today\'s date in the header', () => {
+  it("includes today's date in the header", () => {
     const today = new Date().toISOString().split('T')[0];
     expect(getReport()).toContain(today);
   });

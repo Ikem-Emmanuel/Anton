@@ -16,7 +16,7 @@
  * 12. Shutdown command
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { classifyIntent, createHandler } from './handle.js';
 
 // ─── Shared mock factory ─────────────────────────────────────
@@ -75,7 +75,7 @@ describe('classifyIntent', () => {
       expect(classifyIntent('should I ship this now or wait?')).toBe('personal');
     });
     it('"what do you think about this approach?"', () => {
-      expect(classifyIntent("what do you think about this approach?")).toBe('personal');
+      expect(classifyIntent('what do you think about this approach?')).toBe('personal');
     });
   });
 
@@ -116,11 +116,21 @@ describe('classifyIntent', () => {
   });
 
   describe('approval response intent', () => {
-    it('"yes"', () => { expect(classifyIntent('yes')).toBe('approval_response'); });
-    it('"no"', () => { expect(classifyIntent('no')).toBe('approval_response'); });
-    it('"approved"', () => { expect(classifyIntent('approved')).toBe('approval_response'); });
-    it('"deny"', () => { expect(classifyIntent('deny')).toBe('approval_response'); });
-    it('"do it"', () => { expect(classifyIntent('do it')).toBe('approval_response'); });
+    it('"yes"', () => {
+      expect(classifyIntent('yes')).toBe('approval_response');
+    });
+    it('"no"', () => {
+      expect(classifyIntent('no')).toBe('approval_response');
+    });
+    it('"approved"', () => {
+      expect(classifyIntent('approved')).toBe('approval_response');
+    });
+    it('"deny"', () => {
+      expect(classifyIntent('deny')).toBe('approval_response');
+    });
+    it('"do it"', () => {
+      expect(classifyIntent('do it')).toBe('approval_response');
+    });
   });
 
   describe('task intent', () => {
@@ -136,8 +146,12 @@ describe('classifyIntent', () => {
   });
 
   describe('general (no match)', () => {
-    it('"hello"', () => { expect(classifyIntent('hello')).toBe('general'); });
-    it('"who are you?"', () => { expect(classifyIntent('who are you?')).toBe('general'); });
+    it('"hello"', () => {
+      expect(classifyIntent('hello')).toBe('general');
+    });
+    it('"who are you?"', () => {
+      expect(classifyIntent('who are you?')).toBe('general');
+    });
   });
 });
 
@@ -162,7 +176,10 @@ describe('Personal assistant — DM queries', () => {
 
     // Response sent back
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, 'handle-123', 'Focus on shipping the auth endpoint today.'
+      CLIENT,
+      { name: 'Anton' },
+      'handle-123',
+      'Focus on shipping the auth endpoint today.'
     );
   });
 
@@ -174,7 +191,10 @@ describe('Personal assistant — DM queries', () => {
     await handle('what should I focus on today?', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, 'handle-123', 'Let me think about that.'
+      CLIENT,
+      { name: 'Anton' },
+      'handle-123',
+      'Let me think about that.'
     );
   });
 
@@ -185,7 +205,7 @@ describe('Personal assistant — DM queries', () => {
     await handle('what should I focus on today?', CHANNEL, 'anton-engineering', TS, NOEL_ID, CLIENT);
 
     // Should NOT call postTyping with Anton (since it's not a DM)
-    const antonTyping = deps.postTyping.mock.calls.find(c => c[1]?.name === 'Anton');
+    const antonTyping = deps.postTyping.mock.calls.find((c) => c[1]?.name === 'Anton');
     expect(antonTyping).toBeUndefined();
   });
 });
@@ -234,7 +254,9 @@ describe('Status queries → Riley', () => {
     await handle("what's the status?", CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, expect.objectContaining({ name: 'Riley' }), 'handle-123',
+      CLIENT,
+      expect.objectContaining({ name: 'Riley' }),
+      'handle-123',
       'trouble pulling status right now, try again'
     );
   });
@@ -254,7 +276,10 @@ describe('Standup scheduling', () => {
 
     expect(deps.scheduleJob).toHaveBeenCalledWith('daily-standup', 9, 0, expect.any(Function));
     expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, CHANNEL, TS,
+      CLIENT,
+      { name: 'Anton' },
+      CHANNEL,
+      TS,
       'Standup set for 9:00 AM daily. Riley will DM you.'
     );
   });
@@ -334,7 +359,9 @@ describe('Asking a specific agent', () => {
 
     // Response posted back
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, expect.objectContaining({ name: 'James' }), 'handle-123',
+      CLIENT,
+      expect.objectContaining({ name: 'James' }),
+      'handle-123',
       'On it. Looking at the auth bug now.'
     );
   });
@@ -368,7 +395,10 @@ describe('Asking a specific agent', () => {
 
     // replaceTyping with null (silent removal of typing indicator)
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, expect.objectContaining({ name: 'Marcus' }), 'handle-123', null
+      CLIENT,
+      expect.objectContaining({ name: 'Marcus' }),
+      'handle-123',
+      null
     );
   });
 
@@ -394,9 +424,7 @@ describe('Ambiguous routing — multiple names without direct address', () => {
 
     await handle('Marcus and James should discuss this', CHANNEL, 'anton-engineering', TS, NOEL_ID, CLIENT);
 
-    const postAsCall = deps.postAs.mock.calls.find(
-      (c) => typeof c[4] === 'string' && c[4].includes('Who do you want')
-    );
+    const postAsCall = deps.postAs.mock.calls.find((c) => typeof c[4] === 'string' && c[4].includes('Who do you want'));
     expect(postAsCall).toBeDefined();
     expect(postAsCall[4]).toContain('Marcus');
     expect(postAsCall[4]).toContain('James');
@@ -432,7 +460,10 @@ describe('Approval gate', () => {
 
     expect(deps.openDM).toHaveBeenCalledWith(CLIENT, NOEL_ID);
     expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, 'DM_NOEL', undefined,
+      CLIENT,
+      { name: 'Anton' },
+      'DM_NOEL',
+      undefined,
       expect.stringContaining('Approval needed')
     );
   });
@@ -464,7 +495,10 @@ describe('Approval gate', () => {
     await processApprovalResponse('yes', 'DM_NOEL', CLIENT);
 
     expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, 'DM_NOEL', undefined,
+      CLIENT,
+      { name: 'Anton' },
+      'DM_NOEL',
+      undefined,
       expect.stringContaining('Approved')
     );
     expect(deps.ask).toHaveBeenCalledWith(
@@ -485,7 +519,10 @@ describe('Approval gate', () => {
     await processApprovalResponse('no', 'DM_NOEL', CLIENT);
 
     expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, 'DM_NOEL', undefined,
+      CLIENT,
+      { name: 'Anton' },
+      'DM_NOEL',
+      undefined,
       expect.stringContaining('Denied')
     );
     expect(deps.ask).toHaveBeenCalledWith(
@@ -508,7 +545,7 @@ describe('Approval gate', () => {
     const queue = _pendingApprovals.get('DM_NOEL');
     expect(queue).toHaveLength(2);
     // postAs should only be called once for the first (second is queued)
-    const approvalDMs = deps.postAs.mock.calls.filter(c => c[4]?.includes?.('Approval needed'));
+    const approvalDMs = deps.postAs.mock.calls.filter((c) => c[4]?.includes?.('Approval needed'));
     expect(approvalDMs).toHaveLength(1);
   });
 
@@ -550,7 +587,10 @@ describe('NO_REPLY sentinel', () => {
     await handle('James, status?', CHANNEL, 'anton-engineering', TS, NOEL_ID, CLIENT);
 
     expect(deps.replaceTyping).toHaveBeenCalledWith(
-      CLIENT, expect.objectContaining({ name: 'James' }), 'handle-123', null
+      CLIENT,
+      expect.objectContaining({ name: 'James' }),
+      'handle-123',
+      null
     );
   });
 
@@ -558,14 +598,12 @@ describe('NO_REPLY sentinel', () => {
     const deps = makeDeps();
     const { handle } = createHandler(deps);
     // First call returns NO_REPLY (Marcus), second returns a real response
-    deps.ask
-      .mockResolvedValueOnce('NO_REPLY')
-      .mockResolvedValue('Hey! I\'m Elena.');
+    deps.ask.mockResolvedValueOnce('NO_REPLY').mockResolvedValue("Hey! I'm Elena.");
 
     await handle('introduce yourselves', CHANNEL, 'anton-engineering', TS, NOEL_ID, CLIENT);
 
     // At least one agent should have NO_REPLY (null replace)
-    const nullReplace = deps.replaceTyping.mock.calls.find(c => c[3] === null);
+    const nullReplace = deps.replaceTyping.mock.calls.find((c) => c[3] === null);
     expect(nullReplace).toBeDefined();
   });
 });
@@ -577,7 +615,7 @@ describe('Full team request — everyone handler', () => {
   it('"introduce yourselves" triggers everyone handler (multiple agent calls)', async () => {
     const deps = makeDeps();
     const { handle } = createHandler(deps);
-    deps.ask.mockResolvedValue('Hi! I\'m an agent.');
+    deps.ask.mockResolvedValue("Hi! I'm an agent.");
 
     await handle('introduce yourselves', CHANNEL, 'anton-engineering', TS, NOEL_ID, CLIENT);
 
@@ -645,7 +683,7 @@ describe('Cascade prevention', () => {
     await handleAgentAction(riley, response, CHANNEL, TS, CLIENT, 0);
 
     // No postTyping for Elena (blocked by allowlist)
-    const elenaTyping = deps.postTyping.mock.calls.find(c => c[1]?.name === 'Elena');
+    const elenaTyping = deps.postTyping.mock.calls.find((c) => c[1]?.name === 'Elena');
     expect(elenaTyping).toBeUndefined();
   });
 });
@@ -721,9 +759,7 @@ describe('Shutdown commands', () => {
 
     await handle('goodnight', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
-    expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Shutting down. Goodnight.'
-    );
+    expect(deps.postAs).toHaveBeenCalledWith(CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Shutting down. Goodnight.');
   });
 
   it('"restart" triggers restart message', async () => {
@@ -732,9 +768,7 @@ describe('Shutdown commands', () => {
 
     const result = await handle('restart', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
-    expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Restarting...'
-    );
+    expect(deps.postAs).toHaveBeenCalledWith(CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Restarting...');
     expect(result).toEqual({ action: 'restart' });
   });
 
@@ -746,7 +780,7 @@ describe('Shutdown commands', () => {
     // Should NOT match the Anton restart — it says "restart the backend service"
     await handle('restart the backend service', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
-    const shutdownPost = deps.postAs.mock.calls.find(c => c[4] === 'Restarting...');
+    const shutdownPost = deps.postAs.mock.calls.find((c) => c[4] === 'Restarting...');
     expect(shutdownPost).toBeUndefined();
   });
 });
@@ -808,7 +842,11 @@ describe('System admin responses', () => {
     await handle('analytics', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
     expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Analytics: 10 requests, 4 agents'
+      CLIENT,
+      { name: 'Anton' },
+      CHANNEL,
+      TS,
+      'Analytics: 10 requests, 4 agents'
     );
   });
 
@@ -819,8 +857,6 @@ describe('System admin responses', () => {
 
     await handle('show board', CHANNEL, 'dm', TS, NOEL_ID, CLIENT);
 
-    expect(deps.postAs).toHaveBeenCalledWith(
-      CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Board: 3 in progress, 1 done'
-    );
+    expect(deps.postAs).toHaveBeenCalledWith(CLIENT, { name: 'Anton' }, CHANNEL, TS, 'Board: 3 in progress, 1 done');
   });
 });

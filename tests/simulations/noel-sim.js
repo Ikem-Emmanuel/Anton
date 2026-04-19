@@ -26,10 +26,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ANTON_ROOT = join(__dirname, '..', '..');
 const DATA_DIR = join(ANTON_ROOT, 'data');
 
-import { getReport, initAnalytics, trackRequest } from '../../src/analytics.js';
-import { initLogger, logError, logMessage, logResponse } from '../../src/logger.js';
 // ─── Init subsystems ──────────────────────────────────────────
-import { ask, init as initSessions } from '../../src/sessions.js';
+import { ask, init as initSessions } from '../../src/memory/sessions.js';
+import { getReport, initAnalytics, trackRequest } from '../../src/nervous/analytics.js';
+import { initLogger, logError, logMessage, logResponse } from '../../src/nervous/logger.js';
 
 initSessions(ANTON_ROOT, DATA_DIR);
 initAnalytics(DATA_DIR);
@@ -95,7 +95,7 @@ async function noel(member, message, scenarioId) {
 }
 
 // ─── TEAM references ──────────────────────────────────────────
-import { TEAM } from '../../src/team.js';
+import { TEAM } from '../../src/brain/team.js';
 
 // ─── Simulation ───────────────────────────────────────────────
 const results = [];

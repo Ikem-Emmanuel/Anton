@@ -35,7 +35,8 @@ export async function replaceTyping(client, member, handle, text) {
     await client.chat.update({ channel: handle.channelId, ts: handle.ts, text });
   } catch {
     await client.chat.postMessage({
-      channel: handle.channelId, text,
+      channel: handle.channelId,
+      text,
       username: member.name || 'Anton',
       icon_emoji: ':bust_in_silhouette:',
     });

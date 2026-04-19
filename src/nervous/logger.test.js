@@ -5,21 +5,21 @@
  * Verifies that every log function writes valid JSONL with correct structure.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  getAgentSummary,
   initLogger,
+  logAsanaAction,
+  logError,
+  logHandoff,
   logMessage,
   logResponse,
-  logError,
   logSession,
   logToolUse,
-  logHandoff,
-  logAsanaAction,
-  getAgentSummary,
 } from './logger.js';
 
 let testDir;
@@ -31,7 +31,7 @@ function getLogLines(agentName) {
   return readFileSync(file, 'utf-8')
     .split('\n')
     .filter(Boolean)
-    .map(l => JSON.parse(l));
+    .map((l) => JSON.parse(l));
 }
 
 beforeEach(() => {
@@ -41,7 +41,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  try { rmSync(testDir, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(testDir, { recursive: true, force: true });
+  } catch {}
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -296,7 +298,7 @@ describe('getAgentSummary', () => {
 // Multiple agents in the same run
 // ─────────────────────────────────────────────────────────────
 describe('multi-agent logging isolation', () => {
-  it('James logs do not appear in Elena\'s log file', () => {
+  it("James logs do not appear in Elena's log file", () => {
     logMessage('James', 'James message', 'dm');
     logMessage('Elena', 'Elena message', 'dm');
 

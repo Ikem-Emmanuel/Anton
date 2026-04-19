@@ -4,10 +4,10 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
-import { trackSession } from './analytics.js';
+import { findByName } from '../brain/team.js';
+import { trackSession } from '../nervous/analytics.js';
+import { logHandoff, logSession, logToolUse } from '../nervous/logger.js';
 import { getContextForAgent, resetSessionMessageCount, trackSessionMessage } from './context.js';
-import { logHandoff, logSession, logToolUse } from './logger.js';
-import { findByName } from './team.js';
 
 const sessions = new Map(); // agentKey → { session, sessionId }
 const sessionLanes = new Map(); // agentName → current in-flight Promise

@@ -4,10 +4,10 @@
 // agent (model: sonnet) which reads them with the Read tool.
 // No @anthropic-ai/sdk dependency needed — stays on Noel's plan.
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import { promises as fs, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 
 export function initVision() {
   console.log('[Vision] Subscription-mode vision enabled (Sonnet)');
@@ -26,10 +26,7 @@ async function downloadToTemp(imageUrl, botToken, ext = 'jpg') {
   });
   if (!res.ok) throw new Error(`Slack image download failed: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
-  const path = join(
-    tmpdir(),
-    `anton-vision-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`,
-  );
+  const path = join(tmpdir(), `anton-vision-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`);
   await fs.writeFile(path, buf);
   return path;
 }
@@ -97,9 +94,5 @@ export async function describeImages(imageFiles, botToken, userText = '') {
 
 // Legacy single-image compat — used by existing callers
 export async function describeImage(imageUrl, botToken, userText) {
-  return describeImages(
-    [{ url_private: imageUrl, mimetype: 'image/jpeg' }],
-    botToken,
-    userText,
-  );
+  return describeImages([{ url_private: imageUrl, mimetype: 'image/jpeg' }], botToken, userText);
 }

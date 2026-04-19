@@ -18,7 +18,7 @@ import { readdirSync, readFileSync, statSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import si from 'systeminformation';
-import { eventBus } from './eventbus.js';
+import { eventBus } from '../nervous/eventbus.js';
 
 const execAsync = promisify(exec);
 
