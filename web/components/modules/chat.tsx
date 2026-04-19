@@ -10,15 +10,11 @@
 // in the conversation as a system bubble so the UI never silently swallows
 // service outages.
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { postChat } from '@/lib/api/chat';
+import { useChat } from '@/hooks/use-chat';
 import { cn } from '@/lib/cn';
-import { ANTON_MSGS, CHAT_THREADS, type ChatMessage, type ChatThread } from '@/lib/data';
-
-function formatTime(d: Date): string {
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+import { CHAT_THREADS, type ChatMessage, type ChatThread } from '@/lib/data';
 
 function ThreadAvatar({ thread, size = 32 }: { thread: ChatThread; size?: number }) {
   const rounded = thread.group ? 'rounded' : 'rounded-full';
@@ -247,51 +243,11 @@ function Conversation({
 }
 
 export default function Chat() {
-  const [activeId, setActiveId] = useState('anton');
-  // Seed the Anton thread with the scripted opening; other threads start empty.
-  const [byThread, setByThread] = useState<Record<string, ChatMessage[]>>({ anton: ANTON_MSGS });
-  const [sending, setSending] = useState(false);
-
-  const thread = useMemo(() => CHAT_THREADS.find((t) => t.id === activeId) ?? CHAT_THREADS[0], [activeId]);
-  const messages = byThread[activeId] ?? [];
-
-  const appendMessage = (threadId: string, msg: ChatMessage) => {
-    setByThread((prev) => ({ ...prev, [threadId]: [...(prev[threadId] ?? []), msg] }));
-  };
-
-  const handleSend = async (text: string) => {
-    const tid = activeId;
-    const agentName = thread.name.replace(/^#\s*/, '');
-    appendMessage(tid, { from: 'noel', t: formatTime(new Date()), text });
-    setSending(true);
-    try {
-      const res = await postChat(agentName, text);
-      appendMessage(tid, {
-        from: 'anton',
-        t: formatTime(new Date()),
-        text: res.text,
-        meta: { model: 'qwen3:8b' },
-      });
-      for (const h of res.handoffs ?? []) {
-        appendMessage(tid, {
-          from: 'anton',
-          t: formatTime(new Date()),
-          text: h.text,
-          meta: { handoff: h.agent },
-        });
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      appendMessage(tid, { from: 'anton', t: formatTime(new Date()), text: `⚠ ${msg}` });
-    } finally {
-      setSending(false);
-    }
-  };
-
+  const { activeId, setActiveId, thread, messages, sending, send } = useChat();
   return (
     <div className="flex h-full">
       <ThreadList activeId={activeId} onSelect={setActiveId} />
-      <Conversation thread={thread} messages={messages} onSend={handleSend} sending={sending} />
+      <Conversation thread={thread} messages={messages} onSend={send} sending={sending} />
     </div>
   );
 }
