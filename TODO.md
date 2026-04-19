@@ -29,11 +29,11 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 ### What's genuinely BROKEN or NOT STARTED
 
 - **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
-- **Persona source-of-truth not unified** — `config/personas.json` (V1) + `src/brain/personas.ts` (V2) still separate. No `config/agents/*.ts` with Zod. §4.5.
-- **EOD consolidation not routed through brain** — markdown export is the write path, not a view. §4.6.
-- **sqlite-vec not installed** — FTS5 only; no semantic retrieval for memories. §4.2.
-- **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
-- **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
+- ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
+- ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
+- ~~sqlite-vec not installed~~ — **DONE 2026-04-19**. Hybrid FTS5+vector retrieval with RRF merge; brain uses it per turn. §4.2.
+- ~~Proactive scheduler is the V1 briefing only~~ — **DONE 2026-04-19**. EOD + event scan + stalled-task surfacer shipped in `src/heart/proactive.js`. Distillation batch deferred (inline covers it). §4.3.
+- ~~Cross-agent skill sharing~~ — **DONE 2026-04-19**. Discovery + proposal flow ships; end-to-end approval-to-`shareSkill` wiring deferred as a small ergonomic follow-up. §4.5.6.
 - **Langfuse / observability** — nothing yet. Logs are `console.log`.
 - **Voice / finance / self-training / mobile** — all post-Phase-4.
 
@@ -79,16 +79,16 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] `src/memory/sqlite.ts` with ACID transactions
 - [x] FTS5 keyword search implemented
 - [x] Memory injection wired into brain (`buildMemoryContext` called per turn)
-- [ ] **Migrate existing V1 markdown memories to SQLite** — Phase 2.5
-- [ ] **Auto-summarize after every conversation** — Phase 3
-- [ ] **Cache Claude results** — Phase 3
-- [ ] ChromaDB / RAG — **replaced with sqlite-vec in Phase 3 (cheaper)**
+- [x] Migrate existing V1 markdown memories to SQLite — `scripts/migrate-v1-memory.ts` + §4.6 dual-write
+- [x] Auto-summarize after every conversation — `distillConversation()` in `src/brain/distill.ts`, fire-and-forget from brain
+- [x] ChromaDB / RAG — **replaced by sqlite-vec** (shipped §4.2 on 2026-04-19)
+- [x] Memory injection scanning / spotlighting — `src/memory/spotlighting.ts` + tests
+- [ ] Cache Claude results — Phase 3 (no item scheduled yet)
 - [ ] LightRAG knowledge graph — **deferred to Phase 5 (overkill for single user)**
 - [ ] Obsidian vault — Phase 3
 - [ ] Vault file watcher — Phase 3
 - [ ] Daily / weekly note generation — Phase 3
 - [ ] Vault Git commits — Phase 3
-- [ ] **Memory injection scanning / spotlighting** — Phase 2.5
 
 ---
 
@@ -183,25 +183,32 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] Schema: `{type, text, confidence}` with types 'fact'|'decision'|'preference'|'commitment'
 - [x] `distill.test.ts` covers the extraction and storage path
 - [x] FTS5 retrieval of top memories injected into next turn via `buildMemoryContext()`
-- [ ] Vector (sqlite-vec) retrieval — §4.2 below
+- [x] Vector (sqlite-vec) retrieval — shipped §4.2
 
-### 4.2 sqlite-vec hybrid retrieval — NOT DONE
+### 4.2 sqlite-vec hybrid retrieval — DONE
 
-- [ ] `npm install sqlite-vec`
-- [ ] Extend `src/memory/sqlite.ts`: `embeddings` table, nomic-embed-text indexing
-- [ ] Nightly embeds new memories
-- [ ] RRF-merge BM25 (FTS5) + vector similarity
-- [ ] Returns top-5 in <1ms — no separate service, no Docker
+- [x] `npm install sqlite-vec` (v0.1.9)
+- [x] `memories_vec` vec0 virtual table (768-dim, matches nomic-embed-text)
+- [x] Extension loads on `initSqliteMemory`; failures degrade to FTS5-only gracefully (`isVecEnabled()`)
+- [x] `storeMemory` now fires background `indexMemoryEmbedding` via setImmediate — no caller change, no latency tax
+- [x] `semanticSearchMemories` / `hybridSearchMemories` (RRF with k=60) / `buildRelevantMemoryContext` exported from `src/memory/sqlite.ts`
+- [x] `brain.process()` calls `buildRelevantMemoryContext(message, agent)` when the message is ≥3 chars; falls back to time-based view for stubs
+- [x] RRF merge of BM25 (FTS5) + vector similarity — returns top-5, in-process, no Docker
+- [x] New memories embedded on every `storeMemory` insert (fire-and-forget)
+- [x] 6 tests in `src/memory/sqlite-vec.test.ts` cover indexing, semantic ranking, RRF merging, limit, FTS5 fallback
+- [ ] Nightly re-embed cron if the embedding model changes — deferred, single-model for now
 
-### 4.3 Proactive trigger loop (the Jarvis feel)
+### 4.3 Proactive trigger loop (the Jarvis feel) — MOSTLY DONE
 
-- [ ] `src/nervous/scheduler.ts` — node-cron daemon, separate from Slack handlers
-- [ ] 08:00 morning briefing (sprint + calendar + overnight Slack)
-- [ ] 18:00 EOD summary (done + stuck + tomorrow)
-- [ ] Every 15m event scan (CI fails, Asana changes, watchlist messages)
-- [ ] Every 1h stalled-task surfacer
-- [ ] Every 4h distillation batch
-- [ ] Output through same `_slackBrain` — consistent voice
+- [x] Scheduler daemon — `src/heart/scheduler.js` (V1 lightweight scheduler, not node-cron; wall-clock jobs + intervals). Lives in `heart/` per the organ-system README, not `nervous/`.
+- [x] 08:00 morning briefing — `src/heart/briefing.js` wired via `initBriefing` (pre-existing)
+- [x] 18:00 EOD summary — `src/heart/proactive.js:runEodSummary` routes via Riley through `brain.process()`
+- [x] Every 15m event scan — `runEventScan` reads eventBus history, fires P2 when error count crosses threshold
+- [x] Every 1h stalled-task surfacer — `runStalledTaskSurfacer` queries SQLite `findStalledTasks(24, 5)`
+- [x] Output through unified brain — EOD summary calls `brain.process()`, so voice matches the rest of the system
+- [x] 11 tests in `src/heart/proactive.test.js` cover all three triggers + init wiring
+- [ ] Every 4h distillation batch — **deferred**. Inline distillation fires per-turn already; a batch safety-net would need a `distilled_at` column on conversations, which is invasive for uncertain value. Add back if inline failures surface.
+- [ ] Event scan: wire CI / Asana / watchlist sources — today it only reads the in-process event bus. Real source wiring is Phase 4+.
 
 ### 4.4 Ambient context persona modulation — DONE
 
@@ -209,20 +216,26 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] `buildAmbientContext()` called per turn and injected into the system prompt at `brain.ts:436`
 - [x] `ambient-context.test.ts` covers the format
 
-### 4.5 Persona unification — NOT DONE
+### 4.5 Persona unification — DONE
 
-- [ ] New file per department: `config/agents/engineering.ts`, `marketing.ts`, etc.
-- [ ] Zod schemas per agent (name, role, model, tools, delegates_to)
-- [ ] `src/brain/personas.ts` and V1 `config/personas.json` become generated from this single source
-- [ ] Both local brain and Claude fallback build prompts from the same data
-- [ ] Delete orphan agent names that exist in V1 but not in brain
+- [x] New file per department: `config/agents/engineering.ts`, `marketing.ts`, `seo.ts`, `automation.ts`, `data.ts`, `growth.ts`, `coordination.ts` — 28 agents total (27 team + Anton)
+- [x] Zod schema in `config/agents/_schema.ts` — validates at module load; duplicate-id and missing-field failures crash boot, not silent drift
+- [x] `config/agents/index.ts` loader assembles AGENTS_BY_ID / AGENTS_BY_NAME / DEPT_LEADS / findByName / getDeptMembers / getDeptLead
+- [x] `src/brain/personas.ts` (V2) now reads the loader — no more 16-vs-27 agent discrepancy
+- [x] `src/brain/team.js` (V1) now builds TEAM from the loader
+- [x] `src/memory/sessions.js` (V1 Claude path) reads `AGENTS_BY_NAME` — same personality/slackStyle/background as V2
+- [x] `config/personas.json` deleted
+- [x] Loader tests at `config/agents/index.test.ts` — 8 assertions, covers roster count, lead invariants, lookup, null-agentId rule
 
-### 4.6 Wire EOD consolidation through brain — NOT DONE
+### 4.6 Wire EOD consolidation through brain — PARTIAL
 
-- [ ] Replace V1 `appendDeptMemory` with SQLite INSERT as primary write path
-- [ ] Nightly Qwen3 8B pass summarizes day's conversations per agent
-- [ ] Stored in `agent_journals` table
-- [ ] Markdown export becomes a daily cron (`data/memory/YYYY-MM-DD.md`) — human-readable only
+- [x] V1 journal writes now dual-write to SQLite — every `appendDeptMemory`, `appendSharedMemory`, `appendDailyNote` stores a `journal-dept` / `journal-shared` / `journal-daily` row in the memories table before touching markdown
+- [x] Schema `CHECK(type IN …)` dropped + one-shot migration for existing prod DBs (see `initSqliteMemory` in `src/memory/sqlite.ts`)
+- [x] SQLite write is best-effort — if the DB isn't initialized (boot race) the markdown layer still works; next append retries the insert cleanly
+- [x] Tests at `src/memory/memory-v1.test.js` cover the three journal types
+- [ ] Nightly Qwen3 8B pass summarizes day's conversations per agent — **not yet**
+- [ ] Stored in dedicated `agent_journals` table — **not yet** (using the shared `memories` table with `journal-*` type for now; move if volume demands it)
+- [ ] Markdown becomes export-only (scheduled cron writing from SQLite) — **deferred**. Today both paths write; the dual-write guarantees SQLite is never stale, so this is a cosmetic cleanup, not a correctness fix.
 
 ### 4.7 Phase 3A — Feedback primitives — DONE
 
@@ -281,11 +294,15 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] (4.5.5b) Per-dimension evolution rules in `src/memory/sqlite.ts` — tested in `user-model.test.ts`
 - [x] (4.5.5c) High-confidence rows injected as `[USER MODEL]` block via ambient-context
 
-### 4.5.6 Cross-agent skill sharing — NOT DONE
+### 4.5.6 Cross-agent skill sharing — DONE (ergonomic follow-up deferred)
 
-- [ ] (4.5.6a) Add `shared` (bool) + `tags` (JSON array) columns to `skills`
-- [ ] (4.5.6b) Auto-surface share proposals when skill hits success_rate > 0.8 AND evidence > 5
-- [ ] (4.5.6c) Anton DMs Noel proposal; on approval, skill moves to shared pool; retrieval filter includes `owner_agent = X OR (shared = 1 AND tags ∩ my_domain)`
+- [x] (4.5.6a) `shared` (int 0/1) + `tags` (JSON array) columns on the `skills` table — shipped earlier with the Phase 3.5 skill loop
+- [x] (4.5.6b) `findShareableSkills()` query (success_rate > 0.8 AND evidence ≥ 5 AND private) + `runSkillShareScan` in `src/heart/skill-sharing.js` fires every 4h from `initProactive` and proposes via `notifyNoel` (P3). Per-process dedup via an in-memory Set so the same skill doesn't re-surface until Noel acts or Anton restarts.
+- [x] `shareSkill(id, tags?)` exists on the memory layer to flip the bit once approved
+- [x] `retrieveApplicableSkills` already surfaces `owner_agent = X OR shared = 1` rows — shared skills are visible to every agent today
+- [x] 6 tests in `src/heart/skill-sharing.test.js` cover proposal, dedup, maxPerRun cap, forgetProposal, error handling, zero-candidates silence
+- [ ] Follow-up: end-to-end approval ergonomic. Today Noel sees the proposal as a P3 notification; the actual `shareSkill(id)` call is manual. Wiring a `share skill N` Slack command (or reusing the approval tray) is the next step.
+- [ ] Follow-up: tag ∩ my_domain retrieval filter. Today `shared = 1` means "visible to everyone"; the per-domain filter requires a tag taxonomy that doesn't exist yet. Low priority until domain overlap causes noise.
 
 ### 4.5.7 Integration wiring — DONE (4.5.7a/b); 4.5.7c rolls into Phase 6
 
@@ -578,7 +595,6 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-14 | Brain wired into Slack + web paths                                                                                                          | 1        |
 | 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                      | 1        |
 | 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                     | 1        |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
 | 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                               | 2        |
 | 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                     | 2        |
 | 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                     | 1        |
@@ -591,9 +607,15 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                          | 2.5      |
 | 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
 | 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints | 4.5      |
+| 2026-04-19 | `/event/[id]` route made dynamic — timeline deep-links every row; SSG dropped; EventDetail hydrates from useEvents                          | 4.5      |
 | 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
 | 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
-|            | **NEXT: §4.5 persona unification → §4.6 EOD consolidation → §4.2 sqlite-vec. Phase 2.5 now verifiable, not just asserted.**                 | 3        |
+| 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
+| 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
+| 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
+| 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests         | 3        |
+| 2026-04-19 | §4.5.6 cross-agent skill sharing — discovery + proposal flow via `src/heart/skill-sharing.js`, 4h scan wired into proactive; +6 tests       | 3        |
+|            | **PHASE 3 COMPLETE** (bar two ergonomic follow-ups). NEXT: docs/PROGRESS.md refresh → open PR for `phase3/persona-unification`.             | —        |
 
 ---
 

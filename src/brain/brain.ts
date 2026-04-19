@@ -10,6 +10,7 @@
 import { detectTier, models, taskRouting } from '../../config/models.js';
 import {
   buildMemoryContext,
+  buildRelevantMemoryContext,
   buildSkillsContext,
   createTask,
   storeConversation,
@@ -415,9 +416,15 @@ export async function process(
 
   // Build system prompt once — used by BOTH local responder and Claude fallback
   // so voice is consistent across paths. This is the fix for the "voice drift" bug.
+  // Memory retrieval (§4.2): prefer query-aware hybrid search (FTS5 + vec, RRF
+  // merged) when the message is long enough to retrieve against; fall back to
+  // the time-based recent view for stubs like "hi" / "ok".
   let memoryContext = '';
   try {
-    memoryContext = buildMemoryContext(options?.agent);
+    memoryContext =
+      message.trim().length >= 3
+        ? await buildRelevantMemoryContext(message, options?.agent)
+        : buildMemoryContext(options?.agent);
   } catch {}
 
   // Skill retrieval (Phase 3.5 §4.5.1) — keyed on the incoming request's

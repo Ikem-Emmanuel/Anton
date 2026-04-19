@@ -90,4 +90,44 @@ describe('memory', () => {
       expect(content).toContain('Elena shipped');
     });
   });
+
+  // §4.6 dual-write — every markdown append also writes a row to SQLite so
+  // buildMemoryContext sees V1 journals alongside V2 distillations. Nightly
+  // consolidation can then read from SQLite (one store) rather than parsing
+  // markdown (N files per agent).
+  describe('dual-write to SQLite', () => {
+    it('appendDeptMemory writes a journal-dept row for the author', async () => {
+      const { initSqliteMemory, searchMemories } = await import('./sqlite.js');
+      initSqliteMemory(join(tempDir, 'test.db'));
+
+      appendDeptMemory('eng', 'James', 'Shipped the auth endpoint. PR #42 merged.');
+
+      const rows = searchMemories('auth endpoint', { type: 'journal-dept' });
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0].agent).toBe('James');
+      expect(rows[0].content).toContain('auth endpoint');
+    });
+
+    it('appendSharedMemory writes a journal-shared row', async () => {
+      const { initSqliteMemory, searchMemories } = await import('./sqlite.js');
+      initSqliteMemory(join(tempDir, 'test.db'));
+
+      appendSharedMemory('Riley', 'Sprint 8 kicked off');
+
+      const rows = searchMemories('Sprint 8', { type: 'journal-shared' });
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0].agent).toBe('Riley');
+    });
+
+    it('appendDailyNote writes a journal-daily row', async () => {
+      const { initSqliteMemory, searchMemories } = await import('./sqlite.js');
+      initSqliteMemory(join(tempDir, 'test.db'));
+
+      appendDailyNote('EOD: auth shipped, dashboard 80%');
+
+      const rows = searchMemories('auth shipped', { type: 'journal-daily' });
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0].type).toBe('journal-daily');
+    });
+  });
 });

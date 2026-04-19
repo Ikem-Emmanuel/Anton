@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk';
+import { AGENTS_BY_NAME } from '../../config/agents/index.js';
 import { findByName } from '../brain/team.js';
 import { trackSession } from '../nervous/analytics.js';
 import { logHandoff, logSession, logToolUse } from '../nervous/logger.js';
@@ -24,16 +25,14 @@ export function consumeHandoffs(agentName) {
 let sessionsFile;
 let _projectRoot;
 const NOEL_ID = 'U0ACB02JTTN';
-let personasData = {};
+
+// Persona data lives in config/agents/ — one file per department, Zod-validated.
+// The legacy config/personas.json was retired in the §4.5 unification; both
+// V1 (this file) and V2 (src/brain/personas.ts) read the same source.
 
 export function init(antonRoot, dataDir) {
   sessionsFile = join(dataDir, 'sessions.json');
   _projectRoot = antonRoot;
-
-  // Load personas from config/
-  try {
-    personasData = JSON.parse(readFileSync(join(antonRoot, 'config', 'personas.json'), 'utf-8'));
-  } catch {}
 
   // Restore saved session IDs
   try {
@@ -58,12 +57,12 @@ function save() {
 }
 
 function buildPersonaPrompt(member) {
-  const p = personasData[member.name.toLowerCase()] || {};
+  const p = AGENTS_BY_NAME[member.name] || {};
   return [
     `You are ${member.name}, ${member.title} at Anton. You are a real person.`,
     ``,
     `WHO YOU ARE: ${p.personality || 'Professional, friendly, direct.'}`,
-    `HOW YOU WRITE: ${p.slack_style || 'Concise, casual.'}`,
+    `HOW YOU WRITE: ${p.slackStyle || 'Concise, casual.'}`,
     `BACKGROUND: ${p.background || 'Experienced in your domain.'}`,
     ``,
     `VOICE RULES:`,
