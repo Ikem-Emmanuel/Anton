@@ -355,6 +355,178 @@ Current: V1 nightly job writes markdown files that brain never reads.
 
 New: nightly job runs a Qwen3 8B pass over the day's SQLite conversations, generates per-agent summaries, stores them in `agent_journals`. `buildMemoryContext()` includes the last-N journal entries for the calling agent. V1's markdown export becomes a sidecar for human browsing.
 
+### 4.7 Feedback loops + state machine (Phase 3B — see `docs/RESEARCH-MULTI-AGENT.md`)
+
+Agent-to-agent bidirectional comms: ASK/BLOCK/APPROVE/REJECT/DONE tags alongside HANDOFF. New SQLite tables (`tasks`, `task_events`, `pending_asks`) + `brain.transition()` pure function with authority table. Hop-counter (max 20) + retry-counter (max 3) + semantic ask dedup guards against the 17× error amplification documented for unstructured multi-agent networks. Plus `ANTON_SIM_MODE` fixture runner so tests don't need live Ollama. 15-point implementation checklist lives in the research doc.
+
+---
+
+## 4.5. Phase 3.5 — Skill Loop (Hermes-inspired, ~12 hrs)
+
+> **Why a dedicated phase:** Hermes Agent's learning loop (`execute → evaluate → extract → refine → retrieve`) + cross-session user model is what separates stateful agents from stateless chatbots. Anton has `execute` (brain) and `extract` (distillation §4.1 shipped). The other three steps — plus user-model structure + cross-agent sharing — compose into a **Skill Loop** that slots _between_ memory (Phase 2/3) and training (Phase 6). Skills improve _within-session_; DPO improves weights _across weeks_. They don't conflict.
+
+**Covers all 7 gaps identified:** named skill library (3.5.1), outcome evaluation (3.5.2), implicit feedback capture (3.5.3), skill retrieval at planning time (3.5.1), skill refinement on better-approach-emerges (3.5.4), structured user model with 4 Hermes dimensions (3.5.5), cross-agent skill sharing (3.5.6).
+
+### 3.5.1 Named skill library with `context_pattern → approach` keying (3 hrs)
+
+Anton distills **facts** today (Phase 3 §4.1 shipped). Skills are a different primitive: reusable **reasoning templates** keyed on _context pattern_ (the shape of the situation) rather than on domain facts. Example: context `"designing auth flow with MFA"` → approach `"(1) enumerate factors, (2) pick primary + fallback, (3) decide session binding, (4) add rate limiting"`.
+
+```sql
+CREATE TABLE skills (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,                  -- "Design MFA auth flow"
+  context_pattern TEXT NOT NULL,        -- embedding-searchable description of WHEN this applies
+  approach TEXT NOT NULL,               -- JSON: {steps[], artifacts_expected[], pitfalls[]}
+  owner_agent TEXT NOT NULL,            -- agent who authored the skill (Marcus, James, ...)
+  success_count INTEGER DEFAULT 0,
+  failure_count INTEGER DEFAULT 0,
+  source_task_id TEXT,
+  supersedes_id INTEGER REFERENCES skills(id),  -- linked list of revisions (see §3.5.4)
+  deprecated INTEGER DEFAULT 0,
+  embedding BLOB,                       -- for retrieval (sqlite-vec)
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+**Retrieval at planning time** (the part that differs from normal memory injection): when `brain.process()` receives a task, in addition to the FTS5 + vec memory retrieval, do a dedicated skill lookup:
+
+```ts
+// New function in src/memory/skills.ts
+export function retrieveApplicableSkills(
+  request: string,
+  agent: string,
+  topK = 3,
+): Skill[] {
+  // embed(request) → nearest N non-deprecated skills where owner_agent = agent OR shared = 1
+  // rank by success_rate * similarity
+}
+```
+
+Inject selected skills into the system prompt as `[APPLICABLE SKILLS]` — a new context block, distinct from `[ORG MEMORY]` and `[AMBIENT]`, listing each skill's `title + approach`. The responder is instructed to follow these patterns unless there's a reason to deviate.
+
+### 3.5.2 Outcome-evaluation pass — writes success/fail verdict per turn (2 hrs)
+
+Missing from Phases 2.5–3 today: no turn-level success/fail verdict gets written. Phase 6's `quality signal detector` only produces DPO pairs, not per-turn evaluation. Fix: after every `brain.process()` response completes (local or Claude), an async judge pass scores the output on 4 criteria:
+
+1. **Task-addressed** — does the response address what was asked? (0–1)
+2. **Role-appropriate** — is the output suitable for the agent's role? (0–1)
+3. **Hallucination-free** — no invented library names, nonexistent APIs, fictional team members (0–1)
+4. **Action-ready** — does it produce usable artifacts (code, plan, decision) or hand off? (0–1)
+
+Mean < 0.6 → mark turn as `verdict: 'bad'`. Mean ≥ 0.8 → mark as `verdict: 'good'`. Middle → `verdict: 'neutral'`. Store in a new `turn_evaluations` table keyed to the conversation row. These verdicts are the primary skill-refinement signal (§3.5.4) and become DPO positive/negative pairs later (Phase 6 reuses them).
+
+```sql
+CREATE TABLE turn_evaluations (
+  conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id),
+  verdict TEXT NOT NULL CHECK(verdict IN ('good','neutral','bad')),
+  task_addressed REAL NOT NULL,
+  role_appropriate REAL NOT NULL,
+  hallucination_free REAL NOT NULL,
+  action_ready REAL NOT NULL,
+  evaluated_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+Judge model: Qwen3 8B, `think:false`, schema-constrained, 5s timeout, fire-and-forget. On Mac Studio: Qwen3.6-35B-A3B with its 50 tok/s is fast enough to not be async.
+
+### 3.5.3 Implicit feedback capture — accepted vs corrected (1.5 hrs)
+
+Missing today: we capture raw conversation turns but **nothing scores them on Noel's next-turn signal**. Hermes's primitive is: if Noel's next message treats the agent's output as accepted (builds on it, says "yes", "go", "ship"), that's a positive implicit signal. If Noel's next message is a correction ("no, like this", "actually", edit distance > threshold), that's negative.
+
+Implementation: a second pass when the _next_ user turn arrives:
+
+```ts
+// src/brain/feedback-capture.ts
+export function captureImplicitFeedback(
+  previousAgentTurn: Conversation,
+  currentUserTurn: string,
+): "accepted" | "corrected" | "ambiguous" {
+  // Three signals evaluated in order:
+  //  1. Short-circuit on explicit feedback: "yes"/"no"/"thanks"/"wrong"/"redo"
+  //  2. Edit-distance: if the current turn contains > 50% of prior agent text
+  //     with substitutions, flag as 'corrected'
+  //  3. Semantic similarity: embed both turns, cosine > 0.7 on contradict
+  //     marker patterns → 'corrected'
+}
+```
+
+Writes to `turn_evaluations.implicit_signal` column. Composes with §3.5.2 — explicit judge gives behavior quality, implicit signal gives user satisfaction. Either dimension can fail the skill that produced this turn.
+
+### 3.5.4 Skill refinement — replace stored approach when better emerges (2 hrs)
+
+Not just deprecation: **active replacement**. When a `good`-verdict turn solves the same `context_pattern` as an existing skill but took different `approach` steps, we branch a new skill version via `supersedes_id`. Default behavior: the newer skill becomes preferred in retrieval after 3 successful uses. The old version stays queryable (via `supersedes_id` chain) but is marked `deprecated = 1`.
+
+Triggers:
+
+- Turn produced `good` verdict (§3.5.2) + positive implicit feedback (§3.5.3) → candidate skill
+- Candidate skill's `context_pattern` matches existing skill (cosine > 0.85)
+- Existing skill's success rate over last 5 uses < candidate's over 3+ uses → replace
+
+Retrieval uses most-recent-non-deprecated per `context_pattern` lineage. Full lineage is visible in the `skills` MCP endpoint (Phase 4+) for Noel to review/override.
+
+### 3.5.5 Structured user model — 4 Hermes dimensions (2 hrs)
+
+Today we have a `preference` memory type — that's one dimension bolted into a generic memory table. Hermes structures the user model across 4 explicit dimensions. Anton needs the same:
+
+```sql
+CREATE TABLE user_model (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dimension TEXT NOT NULL CHECK(dimension IN (
+    'output_format',   -- terse/verbose, bullets/prose, code-heavy/summary
+    'decision',        -- what Noel has chosen when presented with options
+    'task_pattern',    -- types of work Noel typically does and when
+    'feedback'         -- signals from §3.5.3 aggregated into trends
+  )),
+  key TEXT NOT NULL,            -- 'preferred_response_length', 'auth_provider', etc.
+  value TEXT NOT NULL,          -- structured value (JSON when complex)
+  confidence REAL NOT NULL,
+  evidence_count INTEGER DEFAULT 1,
+  last_confirmed_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(dimension, key)
+);
+```
+
+Evolution: each dimension has its own update rules. `output_format` accrues confidence slowly — requires 3+ consistent observations before acting on it. `decision` locks in at first clear choice but can be overridden (stores history). `task_pattern` is time-of-day indexed (mornings = briefings, evenings = strategy). `feedback` trends feed back into skill success rates (cross-link).
+
+Injected into the ambient context block — `[USER MODEL]` section lists currently-high-confidence preferences per dimension, bounded to 6 lines total.
+
+### 3.5.6 Cross-agent skill sharing — inheritance channel (1.5 hrs)
+
+Today each agent writes its own journal and memories. A pattern Engineering learned (e.g., "frontend/backend contract alignment protocol") should be reusable by Research, Growth, etc. when they face similar patterns.
+
+Mechanism: a `shared` column on `skills`:
+
+```sql
+ALTER TABLE skills ADD COLUMN shared INTEGER DEFAULT 0;
+ALTER TABLE skills ADD COLUMN tags TEXT DEFAULT '[]';  -- JSON array
+```
+
+Skills are private by default (retrieval filters on `owner_agent = X`). An agent can opt-in to share a high-value skill (success_rate > 0.8, evidence > 5) by setting `shared = 1` with tags describing applicability domain. Retrieval then becomes: `owner_agent = X OR (shared = 1 AND tags overlap with my domain)`.
+
+Sharing proposals are auto-surfaced: when a skill hits the threshold, Anton DMs Noel with a suggested share. Noel approves once, then the skill moves to the shared pool. Prevents noise — only proven skills get shared, and only with human sign-off.
+
+### 3.5.7 Integration points
+
+| Component                              | How it hooks into Phase 3.5                                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `brain.process()`                      | Calls `retrieveApplicableSkills()` alongside `buildMemoryContext()`; injects `[APPLICABLE SKILLS]` block       |
+| `distillConversation()` (§4.1 shipped) | Extended to also emit _skill candidates_ when verdict = good + new pattern                                     |
+| `buildAmbientContext()` (§4.4 shipped) | Reads high-confidence `user_model` rows → injects `[USER MODEL]` section                                       |
+| Feedback loops (§4.7 Phase 3B)         | State machine's `verified` transition can require eval-pass verdict ≥ 0.6                                      |
+| Self-training (Phase 6)                | `turn_evaluations.verdict` + `implicit_signal` become the quality signal — no separate Phase 6 detector needed |
+| MCP server mode (§5.5a)                | New endpoints: `list_skills`, `get_skill_lineage`, `get_user_model_summary`                                    |
+
+### 3.5.8 Acceptance criteria — Phase 3.5 done when
+
+- Every completed turn has a row in `turn_evaluations` with all 4 scores + verdict
+- Every `good`-verdict turn with a novel `context_pattern` creates a skill row
+- Every 5th skill use re-evaluates success rate; deprecation fires correctly
+- `retrieveApplicableSkills()` injects ≤ 3 skills, < 2k tokens, < 200ms
+- Implicit-feedback capture flags at least 70% of Noel's actual corrections (verified on replay)
+- `user_model` populates 4 dimensions with ≥ 2 rows each within a week of normal use
+- At least 1 skill has been shared across agents via the review flow
+
 ---
 
 ## 5. Phase 4+ — Adjustments to V2 plan
@@ -379,13 +551,40 @@ The V2 voice design is correct. Add streaming: pipe LLM tokens to TTS word-by-wo
 
 Expo + React Native is right. Add: the chat view should render the _classification log_ as a collapsible section under each message (intent, model, depth, latency, tokens). This makes debugging from the phone trivial and doubles as a training-data review UI.
 
+### 5.5a MCP server mode — Anton as a memory service for IDEs (Hermes-inspired, 4 hrs)
+
+Hermes Agent v0.6 exposes its memory as an MCP server that Cursor, Claude Desktop, and VS Code can query. This is high-leverage: Anton's SQLite memory (conversations, facts, skills, decisions) becomes queryable from any IDE with MCP support. Noel opens Cursor, types "what did we decide about JWT rotation?", and Anton answers from memory — no copy-paste, no context loss across tools.
+
+Scope (Phase 4+):
+
+- New `src/mcp/server.ts` — exposes tools: `search_memory`, `get_task`, `list_skills`, `recall_decision`, `brief_project`
+- Runs as a local MCP stdio server (standard Model Context Protocol)
+- Reuses existing `searchMemories` / `buildMemoryContext` functions
+- Authenticated via local-only socket (no network exposure)
+- Bonus: Noel can use `@anton` in Claude Code's inline prompts and get full memory context
+
+This is the biggest unlock for the "Anton lives with you across tools" vision.
+
 ### 5.6 Self-training (Phase 6, unchanged structure, refined triggers)
 
 Mandatory eval gate is the right call (V2 decision D8). Addition: keep a "golden set" of 50 test cases that every adapter must pass with zero regressions. Adapter that regresses even one → auto-reject.
 
+**Atropos integration (Hermes-inspired, optional):** Hermes uses Nous Research's Atropos framework to generate thousands of tool-calling trajectories in parallel, export them, and fine-tune smaller cheaper models. Our plan uses DPO via mlx-lm-lora. Atropos is worth evaluating as an alternative once we have Mac Studio — it's better suited for tool-use trajectory training than text-only DPO. Decision point: when trajectory volume exceeds 5000 tuples, re-evaluate.
+
+**Prompt cache snapshot (Hermes-inspired):** Ambient context + memory context currently invalidate the Anthropic prompt cache on every turn (time, memory count). To preserve the 5-min TTL, separate the system prompt into a **stable block** (persona, team directory, tool list) and a **volatile block** (ambient time, memory retrieval). Cache the stable block. Only the volatile block changes per turn. Expected token savings: 60-80% on cached reads.
+
 ### 5.7 Finance (Phase 7, unchanged)
 
 Correct architecture. One addition: the finance module's LLM narrative pass should route through the same brain, not directly to Claude. Noel should hear Anton's voice explaining the analysis.
+
+### 5.8 Production hardening additions (Hermes-inspired)
+
+Phase 9 gets four additions from Hermes's conservative architecture:
+
+- **Pre-execution safety scanner.** When brain gains agentic Bash/Write access (currently disabled), a `src/hands/scanner.ts` analyzes the command against a denylist (`rm -rf /`, `curl | sh`, unauthorized network egress, etc.) before execution. Hermes calls this pattern Tirith. Block high-risk, confirm medium-risk via Slack, auto-execute low-risk.
+- **Filesystem checkpoints.** Before any destructive agent action (file delete, git reset, db migration), create a checkpoint (snapshot of affected paths + metadata). Auto-rollback if the action fails or is rejected post-hoc within 30 min.
+- **Multi-instance profiles.** Each instance owns isolated memory, sessions, skills, and agent configs. Noel could run `anton --profile=personal` vs `anton --profile=client-x` with zero data bleed. Profile name becomes part of the SQLite DB path.
+- **Container hardening.** When Phase 5 Docker arrives: read-only root FS, dropped Linux capabilities, namespace isolation, named volumes for state only. These are the Hermes container defaults adapted from zero-trust infra patterns.
 
 ---
 
