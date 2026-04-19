@@ -7,8 +7,8 @@
 
 ## 📍 Current State (2026-04-19)
 
-**Branch:** `phase4/web-ui` — 3 commits ahead of `main`
-**Active phase:** Phase 4 web UI in progress (scaffold + primitives + 1 module shipped; module ports pending)
+**Branch:** `phase4/web-ui` — ~25 commits ahead of `main`
+**Active phase:** Phase 4 web UI effectively complete; 1 deferred item (Mobile shell)
 **Hardware:** 16GB Mac Mini ("leopardracer") — Tier-1 routing active. 64GB Mac Studio evaluated 2026-04-19 but deferred.
 **Test baseline:** 640 pass — zero V1 flakes
 **Sim scenarios:** S1/S2/S3/S4/S5/S6/S8 + skill-loop-integration running in ms without Ollama
@@ -16,7 +16,7 @@
 **Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits
 **Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs) — 4 commits
 **Phase 3A / 3B:** ✅ COMPLETE — action tags + state machine + simulation mode
-**Phase 4:** 🟡 In progress — Next.js 15 + Tailwind v4 scaffold, 5 UI primitives, shell + nav config + route registry (DIP). Remaining: Chat, Approval Detail, Tasks/Inbox/Calendar/Docs/Research/People/Expenses/Travel/Usage modules, Mobile shell, Settings sub-tabs, TweaksPanel, Onboarding, App Router wiring, API routes
+**Phase 4:** ✅ Core complete — Next.js 15 App Router, all 18 nav modules real (Tailwind + SOLID), 43 SSG detail pages (memory × 7, agent × 15, event × 9, integration × 12), Settings 6-tab surface, MC 5-variant switcher, Onboarding, TweaksPanel, Chat wired end-to-end to brain via `/api/chat`. Folder structure: `app/(app)/`, `components/{ui,layout,modules}/`, `hooks/`, `lib/{api,data,theme,cn}`. Deferred: Mobile shell (design artifact, responsive breakpoints would serve same need).
 
 ### Phase status overview
 
@@ -30,7 +30,8 @@
 | **3B — Simulation mode**      | ✅ Complete           | ANTON_SIM_MODE + 3 scenarios (S1/S2/S4)                       |
 | **3 — Intelligence + Jarvis** | 🟡 Partial            | §4.1 distill + §4.4 ambient done; §4.2/§4.3/§4.5/§4.6 pending |
 | **3.5 — Skill Loop**          | ✅ Complete           | 7/7 Hermes gaps closed — all 6 learning-loop legs shipped     |
-| 4 — Web + Mobile              | ⏳ Design brief done  | Implementation blocked on 3                                   |
+| **4 — Web (desktop)**         | ✅ Core complete      | 18 nav modules + 43 detail SSG pages + chat API wired         |
+| 4b — Mobile shell             | ⏳ Deferred           | Gallery port from mobile.jsx; responsive Tailwind is alt path |
 | 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                            |
 | 6 — Self-Training             | ⏳ Not started        |                                                               |
 | 7 — Voice                     | ⏳ Not started        |                                                               |
