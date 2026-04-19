@@ -106,11 +106,37 @@ const DEFAULT_APPROVALS = [
   { id: 5, agent: 'Priya', dept: 'data', risk: 'L', intent: 'Rebuild weekly retention cohort.', why: null, diff: null },
 ];
 
-export function initWeb({ askAgent, approvalsSource, port = 3000 }) {
-  // `approvalsSource` is an optional callback that returns the current list
-  // of pending approvals. If omitted, we fall back to the demo set so the UI
-  // stays live during early development.
+// Fallback memory set — small marker records so the /api/memories endpoint
+// is live before brain grows a real export. Replace via `memoriesSource`.
+const DEFAULT_MEMORIES = [
+  {
+    type: 'preference',
+    title: 'Noel prefers bullet summaries over prose in briefings.',
+    src: 'Slack · Mar 3',
+    hl: 'yellow',
+    conf: 3,
+  },
+  {
+    type: 'decision',
+    title: 'Use Qwen3 8B for local; Claude only for deep research.',
+    src: 'Settings · Feb 19',
+    hl: 'coral',
+    conf: 3,
+  },
+  {
+    type: 'fact',
+    title: 'Stripe subscription renews on the 14th of each month.',
+    src: 'Diana · Mar 14',
+    hl: 'blue',
+    conf: 3,
+  },
+];
+
+export function initWeb({ askAgent, approvalsSource, memoriesSource, port = 3000 }) {
+  // Each source is an optional async callback returning the current records.
+  // Omit and the fallback mock is used — keeps the UI live during dev.
   const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
+  const readMemories = memoriesSource || (() => DEFAULT_MEMORIES);
 
   _server = createServer(async (req, res) => {
     // CORS preflight
@@ -129,6 +155,21 @@ export function initWeb({ askAgent, approvalsSource, port = 3000 }) {
         res.end(JSON.stringify({ approvals: approvals || [] }));
       } catch (e) {
         console.error('[Web] /api/approvals error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/memories — long-lived facts / decisions / preferences that
+    // Anton surfaces in briefings. Shape mirrors web/lib/data/memory.ts.
+    if (req.method === 'GET' && req.url === '/api/memories') {
+      try {
+        const memories = await readMemories();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ memories: memories || [] }));
+      } catch (e) {
+        console.error('[Web] /api/memories error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
         res.end(JSON.stringify({ error: 'Internal error' }));
       }
