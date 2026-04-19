@@ -238,11 +238,22 @@ export async function process(
       const claudeModel: 'sonnet' | 'opus' = logicalModel === 'claude-opus' ? 'opus' : 'sonnet';
       const result = await claudeFallback(message, systemPrompt, { model: claudeModel });
       const durationMs = Date.now() - start;
-      const finalText = result.text || "Couldn't complete that through Claude. Retry?";
+      let finalText = result.text || "Couldn't complete that through Claude. Retry?";
+
+      // Claude also uses [HANDOFF:Name] tags per the unified system prompt — parse them.
+      const handoffsFromText = extractHandoffs(finalText);
+      finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+      const handoffMap = new Map<string, string>();
+      for (const h of classifierHandoffs) handoffMap.set(h.agent, h.message);
+      for (const h of handoffsFromText) handoffMap.set(h.agent, h.message);
+      const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({ agent, message: msg }));
 
       console.log(
         `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${result.tokensOut}t | ${durationMs}ms`
       );
+      if (handoffs.length > 0) {
+        console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+      }
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);
@@ -273,7 +284,7 @@ export async function process(
         durationMs,
         handledLocally: false,
         needsClaude: true,
-        handoffs: classifierHandoffs,
+        handoffs,
         classification: { intent, depth, confidence, route: logicalModel, reason },
       };
     } catch (err) {
@@ -380,72 +391,74 @@ export async function process(
   } catch (error) {
     const isCircuitOpen = error instanceof CircuitOpenError;
     const errMsg = (error as Error).message?.slice(0, 120) || 'unknown';
-    console.error(`[Brain] Local ${isCircuitOpen ? 'CIRCUIT OPEN' : 'failed'}: ${errMsg}`);
+    const failureReason = isCircuitOpen ? 'circuit-open' : 'local-failed';
+    console.error(`[Brain] Local ${failureReason}: ${errMsg}`);
 
-    // Circuit open → escalate to Claude using the same system prompt.
-    if (isCircuitOpen) {
+    // ANY local failure (timeout, circuit open, crash) → try Claude fallback with
+    // the same system prompt. This is the resilience path that turns a 60s local
+    // timeout into a ~15s Claude response instead of a generic error message.
+    try {
+      const claudeResult = await claudeFallback(message, systemPrompt, { model: 'sonnet' });
+      const durationMs = Date.now() - start;
+      let finalText = claudeResult.text || 'Ollama is down and Claude came back empty. Retry shortly.';
+
+      // Parse [HANDOFF:Name] tags from Claude's response (same contract as local path).
+      const handoffsFromText = extractHandoffs(finalText);
+      finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+      const handoffMap = new Map<string, string>();
+      for (const h of classifierHandoffs) handoffMap.set(h.agent, h.message);
+      for (const h of handoffsFromText) handoffMap.set(h.agent, h.message);
+      const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({ agent, message: msg }));
+
+      console.log(`[CLAUDE] ${agentName} | ${failureReason} fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
+      if (handoffs.length > 0) {
+        console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+      }
+
+      addToHistory(agentName, 'user', message);
+      addToHistory(agentName, 'assistant', finalText);
+      markInteraction(agentName);
+      scheduleDistillation(message, finalText, agentName);
+
       try {
-        const claudeResult = await claudeFallback(message, systemPrompt, { model: 'sonnet' });
-        const durationMs = Date.now() - start;
-        const finalText = claudeResult.text || 'Ollama is down and Claude came back empty. Retry shortly.';
-
-        console.log(`[CLAUDE] ${agentName} | circuit-open fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
-
-        addToHistory(agentName, 'user', message);
-        addToHistory(agentName, 'assistant', finalText);
-        markInteraction(agentName);
-        scheduleDistillation(message, finalText, agentName);
-
-        try {
-          storeConversation(sessionId, agentName, 'user', message, {
-            channel: options?.channel || 'web',
-          });
-          storeConversation(sessionId, agentName, 'agent', finalText, {
-            channel: options?.channel || 'web',
-            modelUsed: 'claude-sonnet',
-            tokensIn: claudeResult.tokensIn,
-            tokensOut: claudeResult.tokensOut,
-            latencyMs: durationMs,
-            handledLocally: false,
-          });
-        } catch {}
-
-        return {
-          text: finalText,
-          model: 'claude-sonnet',
+        storeConversation(sessionId, agentName, 'user', message, {
+          channel: options?.channel || 'web',
+        });
+        storeConversation(sessionId, agentName, 'agent', finalText, {
+          channel: options?.channel || 'web',
+          modelUsed: 'claude-sonnet',
           tokensIn: claudeResult.tokensIn,
           tokensOut: claudeResult.tokensOut,
-          durationMs,
+          latencyMs: durationMs,
           handledLocally: false,
-          needsClaude: true,
-          handoffs: classifierHandoffs,
-          classification: { intent, depth, confidence, route: 'claude-sonnet', reason: 'circuit-open' },
-        };
-      } catch (fallbackErr) {
-        console.error('[Brain] Both local AND Claude failed:', (fallbackErr as Error).message?.slice(0, 100));
-        return {
-          text: 'Local brain is down and Claude is unreachable. Check Ollama + network.',
-          model: 'both-down',
-          tokensIn: 0,
-          tokensOut: 0,
-          durationMs: Date.now() - start,
-          handledLocally: false,
-          needsClaude: false,
-          handoffs: [],
-        };
-      }
-    }
+        });
+      } catch {}
 
-    return {
-      text: 'Having trouble thinking right now. Let me try again.',
-      model: 'error',
-      tokensIn: 0,
-      tokensOut: 0,
-      durationMs: Date.now() - start,
-      handledLocally: false,
-      needsClaude: false,
-      handoffs: [],
-    };
+      return {
+        text: finalText,
+        model: 'claude-sonnet',
+        tokensIn: claudeResult.tokensIn,
+        tokensOut: claudeResult.tokensOut,
+        durationMs,
+        handledLocally: false,
+        needsClaude: true,
+        handoffs,
+        classification: { intent, depth, confidence, route: 'claude-sonnet', reason: failureReason },
+      };
+    } catch (fallbackErr) {
+      console.error('[Brain] Both local AND Claude failed:', (fallbackErr as Error).message?.slice(0, 100));
+      return {
+        text: 'Local brain and Claude both failed. Check Ollama + network and try again.',
+        model: 'both-down',
+        tokensIn: 0,
+        tokensOut: 0,
+        durationMs: Date.now() - start,
+        handledLocally: false,
+        needsClaude: false,
+        handoffs: classifierHandoffs,
+        classification: { intent, depth, confidence, route: 'error', reason: `both-failed:${failureReason}` },
+      };
+    }
   }
 }
 
