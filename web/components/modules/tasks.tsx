@@ -5,8 +5,9 @@
 // every card has an owner, an actor, and a why.
 
 import { Button } from '@/components/ui/button';
+import { useTasks } from '@/hooks/use-tasks';
 import { cn } from '@/lib/cn';
-import { TASKS, type Task, type TaskColumn } from '@/lib/data';
+import type { Task, TaskColumn } from '@/lib/data';
 
 type Column = { id: TaskColumn; label: string; dotClass: string };
 
@@ -76,17 +77,20 @@ function ColumnPane({ col, items }: { col: Column; items: Task[] }) {
   );
 }
 
-function TaskHeader() {
-  const waiting = TASKS.filter((t) => t.col === 'incoming').length;
-  const flight = TASKS.filter((t) => t.col === 'flight').length;
-  const blocked = TASKS.filter((t) => t.col === 'blocked').length;
+function TaskHeader({ tasks, loading, error }: { tasks: Task[]; loading: boolean; error: string | null }) {
+  const waiting = tasks.filter((t) => t.col === 'incoming').length;
+  const flight = tasks.filter((t) => t.col === 'flight').length;
+  const blocked = tasks.filter((t) => t.col === 'blocked').length;
+  const status = error
+    ? 'offline · showing cached'
+    : loading
+      ? 'loading…'
+      : `${waiting} waiting on you · ${flight} agents working · ${blocked} blocked`;
   return (
     <div className="flex items-center px-6 py-4 border-b border-border-subtle">
       <div>
         <div className="text-xl text-primary font-medium">Tasks</div>
-        <div className="mono small text-tertiary mt-0.5">
-          {waiting} waiting on you · {flight} agents working · {blocked} blocked
-        </div>
+        <div className={cn('mono small mt-0.5', error ? 'text-error' : 'text-tertiary')}>{status}</div>
       </div>
       <span className="flex-1" />
       <Button size="sm" variant="primary">
@@ -97,12 +101,13 @@ function TaskHeader() {
 }
 
 export default function Tasks() {
+  const { tasks, loading, error } = useTasks();
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <TaskHeader />
+      <TaskHeader tasks={tasks} loading={loading} error={error} />
       <div className="flex-1 grid grid-cols-4 overflow-hidden min-h-0">
         {COLUMNS.map((col) => (
-          <ColumnPane key={col.id} col={col} items={TASKS.filter((t) => t.col === col.id)} />
+          <ColumnPane key={col.id} col={col} items={tasks.filter((t) => t.col === col.id)} />
         ))}
       </div>
     </div>
