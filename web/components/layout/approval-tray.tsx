@@ -1,14 +1,14 @@
 'use client';
-// ApprovalTray — lives in the right sidebar. Extracted out of shell.tsx so
-// shell.tsx has exactly one responsibility (compose the frame) and
-// this component can be unit-tested + reused (mobile screen, dedicated
-// Approvals page) without dragging in the whole shell.
+// ApprovalTray — right-sidebar pending-approvals feed. Data now comes from
+// the useApprovals hook (GET /api/approvals), with the static mock from
+// lib/data as a pre-fetch placeholder so the tray is never empty on first
+// paint. Shell.tsx stays thin — this component owns its own data.
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeptChip, Kbd, RiskPip } from '@/components/ui/primitives';
+import { useApprovals } from '@/hooks/use-approvals';
 import { cn } from '@/lib/cn';
-import { APPROVALS } from '@/lib/data';
 
 function DiffRow({ row }: { row: [string, string, string?] }) {
   const color = row[0] === '+' ? 'text-ok' : row[0] === '-' ? 'text-error' : 'text-work';
@@ -30,6 +30,7 @@ function AgentMonogram({ agent }: { agent: string }) {
 }
 
 export function ApprovalTray() {
+  const { approvals, loading, error } = useApprovals();
   const [expanded, setExpanded] = useState<number[]>([2]);
   const toggle = (id: number) => setExpanded((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
 
@@ -38,12 +39,20 @@ export function ApprovalTray() {
       <div className="px-4 py-3.5 border-b border-border-subtle">
         <div className="flex items-center justify-between">
           <span className="mono caps text-primary">Pending</span>
-          <span className="mono small text-work">{APPROVALS.length}</span>
+          <span className="mono small text-work">{approvals.length}</span>
         </div>
-        <div className="mono small text-tertiary mt-1">sorted by risk · newest first</div>
+        <div className="mono small text-tertiary mt-1">
+          {error ? (
+            <span className="text-error">offline · showing cached</span>
+          ) : loading ? (
+            'loading…'
+          ) : (
+            'sorted by risk · newest first'
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-auto px-2.5 py-2">
-        {APPROVALS.map((a) => {
+        {approvals.map((a) => {
           const isOpen = expanded.includes(a.id);
           const isHigh = a.risk === 'H';
           return (
