@@ -44,38 +44,6 @@ function Placeholder({
   );
 }
 
-export function Documents() {
-  return (
-    <Placeholder
-      label="DOCUMENTS"
-      sub="PRDs, ADRs, and long-form artifacts"
-      source="tier2.jsx"
-      preview={[
-        'Editor for PM-agent-drafted PRDs + tech-lead ADRs',
-        'Version history, inline comments from agents',
-        'Linkable @mentions of agents, memories, tasks',
-        'Export to Git branch, Notion, or plain markdown',
-      ]}
-    />
-  );
-}
-
-export function Research() {
-  return (
-    <Placeholder
-      label="RESEARCH"
-      sub="Parallel research spawns + synthesized reports"
-      source="tier2.jsx"
-      preview={[
-        'Kick off a research prompt; watch N parallel agent threads',
-        'Auto-synthesize into a single cited report with sources',
-        'Save as memory / decision / document with one click',
-        'History of past research runs + their outcomes',
-      ]}
-    />
-  );
-}
-
 export function People() {
   return (
     <Placeholder
