@@ -11,6 +11,7 @@ import { detectTier, models, taskRouting } from '../../config/models.js';
 import { buildMemoryContext, storeConversation } from '../memory/sqlite.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
+import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
@@ -28,6 +29,9 @@ export interface BrainResponse {
   handledLocally: boolean;
   needsClaude: boolean;
   handoffs: Array<{ agent: string; message: string }>;
+  // Full structured action list from agent output: HANDOFF, ASK, BLOCK, APPROVE, REJECT, DONE.
+  // `handoffs` (above) is a backward-compat subset where type === 'HANDOFF'.
+  actions: AgentAction[];
   classification?: {
     intent: string;
     depth: ThinkingDepth;
@@ -35,6 +39,29 @@ export interface BrainResponse {
     route: string;
     reason: string;
   };
+}
+
+// Parse all action tags from an agent response. Validates HANDOFF and ASK targets
+// against the persona directory so agents can't invent teammates.
+function extractAndValidateActions(text: string): AgentAction[] {
+  const actions = extractAgentActions(text);
+  return actions.filter((a) => {
+    // HANDOFF and ASK must target a known team member.
+    if (a.type === 'HANDOFF' || a.type === 'ASK') {
+      if (!a.target) return false;
+      if (!TEAM_NAMES.has(a.target)) {
+        console.warn(`[Brain] Ignoring ${a.type} to unknown agent "${a.target}"`);
+        return false;
+      }
+      if (!a.content) return false;
+    }
+    return true;
+  });
+}
+
+// Derive legacy handoffs list from the full action list for backward compat.
+function handoffsFromActions(actions: AgentAction[]): Array<{ agent: string; message: string }> {
+  return actions.filter((a) => a.type === 'HANDOFF' && a.target).map((a) => ({ agent: a.target!, message: a.content }));
 }
 
 let _initialized = false;
@@ -166,6 +193,10 @@ export async function process(
   if (isSimModeActive()) {
     const sim = nextSimResponse(message, agentName);
     if (sim) {
+      // Parse action tags from the fixture text so tests can assert on the
+      // full action vocabulary (ASK/BLOCK/APPROVE/REJECT/DONE), not just handoffs.
+      const actions = extractAndValidateActions(sim.text);
+      const derivedHandoffs = handoffsFromActions(actions);
       return {
         text: sim.text,
         model: sim.model || 'sim',
@@ -174,7 +205,9 @@ export async function process(
         durationMs: sim.latencyMs ?? Date.now() - start,
         handledLocally: sim.handledLocally ?? true,
         needsClaude: sim.needsClaude ?? false,
-        handoffs: sim.handoffs ?? [],
+        // Fixture-provided handoffs take precedence; otherwise derive from text tags.
+        handoffs: sim.handoffs ?? derivedHandoffs,
+        actions,
         classification: sim.classification,
       };
     }
@@ -261,9 +294,11 @@ export async function process(
       const durationMs = Date.now() - start;
       let finalText = result.text || "Couldn't complete that through Claude. Retry?";
 
-      // Claude also uses [HANDOFF:Name] tags per the unified system prompt — parse them.
-      const handoffsFromText = extractHandoffs(finalText);
-      finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+      // Parse the full action vocabulary (HANDOFF/ASK/BLOCK/APPROVE/REJECT/DONE)
+      // from Claude text — same contract as local path.
+      const actionsFromText = extractAndValidateActions(finalText);
+      finalText = stripActionTags(finalText);
+      const handoffsFromText = handoffsFromActions(actionsFromText);
       const handoffMap = new Map<string, string>();
       for (const h of classifierHandoffs) handoffMap.set(h.agent, h.message);
       for (const h of handoffsFromText) handoffMap.set(h.agent, h.message);
@@ -272,8 +307,9 @@ export async function process(
       console.log(
         `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${result.tokensOut}t | ${durationMs}ms`
       );
-      if (handoffs.length > 0) {
-        console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+      if (actionsFromText.length > 0) {
+        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
+        console.log(`[Actions] ${summary}`);
       }
 
       addToHistory(agentName, 'user', message);
@@ -306,6 +342,7 @@ export async function process(
         handledLocally: false,
         needsClaude: true,
         handoffs,
+        actions: actionsFromText,
         classification: { intent, depth, confidence, route: logicalModel, reason },
       };
     } catch (err) {
@@ -320,6 +357,7 @@ export async function process(
         handledLocally: false,
         needsClaude: true,
         handoffs: classifierHandoffs,
+        actions: [],
         classification: { intent, depth, confidence, route: logicalModel, reason },
       };
     }
@@ -355,9 +393,10 @@ export async function process(
     const selfEscalated = responseText.includes('[NEEDS_CLAUDE]');
     let finalText = responseText.replace(/\[NEEDS_CLAUDE\]\s*/g, '').trim();
 
-    // Explicit [HANDOFF:Agent] tags only — no NL fallback (removed, was fragile).
-    const handoffsFromText = extractHandoffs(finalText);
-    finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+    // Parse full action vocabulary: HANDOFF, ASK, BLOCK, APPROVE, REJECT, DONE.
+    const actionsFromText = extractAndValidateActions(finalText);
+    finalText = stripActionTags(finalText);
+    const handoffsFromText = handoffsFromActions(actionsFromText);
 
     // Merge classifier handoffs + text handoffs (dedupe by agent name).
     const handoffMap = new Map<string, string>();
@@ -373,8 +412,9 @@ export async function process(
       `[${selfEscalated ? 'CLAUDE' : 'LOCAL'}] ${agentName} | ${intent}/${complexity} depth=${depth} | ${result.tokensOut}t | ${durationMs}ms | conf=${confidence.toFixed(2)} | ${reason}`
     );
 
-    if (handoffs.length > 0) {
-      console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+    if (actionsFromText.length > 0) {
+      const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
+      console.log(`[Actions] ${summary}`);
     }
 
     addToHistory(agentName, 'user', message);
@@ -407,6 +447,7 @@ export async function process(
       handledLocally: !selfEscalated,
       needsClaude: selfEscalated,
       handoffs,
+      actions: actionsFromText,
       classification: { intent, depth, confidence, route: logicalModel, reason },
     };
   } catch (error) {
@@ -423,17 +464,19 @@ export async function process(
       const durationMs = Date.now() - start;
       let finalText = claudeResult.text || 'Ollama is down and Claude came back empty. Retry shortly.';
 
-      // Parse [HANDOFF:Name] tags from Claude's response (same contract as local path).
-      const handoffsFromText = extractHandoffs(finalText);
-      finalText = finalText.replace(/\[HANDOFF:\w+\]\s*/g, '').trim();
+      // Parse full action vocabulary from Claude response — same contract as local path.
+      const actionsFromText = extractAndValidateActions(finalText);
+      finalText = stripActionTags(finalText);
+      const handoffsFromText = handoffsFromActions(actionsFromText);
       const handoffMap = new Map<string, string>();
       for (const h of classifierHandoffs) handoffMap.set(h.agent, h.message);
       for (const h of handoffsFromText) handoffMap.set(h.agent, h.message);
       const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({ agent, message: msg }));
 
       console.log(`[CLAUDE] ${agentName} | ${failureReason} fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
-      if (handoffs.length > 0) {
-        console.log(`[Handoff] ${handoffs.map((h) => `${h.agent}: ${h.message.slice(0, 60)}`).join(' | ')}`);
+      if (actionsFromText.length > 0) {
+        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
+        console.log(`[Actions] ${summary}`);
       }
 
       addToHistory(agentName, 'user', message);
@@ -464,6 +507,7 @@ export async function process(
         handledLocally: false,
         needsClaude: true,
         handoffs,
+        actions: actionsFromText,
         classification: { intent, depth, confidence, route: 'claude-sonnet', reason: failureReason },
       };
     } catch (fallbackErr) {
@@ -477,30 +521,15 @@ export async function process(
         handledLocally: false,
         needsClaude: false,
         handoffs: classifierHandoffs,
+        actions: [],
         classification: { intent, depth, confidence, route: 'error', reason: `both-failed:${failureReason}` },
       };
     }
   }
 }
 
-// Explicit [HANDOFF:AgentName] tag extraction — NO natural-language fallback.
-// NL fallback was removed in Phase 2.5 (produced false positives on "let me check with Sarah").
-function extractHandoffs(text: string): Array<{ agent: string; message: string }> {
-  const handoffs: Array<{ agent: string; message: string }> = [];
-  const regex = /\[HANDOFF:(\w+)\]\s*([^[\n]*(?:\n(?!\[HANDOFF)[^[\n]*)*)/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    const agent = match[1];
-    const message = match[2].trim();
-    if (TEAM_NAMES.has(agent) && message) {
-      handoffs.push({ agent, message });
-    }
-  }
-
-  return handoffs;
-}
-
+// Team roster used by extractAndValidateActions to reject invented agent names.
+// Single source of truth; state-machine.ts uses its own role-specific subsets.
 const TEAM_NAMES: Set<string> = new Set([
   'Marcus',
   'Sarah',

@@ -23,8 +23,13 @@ export interface AgentAction {
 // Target must be alphanumeric or have a hyphen (e.g., TASK-001).
 const ACTION_REGEX = /\[(HANDOFF|ASK|BLOCK|APPROVE|REJECT|DONE)(?::\s*([A-Za-z][\w-]*))?\s*([^\]]*)?\]/g;
 
-// Tags that never take a target — what follows the colon is always content.
+// BLOCK and DONE never take a target — everything after the colon is content.
 const TARGETLESS_TAGS = new Set<ActionType>(['BLOCK', 'DONE']);
+
+// APPROVE/REJECT targets are task IDs (e.g. TASK-001, PAYMENT-01) — they must
+// contain a hyphen or digit. If they don't, the captured word is actually the
+// first word of the reason/content, so demote it.
+const TASK_ID_PATTERN = /[-\d]/;
 
 export function extractAgentActions(text: string): AgentAction[] {
   const actions: AgentAction[] = [];
@@ -40,6 +45,12 @@ export function extractAgentActions(text: string): AgentAction[] {
     // BLOCK and DONE never take a target. If the regex captured something as
     // target (i.e. first word after colon), demote it back into content.
     if (TARGETLESS_TAGS.has(type) && target) {
+      inlineBody = inlineBody ? `${target} ${inlineBody}` : target;
+      target = undefined;
+    }
+
+    // APPROVE/REJECT: target must look like a task ID to be kept.
+    if ((type === 'APPROVE' || type === 'REJECT') && target && !TASK_ID_PATTERN.test(target)) {
       inlineBody = inlineBody ? `${target} ${inlineBody}` : target;
       target = undefined;
     }
