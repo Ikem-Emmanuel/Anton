@@ -1,9 +1,9 @@
 'use client';
-// useMemories — load persisted memories via /api/memories. Seeds with the
-// static lib/data.MEMORIES so first paint is populated; fetched list
-// replaces the seed once it arrives.
+// useMemories — hybrid: REST hydrate + WS live appends. Listens to
+// memory.written and prepends new memories to the list.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useAntonStream } from '@/hooks/use-anton-stream';
 import { fetchMemories } from '@/lib/api/memory';
 import { MEMORIES, type Memory } from '@/lib/data';
 
@@ -12,12 +12,14 @@ export type UseMemories = {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  connected: boolean;
 };
 
 export function useMemories(): UseMemories {
   const [memories, setMemories] = useState<Memory[]>(MEMORIES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { connected, subscribe } = useAntonStream();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -37,5 +39,12 @@ export function useMemories(): UseMemories {
     refresh();
   }, [refresh]);
 
-  return { memories, loading, error, refresh };
+  useEffect(() => {
+    const unsub = subscribe<Memory>('memory.written', (ev) => {
+      setMemories((prev) => [ev.data, ...prev]);
+    });
+    return unsub;
+  }, [subscribe]);
+
+  return { memories, loading, error, refresh, connected };
 }

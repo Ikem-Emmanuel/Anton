@@ -294,6 +294,9 @@ export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource
 
   _wss.on('connection', (ws) => {
     console.log('[Web] Client connected');
+    // Announce the channel as live so new subscribers know the server is
+    // reachable. Clients can use this to flip a connected indicator.
+    ws.send(JSON.stringify({ type: 'hello', data: { serverTime: new Date().toISOString() } }));
 
     ws.on('message', async (data) => {
       try {
@@ -403,3 +406,21 @@ export function shutdownWeb() {
   if (_wss) _wss.close();
   if (_server) _server.close();
 }
+
+// ---------- Event emitters --------------------------------------------------
+// Broadcast a live event to every connected web client. Silently no-op when
+// the WSS isn't initialized (e.g. at startup or after shutdown). Brain code
+// calls these at state-change moments — approval created, memory written,
+// task transitioned — so the web stays live without polling.
+
+export function emit(type, data) {
+  if (!_wss) return;
+  _wss.broadcast({ type, data, timestamp: new Date().toISOString() });
+}
+
+export const emitApprovalCreated = (approval) => emit('approval.created', approval);
+export const emitApprovalResolved = (id, resolution) => emit('approval.resolved', { id, resolution });
+export const emitMemoryWritten = (memory) => emit('memory.written', memory);
+export const emitTaskCreated = (task) => emit('task.created', task);
+export const emitTaskUpdated = (task) => emit('task.updated', task);
+export const emitEventLogged = (event) => emit('event.logged', event);
