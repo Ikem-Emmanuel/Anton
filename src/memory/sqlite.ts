@@ -214,6 +214,23 @@ export function storeMemory(agent: string, type: string, content: string, metada
   return Number(result.lastInsertRowid);
 }
 
+// List the most recent memories in the shape the web UI renders. Newest
+// first. Used as the `memoriesSource` callback from index.js so that
+// GET /api/memories reflects live SQLite state.
+export function listMemories(limit = 50): ReturnType<typeof toWebMemory>[] {
+  if (!db) return [];
+  const rows = db
+    .prepare(
+      `SELECT agent, type, content, created_at
+       FROM memories
+       WHERE type IN ('preference','decision','fact','conversation')
+       ORDER BY id DESC
+       LIMIT ?`
+    )
+    .all(limit) as Array<{ agent: string; type: string; content: string; created_at: string }>;
+  return rows.map((r) => toWebMemory(r.agent, r.type, r.content));
+}
+
 export function storeConversation(
   sessionId: string,
   agent: string,
