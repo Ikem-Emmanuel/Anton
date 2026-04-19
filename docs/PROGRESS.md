@@ -112,8 +112,7 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 | 🟡 Low   | `console.log` logs truncated thinking (150c) + handoff (60c) content | `brain.ts:242`, `brain.ts:268`               | Optional: gate behind `DEBUG_BRAIN=1`; deferred |
 | 🟡 Low   | Agent roster mismatch — `personas.ts` 15 vs V1 `sessions.js` 27+     |                                              | Phase 3 §4.5 persona unification                |
 | 🟡 Low   | Smoke script doesn't init SQLite → warnings per run                  | `scripts/smoke-brain.ts`                     | Minor — add `initSqliteMemory` call             |
-| 🟡 Low   | Biome lint shows pre-existing errors in V1 code                      | Multiple v1-archive files                    | Separate cleanup PR                             |
-| ⚪ Info  | V1 notify cooldown test flake                                        | `src/v1-archive/notify.test.js:113`          | Pre-existing; not touching V1 code              |
+| ⚪ Info  | V1 notify cooldown test flake                                        | `src/heart/notify.test.js:113`               | Pre-existing — low priority                     |
 
 ---
 
@@ -302,7 +301,7 @@ dependency for CI.
 
 - `src/brain/*` files created (ollama-client, classifier, brain, thinking, personas)
 - Wired into Slack + web paths in `index.js`
-- V1 code archived to `src/v1-archive/`
+- V1 code moved to `src/v1-archive/` (later reorganized into organ folders on 2026-04-19)
 - Ollama 0.20.7 installed, models pulled, localhost-only bind
 
 ---

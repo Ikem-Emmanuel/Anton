@@ -94,6 +94,7 @@ export function createHandler(deps) {
     getReport,
     NOEL_USER_ID,
     addReaction,
+    runScheduledStandup,
   } = deps;
 
   // Per-handler mutable state (isolated per createHandler call — safe for tests)
@@ -133,7 +134,8 @@ export function createHandler(deps) {
     }
   }
 
-  // ── Anton voice (uses dedicated anton agent) ──
+  // Anton has no team entry; borrow Riley's tool list since Riley is the cross-dept coordinator
+  // and matches Anton's access needs. When Anton gets his own persona entry this can point there.
   const ANTON_AGENT = { name: 'Anton', agent: 'anton', tools: TEAM.riley?.tools || [] };
   async function askAnton(prompt, fallback = '') {
     try {
@@ -403,7 +405,7 @@ export function createHandler(deps) {
         return true;
       }
       const { hours, minutes } = parsed;
-      scheduleJob('daily-standup', hours, minutes, deps.runScheduledStandup || (() => {}));
+      scheduleJob('daily-standup', hours, minutes, runScheduledStandup || (() => {}));
       await postAs(
         client,
         { name: 'Anton' },

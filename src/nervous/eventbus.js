@@ -24,10 +24,7 @@ class AntonEventBus extends EventEmitter {
     };
 
     this._history.push(entry);
-    // Keep last 500 events
-    if (this._history.length > 500) {
-      this._history = this._history.slice(-500);
-    }
+    if (this._history.length > 500) this._history.shift();
 
     console.log(`[EventBus] ${event}`);
     return super.emit(event, data);

@@ -31,7 +31,7 @@ The user's perception — _"local LLM isn't handling communication, things not s
 ### 1.3 Two disconnected memory systems (continuity)
 
 - **V2 brain** writes to SQLite (`data/brain/anton.db`) via `src/memory/sqlite.ts`
-- **V1 consolidation** writes markdown to `config/departments/*/MEMORY.md` via `appendDeptMemory` in `src/v1-archive/memory.js`
+- **V1 consolidation** writes markdown to `config/departments/*/MEMORY.md` via `appendDeptMemory` in `src/memory/memory-v1.js`
 - **Brain context injection** (`buildMemoryContext` at `brain.ts:100`) reads SQLite only
 - When Claude fallback fires (`needsClaude: true` → `trackedAsk` at `index.js:636`), no SQLite write happens
 - When the nightly consolidation runs, those rich daily summaries are never injected into V2 brain context
@@ -40,7 +40,7 @@ Result: every conversation starts with a near-empty context. Anton "forgets" any
 
 ### 1.4 Voice inconsistency (persona drift)
 
-When brain handles locally, system prompt is `getAntonSystem()` at `brain.ts:46` — JARVIS-style, direct, concise. When `needsClaude: true`, execution routes to the V1 Claude Agent SDK via `trackedAsk(ANTON_AGENT, ...)` — a completely different system prompt from `src/v1-archive/sessions.js` built from `personas.json` with a 27-agent team and different voice rules. The _same user query_ gets two voices depending on which path fires.
+When brain handles locally, system prompt is `getAntonSystem()` at `brain.ts:46` — JARVIS-style, direct, concise. When `needsClaude: true`, execution routes to the V1 Claude Agent SDK via `trackedAsk(ANTON_AGENT, ...)` — a completely different system prompt from `src/memory/sessions.js` built from `personas.json` with a 27-agent team and different voice rules. The _same user query_ gets two voices depending on which path fires.
 
 ### Secondary flaws
 
@@ -345,7 +345,7 @@ This is one string built by a context-builder function, inserted into the system
 ### 4.5 Consolidate personas (3 hrs)
 
 - Delete `config/personas.json`
-- Delete the 27-agent references in `src/v1-archive/sessions.js` that don't exist in brain
+- Delete the 27-agent references in `src/memory/sessions.js` that don't exist in brain
 - Create `config/agents/*.ts` — one file per department, Zod-validated, imported by both brain path and Claude path
 - Team directory is generated once, cached, reused
 
@@ -773,7 +773,7 @@ These are the non-negotiable architectural principles every change must honor. T
 
 - **Vertical (hardware):** 16GB → 64GB → 128GB → 192GB. The only file that changes is `config/models.ts`. Every call site looks up models by **logical name** (`'local-fast'`, `'local-reason'`, `'local-coder'`), never by model string. The current code violates this at `brain.ts:120` — fix in §3.7.
 - **Horizontal (agents):** 15 → 26 → 60. Agents are data (`config/agents/*.ts`), not code. Adding an agent is a new file, zero code changes. The brain's team directory is generated from the file system at startup.
-- **Workload (concurrency):** 1 concurrent message → N. Serialize per-model (Ollama handles 1 in-flight per model on Tier 1; Tier 2+ allows 2-3). Use a per-model lane queue (the V1 `serializeAgent` primitive in `src/v1-archive/team.js` does this — reuse it, don't rebuild).
+- **Workload (concurrency):** 1 concurrent message → N. Serialize per-model (Ollama handles 1 in-flight per model on Tier 1; Tier 2+ allows 2-3). Use a per-model lane queue (the V1 `serializeAgent` primitive in `src/brain/team.js` does this — reuse it, don't rebuild).
 
 **Service boundaries (future-proof today):**
 
