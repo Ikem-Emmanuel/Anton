@@ -399,27 +399,30 @@
 - [x] `web/hooks/use-tasks.ts` — REST hydrate + subscribe to `task.created` / `task.updated`
 - [x] Components consume hooks (loading / `offline · showing cached` / live count states)
 
-### 5.5.3 Brain-side emit wiring (PARTIAL — memory + activity + approvals live; tasks + memoriesSource pending)
+### 5.5.3 Brain-side emit wiring (MOSTLY DONE — only task state-machine emit deferred)
 
 - [x] `src/memory/sqlite.ts` — `emitMemoryWritten(record)` fires after every successful `storeMemory()` insert (commit d643122)
 - [x] `src/brain/brain.ts` — `reportActions()` helper consolidates the action-log and emits `event.logged` per action (HANDOFF / ASK / BLOCK / APPROVE / REJECT / DONE), replacing the two duplicated log blocks (commit a941ee4)
 - [x] `index.js` — Slack approval gate now mirrors to web: `emitApprovalCreated` on queue, `emitApprovalResolved` on yes/no reply; `approvalsSource` passed to `initWeb` so GET /api/approvals returns the live queue instead of DEFAULT_APPROVALS (commit cd9ca99)
-- [ ] `src/brain/state-machine.ts` — on state transitions (TODO → IN_FLIGHT → DONE / BLOCKED), call `emitTaskUpdated(task)` — requires a task store first (no persistence layer for tasks yet)
-- [ ] Wire `memoriesSource` + `tasksSource` callbacks into `initWeb` so GET /api/memories and /api/tasks also pull real state (currently DEFAULT_MEMORIES / DEFAULT_TASKS mocks)
+- [x] `src/memory/sqlite.ts` — `listMemories(limit)` export; `index.js` wires `memoriesSource: () => listMemories(50)` into `initWeb` so GET /api/memories pulls live SQLite state (commit 5d3a498)
+- [ ] `src/brain/state-machine.ts` — on state transitions, call `emitTaskUpdated(task)` — **deferred**: no persistent task store exists yet. Design note: "task" is conceptually agent queued work, but today it's only surfaced as `agent.q` counts — not individually addressable. Design decision needed before wiring.
 
-### 5.5.4 Approve / reject POST endpoints (PENDING)
+### 5.5.4 Approve / reject POST endpoints (DONE — commit f7b5278)
 
-- [ ] `POST /api/approvals/:id/approve` — mark resolved, emit `approval.resolved`, run the agent's queued action
-- [ ] `POST /api/approvals/:id/reject` — mark resolved, emit `approval.resolved`, inform the agent
-- [ ] `web/lib/api/approvals.ts` — add `approveApproval(id)` + `rejectApproval(id)` client fns
-- [ ] `web/components/layout/approval-tray.tsx` — wire Approve / Reject buttons to call these
+- [x] `POST /api/approvals/:id/approve` — forwards to `resolveApproval` callback, emits `approval.resolved`, notifies agent via fire-and-forget `trackedAsk`
+- [x] `POST /api/approvals/:id/reject` — same path, decision='denied'
+- [x] `web/lib/api/approvals.ts` — `approveApproval(id)` + `rejectApproval(id)` typed clients
+- [x] `web/components/layout/approval-tray.tsx` — buttons wired with per-id busy state; card removal driven by WS `approval.resolved` (single source of truth); failed resolves surface as tray header error
+- [ ] Follow-up: Slack-thread parity. Web-initiated approve/reject doesn't post "Approved." back to the Slack channel the way DM-initiated ones do. OK for MVP; fix when both channels care about the other's decisions.
 
-### 5.5.5 Events stream (PENDING)
+### 5.5.5 Events stream (DONE — commit c88e486)
 
-- [ ] `GET /api/events` — recent activity log (windowed: last 200 events)
-- [ ] `web/lib/api/events.ts`, `web/hooks/use-events.ts` (same hybrid pattern)
-- [ ] `web/components/modules/activity-timeline.tsx` — use the hook
-- [ ] `web/components/modules/event-detail.tsx` + `/event/[id]` — use the hook
+- [x] In-process 200-event ring buffer in `src/spine/web.js` populated by `emitEventLogged`
+- [x] `GET /api/events` — default `eventsSource` taps the ring; callers can override
+- [x] `web/lib/api/events.ts` — `fetchEvents()` typed client
+- [x] `web/hooks/use-events.ts` — REST hydrate + WS subscribe to `event.logged`; client-side cap at 200
+- [x] `web/components/modules/activity-timeline.tsx` — uses the hook; status line shows loading / offline-cached / live count
+- [ ] Follow-up: `/event/[id]` detail route is still SSG'd from build-time `ACTIVITY`. Live-streamed events don't have matching detail pages, so the timeline only links the first 9 rows (`BASELINE_EVENT_COUNT`). Making the detail route dynamic will drop this guard.
 
 ### 5.5.6 Definition of Done
 
