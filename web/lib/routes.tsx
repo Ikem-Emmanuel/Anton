@@ -8,13 +8,13 @@
 import type { ReactNode } from 'react';
 import ActivityTimeline from '@/components/modules/activity-timeline';
 import Briefing from '@/components/modules/briefing';
+import Calendar from '@/components/modules/calendar';
 import Chat from '@/components/modules/chat';
 import Inbox from '@/components/modules/inbox';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
 import {
   ApprovalsHub,
-  Calendar,
   Documents,
   Expenses,
   IntegrationsHub,

@@ -44,22 +44,6 @@ function Placeholder({
   );
 }
 
-export function Calendar() {
-  return (
-    <Placeholder
-      label="CALENDAR"
-      sub="Time view with agent activity overlay"
-      source="tier1.jsx"
-      preview={[
-        'Day + week views with meetings + scheduled agent runs',
-        'Overlay: Mac wake/sleep windows, local-model availability',
-        'Agent auto-block: scheduled briefing times, stalled-task check cron',
-        'Quick-create: "remind me at 9am tomorrow" from command bar',
-      ]}
-    />
-  );
-}
-
 export function Documents() {
   return (
     <Placeholder
