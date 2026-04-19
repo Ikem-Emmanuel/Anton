@@ -44,38 +44,6 @@ function Placeholder({
   );
 }
 
-export function People() {
-  return (
-    <Placeholder
-      label="PEOPLE"
-      sub="CRM of humans Noel works with"
-      source="tier2.jsx"
-      preview={[
-        'Per-person card: last contact, open threads, decisions involving them',
-        'Auto-populated from Slack, email, calendar',
-        'Linked to memory: "Noel always CCs Marcus on deploy decisions"',
-        'Quick actions: draft intro, schedule, send update',
-      ]}
-    />
-  );
-}
-
-export function Expenses() {
-  return (
-    <Placeholder
-      label="EXPENSES"
-      sub="Financial ops dashboard"
-      source="tier2.jsx"
-      preview={[
-        'Stripe subscriptions, recurring bills, one-off purchases',
-        'Diana (reconciliation) flags anomalies + proposes fixes',
-        'Category trends + burn rate + runway',
-        'Export to accounting, approve bill payments inline',
-      ]}
-    />
-  );
-}
-
 export function Travel() {
   return (
     <Placeholder
