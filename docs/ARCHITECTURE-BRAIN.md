@@ -16,7 +16,6 @@ Tomorrow: User -> Local LLM (Anton's brain) -> response (80% of the time)
 
 ---
 
-
 ## System Architecture
 
 ```
@@ -420,6 +419,84 @@ await brain.fineTune({
 
 // Load fine-tuned model
 brain.loadModel("anton-brain-v2");
+```
+
+---
+
+## Web Transport Layer (REST + WebSocket hybrid)
+
+The web UI lives at `web/` (Next.js 15 App Router). It talks to the Anton
+service over a **hybrid transport**: REST for hydration, WebSocket for live
+deltas. Polling is explicitly not used.
+
+### Why hybrid
+
+- **REST alone** — would require polling every N seconds to notice that an
+  agent created an approval. 1Hz is wasteful (no activity most of the time);
+  10s is laggy. Wrong shape for event-driven data.
+- **WS alone** — every page load has to wait for a "snapshot" message before
+  rendering. Refresh, deep-links, bookmarks, and new tabs all pay the cost.
+- **Hybrid** — REST returns the current state on mount; WS streams every
+  subsequent change. First paint is instant; updates are zero-lag.
+
+### Endpoints — `src/spine/web.js`
+
+Request-response, CORS-enabled so the Next.js dev server (typically port 3001) can reach the Anton service (port 3000).
+
+| Verb | Path             | Purpose                                                   |
+| ---- | ---------------- | --------------------------------------------------------- |
+| POST | `/api/chat`      | Ask brain a question. Returns text + handoffs.            |
+| GET  | `/api/approvals` | Current pending approval records.                         |
+| GET  | `/api/memories`  | Current memories (facts / decisions / preferences).       |
+| GET  | `/api/tasks`     | Kanban tasks across FOR-YOU / IN-FLIGHT / DONE / BLOCKED. |
+
+Each GET accepts an optional source callback via `initWeb({ approvalsSource, memoriesSource, tasksSource })`. Omit and a `DEFAULT_*` fallback serves a small demo set so the endpoint is live before brain grows real state exports.
+
+### WebSocket — event stream
+
+One connection per browser page. On connect the server sends
+`{ type: 'hello', data: { serverTime } }` so the client knows the channel
+is live. Every event afterward carries `{ type, data, timestamp }`.
+
+Event types:
+
+| Type                | Emitted when                                            |
+| ------------------- | ------------------------------------------------------- |
+| `approval.created`  | Agent emits `AWAITING_APPROVAL:`                        |
+| `approval.resolved` | Noel approves or rejects                                |
+| `memory.written`    | `storeMemory()` persists a new record                   |
+| `task.created`      | State-machine transitions to a new task                 |
+| `task.updated`      | Task moves columns (incoming → flight → done / blocked) |
+| `event.logged`      | Any agent tool call / reasoning step / handoff          |
+
+Emitters are exported from `src/spine/web.js`:
+`emit(type, data)`, `emitApprovalCreated`, `emitApprovalResolved`,
+`emitMemoryWritten`, `emitTaskCreated`, `emitTaskUpdated`, `emitEventLogged`.
+Brain code calls them at the relevant state-change moments.
+
+### Web side
+
+- `web/lib/api/stream.ts` — singleton `AntonStream` class. One WS per page,
+  ref-counted so every hook shares one socket. Auto-reconnect with
+  exponential backoff + jitter. Multiplexes subscribers by event type.
+  URL via `NEXT_PUBLIC_ANTON_WS_URL` (defaults to `ws://<host>:3000`).
+- `web/hooks/use-anton-stream.ts` — React wrapper. Exposes
+  `{ connected, subscribe }`.
+- `web/hooks/use-approvals.ts`, `use-memories.ts`, `use-tasks.ts` — each
+  hydrates via REST on mount, then subscribes to its event types and
+  patches local state as deltas arrive. Each returns `connected` so the UI
+  can indicate live status.
+
+### Data flow example — a new approval
+
+```
+  agent.process()
+    └─ detects AWAITING_APPROVAL: in output
+       └─ approvalsStore.insert(record)
+          └─ emitApprovalCreated(record)         ← src/spine/web.js
+             └─ wss.broadcast({type:'approval.created', data, timestamp})
+                └─ useApprovals subscriber: prepend to state
+                   └─ <ApprovalTray> re-renders in <100ms
 ```
 
 ---

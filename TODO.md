@@ -372,6 +372,64 @@
 
 ---
 
+## 5.5. Phase 4.5 — Live Data Transport (REST hydrate + WebSocket deltas)
+
+> The web UI was built against static mocks. This phase gives it live brain
+> data via a hybrid transport — REST snapshots on mount, WebSocket deltas
+> thereafter. Polling is explicitly rejected (wasteful + laggy for event-
+> driven state). See `docs/ARCHITECTURE-BRAIN.md` → "Web Transport Layer".
+
+### 5.5.1 Backend transport (DONE, see commits 9fd6e52 / fa7d2f2 / 5277cd6 / a5b2e5b)
+
+- [x] `GET /api/approvals` — current pending approval records, mirrors `Approval` type
+- [x] `GET /api/memories` — facts / decisions / preferences, mirrors `Memory` type
+- [x] `GET /api/tasks` — kanban items, mirrors `Task` type
+- [x] Each endpoint accepts an optional `*Source` callback via `initWeb(...)`; falls back to `DEFAULT_*` mock so the channel is live before brain grows real exports
+- [x] WebSocket `hello` handshake on connect so clients can flip a connected indicator
+- [x] Exported emit helpers: `emit(type, data)`, `emitApprovalCreated`, `emitApprovalResolved`, `emitMemoryWritten`, `emitTaskCreated`, `emitTaskUpdated`, `emitEventLogged` — all wrap `wss.broadcast({type, data, timestamp})`
+
+### 5.5.2 Web-side transport (DONE, see commits above)
+
+- [x] `web/lib/api/chat.ts` — typed client for POST `/api/chat`
+- [x] `web/lib/api/approvals.ts`, `memory.ts`, `tasks.ts` — typed GET clients
+- [x] `web/lib/api/stream.ts` — singleton `AntonStream`: one WS per page, ref-counted, auto-reconnect w/ exponential backoff + jitter, multiplexes handlers by event type. URL via `NEXT_PUBLIC_ANTON_WS_URL`
+- [x] `web/hooks/use-anton-stream.ts` — React wrapper exposing `{ connected, subscribe }`
+- [x] `web/hooks/use-approvals.ts` — REST hydrate + subscribe to `approval.created` / `approval.resolved`
+- [x] `web/hooks/use-memories.ts` — REST hydrate + subscribe to `memory.written`
+- [x] `web/hooks/use-tasks.ts` — REST hydrate + subscribe to `task.created` / `task.updated`
+- [x] Components consume hooks (loading / `offline · showing cached` / live count states)
+
+### 5.5.3 Brain-side emit wiring (PENDING — makes the transport actually live)
+
+- [ ] `src/memory/sqlite.ts` — call `emitMemoryWritten(record)` at the end of `storeMemory()` / `storeConversation()` success paths
+- [ ] `src/brain/brain.ts` — when agent output contains `AWAITING_APPROVAL:`, insert into an approvals store and call `emitApprovalCreated(approval)`
+- [ ] `src/brain/state-machine.ts` — on state transitions (TODO → IN_FLIGHT → DONE / BLOCKED), call `emitTaskUpdated(task)`
+- [ ] `src/brain/brain.ts` (activity log) — call `emitEventLogged(event)` on every action-tag, tool call, handoff
+- [ ] Wire `index.js` → `initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource })` to pass real callbacks pulled from the live stores (replaces `DEFAULT_*` mocks)
+
+### 5.5.4 Approve / reject POST endpoints (PENDING)
+
+- [ ] `POST /api/approvals/:id/approve` — mark resolved, emit `approval.resolved`, run the agent's queued action
+- [ ] `POST /api/approvals/:id/reject` — mark resolved, emit `approval.resolved`, inform the agent
+- [ ] `web/lib/api/approvals.ts` — add `approveApproval(id)` + `rejectApproval(id)` client fns
+- [ ] `web/components/layout/approval-tray.tsx` — wire Approve / Reject buttons to call these
+
+### 5.5.5 Events stream (PENDING)
+
+- [ ] `GET /api/events` — recent activity log (windowed: last 200 events)
+- [ ] `web/lib/api/events.ts`, `web/hooks/use-events.ts` (same hybrid pattern)
+- [ ] `web/components/modules/activity-timeline.tsx` — use the hook
+- [ ] `web/components/modules/event-detail.tsx` + `/event/[id]` — use the hook
+
+### 5.5.6 Definition of Done
+
+- [ ] A chat from the web UI that triggers an agent memory write shows up in the Memory Browser without a refresh
+- [ ] An agent emitting `AWAITING_APPROVAL:` lights up the Approval Tray within ~100ms
+- [ ] Approve or Reject from the tray round-trips through the backend, closes out the approval, and the tray count drops
+- [ ] Closing the Anton service shows `offline · showing cached` in every hybrid hook; reopening reconnects and backfills via REST
+
+---
+
 ## 6. Phase 5 — Hardware Upgrade (weeks 7–8)
 
 > Mac Studio arrives. Scale to 32B/72B. Push local handling to 95%+.
