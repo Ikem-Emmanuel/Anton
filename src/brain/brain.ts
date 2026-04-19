@@ -8,12 +8,13 @@
 // config/models.ts. Hardware upgrades change only that file. No model string hardcoded anywhere.
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
-import { buildMemoryContext, storeConversation } from '../memory/sqlite.js';
+import { buildMemoryContext, buildSkillsContext, storeConversation } from '../memory/sqlite.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
 import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
+import { evaluateTurn } from './evaluate.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
@@ -109,6 +110,31 @@ function scheduleDistillation(userMessage: string, agentResponse: string, agent:
       }
     } catch (e) {
       console.warn('[Distill] Unexpected:', (e as Error).message?.slice(0, 80));
+    }
+  });
+}
+
+// Fire-and-forget outcome evaluation (Phase 3.5 §4.5.2). Writes a verdict
+// row to turn_evaluations that §4.5.4 skill refinement + Phase 6 DPO read.
+function scheduleEvaluation(
+  conversationId: number | null,
+  userMessage: string,
+  agentResponse: string,
+  agent: string
+): void {
+  if (!conversationId || !agentResponse || agentResponse.length < 20) return;
+  setImmediate(async () => {
+    try {
+      const res = await evaluateTurn(conversationId, userMessage, agentResponse, agent);
+      if (res.verdict) {
+        console.log(
+          `[Eval] ${agent} → ${res.verdict} (task=${res.scores?.task_addressed.toFixed(2)} role=${res.scores?.role_appropriate.toFixed(2)} hall=${res.scores?.hallucination_free.toFixed(2)} act=${res.scores?.action_ready.toFixed(2)}) ${res.durationMs}ms`
+        );
+      } else if (res.error) {
+        console.warn(`[Eval] ${agent} error: ${res.error}`);
+      }
+    } catch (e) {
+      console.warn('[Eval] Unexpected:', (e as Error).message?.slice(0, 80));
     }
   });
 }
@@ -265,6 +291,14 @@ export async function process(
     memoryContext = buildMemoryContext(options?.agent);
   } catch {}
 
+  // Skill retrieval (Phase 3.5 §4.5.1) — keyed on the incoming request's
+  // context pattern. Injected as a dedicated [APPLICABLE SKILLS] block,
+  // separate from memories, so the responder can apply them as templates.
+  let skillsContext = '';
+  try {
+    skillsContext = buildSkillsContext(message, agentName, 3);
+  } catch {}
+
   const basePrompt = options?.agent ? buildAgentPrompt(options.agent) : getAntonSystem();
   const contextParts = [basePrompt];
 
@@ -274,6 +308,7 @@ export async function process(
 
   if (options?.context) contextParts.push(`\nContext: ${options.context}`);
   if (memoryContext) contextParts.push(`\n${memoryContext}`);
+  if (skillsContext) contextParts.push(`\n${skillsContext}`);
 
   const history = getHistory(agentName);
   if (history.length > 0) {
@@ -317,11 +352,12 @@ export async function process(
       markInteraction(agentName);
       scheduleDistillation(message, finalText, agentName);
 
+      let agentTurnId: number | null = null;
       try {
         storeConversation(sessionId, agentName, 'user', message, {
           channel: options?.channel || 'web',
         });
-        storeConversation(sessionId, agentName, 'agent', finalText, {
+        agentTurnId = storeConversation(sessionId, agentName, 'agent', finalText, {
           channel: options?.channel || 'web',
           modelUsed: `claude-${claudeModel}`,
           tokensIn: result.tokensIn,
@@ -332,6 +368,7 @@ export async function process(
       } catch (e) {
         console.warn('[Brain] Memory store failed (claude path):', (e as Error).message?.slice(0, 60));
       }
+      scheduleEvaluation(agentTurnId, message, finalText, agentName);
 
       return {
         text: finalText,
@@ -422,11 +459,12 @@ export async function process(
     markInteraction(agentName);
     scheduleDistillation(message, finalText, agentName);
 
+    let agentTurnId: number | null = null;
     try {
       storeConversation(sessionId, agentName, 'user', message, {
         channel: options?.channel || 'web',
       });
-      storeConversation(sessionId, agentName, 'agent', finalText, {
+      agentTurnId = storeConversation(sessionId, agentName, 'agent', finalText, {
         channel: options?.channel || 'web',
         modelUsed: actualModel,
         tokensIn: result.tokensIn,
@@ -437,6 +475,7 @@ export async function process(
     } catch (e) {
       console.warn('[Brain] Memory store failed:', (e as Error).message?.slice(0, 60));
     }
+    scheduleEvaluation(agentTurnId, message, finalText, agentName);
 
     return {
       text: finalText,
@@ -484,11 +523,12 @@ export async function process(
       markInteraction(agentName);
       scheduleDistillation(message, finalText, agentName);
 
+      let agentTurnId: number | null = null;
       try {
         storeConversation(sessionId, agentName, 'user', message, {
           channel: options?.channel || 'web',
         });
-        storeConversation(sessionId, agentName, 'agent', finalText, {
+        agentTurnId = storeConversation(sessionId, agentName, 'agent', finalText, {
           channel: options?.channel || 'web',
           modelUsed: 'claude-sonnet',
           tokensIn: claudeResult.tokensIn,
@@ -497,6 +537,7 @@ export async function process(
           handledLocally: false,
         });
       } catch {}
+      scheduleEvaluation(agentTurnId, message, finalText, agentName);
 
       return {
         text: finalText,
