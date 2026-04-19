@@ -54,12 +54,84 @@ function readJsonBody(req, maxBytes = 1024 * 1024) {
   });
 }
 
-export function initWeb({ askAgent, port = 3000 }) {
+// Fallback approvals source — returns the current demo set so the Next.js
+// UI has something to render when the service boots in isolation (no
+// live-brain approval feed yet). Replace by passing `approvalsSource`
+// into initWeb when the real source exists.
+const DEFAULT_APPROVALS = [
+  {
+    id: 1,
+    agent: 'Marcus',
+    dept: 'eng',
+    risk: 'L',
+    intent: 'Draft PRD for onboarding v3 and share with Alex.',
+    why: "Continuation of yesterday's scope review. No external writes.",
+    diff: null,
+  },
+  {
+    id: 2,
+    agent: 'James',
+    dept: 'eng',
+    risk: 'H',
+    intent: 'Push v1.2 to production.',
+    why: 'All tests green for 42m. Requires approval per red tier.',
+    diff: [
+      ['+', 'api/router.ts', '24 lines'],
+      ['-', 'api/router.ts', '9 lines'],
+      ['~', 'config/deploy.yaml', '3 lines'],
+    ],
+  },
+  {
+    id: 3,
+    agent: 'Sarah',
+    dept: 'mktg',
+    risk: 'M',
+    intent: 'Send launch email to 2,340 subscribers.',
+    why: 'Targeting "waitlist: dormant 30d". Copy reviewed by Kai.',
+    diff: [
+      ['subject', 'You asked us to build it. We did.'],
+      ['from', 'noel@anton.computer'],
+      ['audience', '2,340 contacts'],
+    ],
+  },
+  {
+    id: 4,
+    agent: 'Riley',
+    dept: 'mktg',
+    risk: 'L',
+    intent: 'Schedule 4 X posts across Thu–Sun.',
+    why: null,
+    diff: null,
+  },
+  { id: 5, agent: 'Priya', dept: 'data', risk: 'L', intent: 'Rebuild weekly retention cohort.', why: null, diff: null },
+];
+
+export function initWeb({ askAgent, approvalsSource, port = 3000 }) {
+  // `approvalsSource` is an optional callback that returns the current list
+  // of pending approvals. If omitted, we fall back to the demo set so the UI
+  // stays live during early development.
+  const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
+
   _server = createServer(async (req, res) => {
     // CORS preflight
     if (req.method === 'OPTIONS') {
       res.writeHead(204, CORS_HEADERS);
       res.end();
+      return;
+    }
+
+    // GET /api/approvals — returns the current pending approval records.
+    // Shape mirrors web/lib/data/approvals.ts `Approval` type.
+    if (req.method === 'GET' && req.url === '/api/approvals') {
+      try {
+        const approvals = await readApprovals();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ approvals: approvals || [] }));
+      } catch (e) {
+        console.error('[Web] /api/approvals error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
       return;
     }
 
