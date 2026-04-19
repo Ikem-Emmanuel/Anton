@@ -241,6 +241,87 @@
 - [ ] Stored in `agent_journals` table
 - [ ] Markdown export becomes a daily cron (`data/memory/YYYY-MM-DD.md`) — human-readable only
 
+### 4.7 Phase 3A — Feedback primitives (see `docs/RESEARCH-MULTI-AGENT.md`)
+
+- [ ] (4.7.1) Add SQLite tables: `tasks`, `task_events`, `pending_asks`
+- [ ] (4.7.2) Extend `extractHandoffs()` → `extractAgentActions()`: parses `[ASK:]`, `[BLOCK:]`, `[APPROVE:]`, `[REJECT:]`, `[DONE:]`
+- [ ] (4.7.3) Implement `brain.transition(taskId, event, byAgent)` — pure function with authority table
+- [ ] (4.7.4) Add `hop_count` increment (cap 20 → auto-escalate)
+- [ ] (4.7.5) Add `retry_count` increment on `needs-fix` (cap 3 → auto-escalate)
+- [ ] (4.7.6) Semantic ask dedup — hash(task + asker + question[:100]), check last 10 events
+- [ ] (4.7.7) Validate `HANDOFF`/`ASK` targets against `TEAM_NAMES`
+
+### 4.8 Phase 3B — Simulation mode + fixtures
+
+- [ ] (4.8.1) `ANTON_SIM_MODE=1` env var — swap `brain.process()` to read fixtures
+- [ ] (4.8.2) JSONL fixture format + loader
+- [ ] (4.8.3) Scenario S1: "Ship user login" — full cycle (Sarah→Marcus→James ASK Sarah→Elena→Priya REJECT→James fix→Priya APPROVE→Omar deploy)
+- [ ] (4.8.4) Scenario S2: "Add Stripe" — blocker escalation (James BLOCK → Noel resumes)
+- [ ] (4.8.5) Scenario S3: "Sprint planning" — parallel tracks with shared QA gate
+- [ ] (4.8.6) Scenario S4: "QA bounce limit" — retry exhaustion after 3 cycles
+- [ ] (4.8.7) Scenario S5: "Tech lead rejects" — rejection path with revision
+- [ ] (4.8.8) Vitest suite runs all 5 in < 30s total; assert final state + hop + retry counts
+- [ ] (4.8.9) CI metrics: task completion, hop efficiency, state correctness, escalation rate, loop count, hallucination rate
+
+---
+
+## 4.5. Phase 3.5 — Skill Loop (Hermes-inspired, ~12 hrs)
+
+> Slot between memory (Phase 2/3) and training (Phase 6). Skills improve _within-session_; DPO improves weights _across weeks_. See `docs/BRAIN-V2.1-PLAN.md §4.5.`
+
+### 4.5.1 Named skill library with `context_pattern → approach` keying (3 hrs)
+
+- [ ] (4.5.1a) Create `skills` SQLite table (`context_pattern`, `approach` JSON, `owner_agent`, `success/failure_count`, `supersedes_id`, `deprecated`, `embedding`)
+- [ ] (4.5.1b) Create `src/memory/skills.ts` module: `storeSkill`, `retrieveApplicableSkills(request, agent, topK=3)`, `markSkillUsed(id, outcome)`, `deprecateSkill(id)`
+- [ ] (4.5.1c) Wire `retrieveApplicableSkills()` into `brain.process()` — injected as `[APPLICABLE SKILLS]` block distinct from `[ORG MEMORY]`
+
+### 4.5.2 Outcome-evaluation pass (2 hrs)
+
+- [ ] (4.5.2a) Create `turn_evaluations` SQLite table (4 scores + verdict + implicit_signal)
+- [ ] (4.5.2b) Create `src/brain/evaluate.ts` — Qwen3 8B judge pass, schema-constrained, 4 criteria (task-addressed, role-appropriate, hallucination-free, action-ready)
+- [ ] (4.5.2c) Fire-and-forget from `brain.process()` after every successful turn (local + Claude)
+- [ ] (4.5.2d) Write verdict to `turn_evaluations`; update skill success/failure counts when skill was used
+
+### 4.5.3 Implicit feedback capture (1.5 hrs)
+
+- [ ] (4.5.3a) Create `src/brain/feedback-capture.ts` — `captureImplicitFeedback(prevAgentTurn, currentUserTurn)` returning `'accepted' | 'corrected' | 'ambiguous'`
+- [ ] (4.5.3b) Three-stage signal pipeline: explicit keywords → edit-distance → semantic similarity
+- [ ] (4.5.3c) Writes to `turn_evaluations.implicit_signal`; runs on every incoming user turn before the next `brain.process()` call
+
+### 4.5.4 Skill refinement via supersedes chain (2 hrs)
+
+- [ ] (4.5.4a) On `good` verdict + positive implicit signal + novel approach for existing `context_pattern` → create candidate skill with `supersedes_id` pointing to prior
+- [ ] (4.5.4b) Candidate becomes preferred after 3 successful uses (vs existing's last-5 success rate)
+- [ ] (4.5.4c) Retrieval returns newest non-deprecated per lineage
+
+### 4.5.5 Structured user model (2 hrs)
+
+- [ ] (4.5.5a) Create `user_model` SQLite table — 4 dimensions (`output_format`, `decision`, `task_pattern`, `feedback`)
+- [ ] (4.5.5b) Per-dimension evolution rules: `output_format` requires 3 consistent observations; `decision` locks at first explicit choice with override history; `task_pattern` time-of-day indexed; `feedback` trends feed into skill success rates
+- [ ] (4.5.5c) Inject high-confidence rows as `[USER MODEL]` block in `buildAmbientContext()`, 6-line cap
+
+### 4.5.6 Cross-agent skill sharing (1.5 hrs)
+
+- [ ] (4.5.6a) Add `shared` (bool) + `tags` (JSON array) columns to `skills`
+- [ ] (4.5.6b) Auto-surface share proposals when skill hits success_rate > 0.8 AND evidence > 5
+- [ ] (4.5.6c) Anton DMs Noel proposal; on approval, skill moves to shared pool; retrieval filter includes `owner_agent = X OR (shared = 1 AND tags ∩ my_domain)`
+
+### 4.5.7 Integration wiring
+
+- [ ] (4.5.7a) Extend `distillConversation()` (already shipped) to also emit skill candidates when `verdict = good` + novel `context_pattern`
+- [ ] (4.5.7b) Phase 3B feedback state machine: `verified` transition can require eval-pass verdict ≥ 0.6 (configurable per agent)
+- [ ] (4.5.7c) Phase 6 self-training: reuse `turn_evaluations.verdict` + `implicit_signal` as the DPO quality signal — delete the planned separate detector
+
+### 4.5.8 Acceptance criteria
+
+- [ ] Every completed turn writes a `turn_evaluations` row with 4 scores + verdict
+- [ ] Every `good`-verdict turn with novel `context_pattern` creates a skill
+- [ ] `retrieveApplicableSkills()` returns ≤ 3 skills, < 2k tokens, < 200ms
+- [ ] Implicit-feedback capture catches ≥ 70% of Noel's corrections on replay
+- [ ] `user_model` populates 4 dimensions with ≥ 2 rows each within a week
+- [ ] At least 1 skill shared across agents via review flow
+- [ ] Phase 3.5 demo: same task asked twice — second time retrieves and uses skill, observably faster + more consistent
+
 ---
 
 ## 5. Phase 4 — Web + Mobile Design and Build (weeks 4–6, ~60 hrs)
