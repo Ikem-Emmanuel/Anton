@@ -11,6 +11,26 @@ NC='\033[0m'
 
 AI_PATTERN='(generated (by|with) (claude|copilot|chatgpt|gpt-4|openai)|co-authored-by:.*(claude|copilot|chatgpt)|ai[- ]assisted|llm[- ]generated)'
 
+# Pre-existing commits grandfathered through before the AI-attribution policy
+# was added. Rewriting these would re-SHA the entire history downstream. New
+# commits still have to be clean — the hook only tolerates these exact SHAs.
+ALLOWED_COMMITS=(
+    "428465c013b48162813af55af3aac299ee15c46e"  # Initial commit
+    "df0d3fb5852216615ad8ff272ce8df0943bc37e7"  # Add JARVIS upgrade master TODO
+    "db4523a99b535ce00300611184ca8ebad5c17d7b"  # Restructure project: flatten service/
+    "edc2082c6b6d6555b16b4c12305c6f33b40b4e5f"  # Clean up: remove old directories
+)
+
+is_allowed() {
+    local sha="$1"
+    for allowed in "${ALLOWED_COMMITS[@]}"; do
+        if [ "$sha" = "$allowed" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 echo "Scanning pushed commits for AI attribution..."
 
 # Git null ref (new/deleted branch sentinel)
@@ -34,6 +54,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     fi
 
     for commit in $commits; do
+        if is_allowed "$commit"; then
+            continue
+        fi
+
         commit_msg=$(git log --format="%B" -n 1 "$commit")
 
         if echo "$commit_msg" | grep -qiE "$AI_PATTERN"; then
