@@ -99,7 +99,7 @@ export async function classify(message: string, model = 'qwen3:8b', context?: st
       maxTokens: 512,
       schema: CLASSIFICATION_JSON_SCHEMA, // grammar-constrained — no malformed JSON
       think: false, // classification doesn't need thinking
-      timeoutMs: 15_000,
+      timeoutMs: 25_000,
     });
 
     return ClassificationSchema.parse(data);
