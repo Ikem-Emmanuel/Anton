@@ -1,70 +1,102 @@
 # Anton Web
 
 Production port of the Anton design prototype (`Design/anton/project/`).
-Next.js 15 + React 19 + CSS variables from the prototype's tokens.css.
+Next.js 15 App Router · React 19 · Tailwind CSS v4 · TypeScript 6.
 
 ## Run
 
 ```bash
-cd web
-npm install
-npm run dev       # opens localhost:3000
+cd web && npm install && npm run dev
+# http://localhost:3000
 ```
 
 ## Structure
 
 ```
-app/
-  globals.css        design tokens (warm-dark, true-dark, light themes)
-  layout.tsx         root layout with theme + body shell
-  page.tsx           default route = Mission Control
-  lib/data.ts        mock data (15 agents, 6 departments, 5 approvals)
-  ui/
-    primitives.tsx   DeptChip, TrustBadge, StatusGlow, RiskPip, Kbd
-    shell.tsx        WebShell = Titlebar + LeftRail + center + ApprovalTray + CommandBar
-    mission-control.tsx   default screen with KpiStrip + agent list
-public/prototype/    the design files exactly as shipped — for reference
+web/
+  app/                          Next.js App Router (routes only)
+    globals.css                 Design tokens + Tailwind @theme mapping
+    layout.tsx                  Root layout, theme attribute
+    page.tsx                    Default route — mounts WebShell
+  components/
+    ui/                         Reusable atoms (prototype parity)
+      primitives.tsx            DeptChip · TrustBadge · StatusGlow · RiskPip · Kbd
+    layout/                     Shell + overlays
+      shell.tsx                 WebShell + Titlebar + LeftRail + CommandBar + ApprovalTray
+      command-palette.tsx       Cmd+K overlay with keyboard nav
+    modules/                    Feature screens — one per nav target
+      mission-control.tsx       KPI strip + agent list (default home)
+      briefing.tsx              Morning/EOD briefing split pane
+      memory-browser.tsx        FTS-style memory list with highlight palette
+      activity-timeline.tsx     Log with verbosity slider + agent filters
+      team.tsx                  Department chart + handoff routes
+      settings.tsx              Trust tiers + integrations
+      placeholders.tsx          Stubs for queued modules (Tasks, Inbox, Research, etc.)
+  lib/
+    data.ts                     Typed mock data (AGENTS, APPROVALS, MEMORIES, ACTIVITY)
+    cn.ts                       `cn()` utility (clsx + tailwind-merge)
+  public/prototype/             Original HTML/JSX prototype (reference, unchanged)
+  postcss.config.mjs            Tailwind v4 PostCSS plugin
+  next.config.ts                Minimal Next.js config
+  tsconfig.json                 `@/*` → project root path alias
 ```
 
-## Design source of truth
+## Design system
 
-- `Design/anton/README.md` — handoff bundle README from Claude Design
-- `Design/anton/project/` — original HTML/JSX/CSS prototype (5,500 LOC, 18 modules)
-- `docs/DESIGN-PROMPT.md` — 16-section design brief (principles, tokens, IA, components, copy, anti-patterns)
+Tokens live in `app/globals.css` as CSS variables under `:root`, with
+`[data-theme='true-dark']` and `[data-theme='light']` overrides. The
+Tailwind v4 `@theme inline {}` block maps them so utilities like
+`bg-page`, `text-primary`, `border-subtle`, `bg-accent-soft`, `text-ok`
+work out of the box.
 
-## What's implemented
+Font stack: Söhne/Geist for body, Berkeley Mono for agent output and
+code. Three themes (warm-dark default, true-dark, light). Helper
+classes: `.mono`, `.small`, `.caps`, `.pulse`, `.slide-in`, `.dot`,
+`.dot-ok/work/err/idle`.
 
-- **tokens.css** → `app/globals.css` complete with all 3 themes
-- **shared.jsx primitives** → `app/ui/primitives.tsx` (5 components)
-- **shell.jsx** → `app/ui/shell.tsx` (Titlebar + LeftRail + CommandBar + ApprovalTray + WebShell)
-- **mission-control.jsx (list variant)** → `app/ui/mission-control.tsx` (KPI strip + agent list rows)
-- Mock data from `shared.jsx` → `app/lib/data.ts`
+## What's live
 
-## What's not yet implemented (by module, see `Design/anton/project/`)
+| Module                      | File                                       | Status                                           |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| Mission Control (list view) | `components/modules/mission-control.tsx`   | ✅ KPIs + agent rows with progress bars          |
+| Briefing                    | `components/modules/briefing.tsx`          | ✅ Split pane: sections + live activity          |
+| Memory Browser              | `components/modules/memory-browser.tsx`    | ✅ Filters + highlight palette + confidence dots |
+| Activity Timeline           | `components/modules/activity-timeline.tsx` | ✅ Verbosity slider + agent filters + event rows |
+| Team (Dept chart)           | `components/modules/team.tsx`              | ✅ Anton → dept cards + handoff routes           |
+| Settings (Trust tiers)      | `components/modules/settings.tsx`          | ✅ Autonomy tier selector + integrations grid    |
+| Approval Tray               | `components/layout/shell.tsx`              | ✅ Expand + diff view + approve/reject           |
+| Command Palette             | `components/layout/command-palette.tsx`    | ✅ Cmd+K, arrow nav, esc                         |
+| Keyboard shortcuts          | `shell.tsx`                                | ✅ ⌘K palette                                    |
 
-| Module                                                    | File                | Lines | Notes                                                   |
-| --------------------------------------------------------- | ------------------- | ----- | ------------------------------------------------------- |
-| Mission Control variants (dept / grid / orbit / terminal) | mission-control.jsx | 368   | Only list shipped                                       |
-| Briefing                                                  | screens.jsx         | 545   | Morning/EOD briefing surface                            |
-| Chat                                                      | screens.jsx         | —     | Conversation UI                                         |
-| Team / Dept chart                                         | screens.jsx         | —     | Org-chart view                                          |
-| Memory Browser                                            | screens.jsx         | —     | Readwise-style memory list                              |
-| Activity Timeline / Log                                   | screens.jsx         | —     | Verbosity-switchable feed                               |
-| Integrations Hub                                          | screens.jsx         | —     | Third-party tools                                       |
-| Settings (6 sub-tabs)                                     | screens.jsx         | —     | Trust tiers, Arch, Memory, Voice, Notifications, Safety |
-| Tasks / Inbox / Calendar                                  | tier1.jsx           | 703   | Core-productivity modules                               |
-| Documents / Research / People / Expenses / Travel / Usage | tier2.jsx           | 590   | Extended modules                                        |
-| Detail routes (agent / memory-item / event / integration) | detail-screens.jsx  | 491   | Individual item detail views                            |
-| Mobile shell + screens                                    | mobile.jsx          | 450   | Native-mobile equivalent                                |
-| Approval detail (expanded diff view)                      | extras.jsx          | 582   | Currently collapsed in tray                             |
-| Tweaks panel (theme/accent/density live edit)             | shell.jsx           | —     | Development-only control                                |
+## What's queued (stubs present, production port pending)
 
-## Next steps (suggested order)
+Nine modules have `Placeholder` stubs in `components/modules/placeholders.tsx`
+that link to the prototype source file. Port priority (highest value first):
 
-1. Hook `onNav` to Next.js App Router: `/mc`, `/brief`, `/pending/[id]`, etc.
-2. Build Approvals detail route (diff view, "why" expansion, approve/reject).
-3. Memory Browser (FTS5 query → results list, highlight palette already in tokens).
-4. Activity Timeline (wire to SQLite `conversations` + `task_events` tables).
-5. Settings > Trust tiers (read/write against config/models.ts).
-6. Extract inline styles to CSS modules once the pattern library stabilizes.
-7. Wire to brain API: Slack-equivalent REST + WebSocket against `index.js` backend.
+1. **Approvals Hub** — full approval queue + detail view with diff + multi-option selector (`new-screens.jsx ApprovalDetail`)
+2. **Chat** — thread list + conversation view + composer (`new-screens.jsx ChatModule`)
+3. **Tasks** — kanban + list view (`tier1.jsx`)
+4. **Inbox** — unified message triage (`tier1.jsx`)
+5. **Calendar** — day/week + agent overlay (`tier1.jsx`)
+6. **Documents** — PRD/ADR editor (`tier2.jsx`)
+7. **Research** — parallel spawn + synthesis (`tier2.jsx`)
+8. **People** — CRM cards (`tier2.jsx`)
+9. **Expenses/Travel/Usage** — financial + telemetry dashboards (`tier2.jsx`)
+
+Also not yet ported:
+
+- Mission Control variants (dept / grid / orbit / terminal) — `mission-control.jsx`
+- Detail routes (agent / memory-item / event / integration) — `detail-screens.jsx`
+- Mobile shell — `mobile.jsx`
+- Tweaks panel — `shell.jsx`
+- Settings sub-tabs (Architecture, Memory, Voice, Notifications, Safety) — in `extras.jsx`
+- Onboarding — `screens.jsx`
+
+## Next
+
+- Wire Next.js App Router routes: `/mc`, `/brief`, `/memory`, `/team`, `/log`, `/settings`, etc.
+- Port Approval Detail + Chat + Tasks (highest-value remaining screens)
+- Add API routes that talk to the brain: `POST /api/message` → brain.process
+- WebSocket stream for agent activity → Activity Timeline live mode
+- Convert inline styles to Tailwind utilities where it improves readability
+- Extract TweaksPanel (theme/accent/density live edit) from `shell.jsx`
