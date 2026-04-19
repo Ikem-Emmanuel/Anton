@@ -29,7 +29,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 ### What's genuinely BROKEN or NOT STARTED
 
 - **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
-- **Persona source-of-truth not unified** — `config/personas.json` (V1) + `src/brain/personas.ts` (V2) still separate. No `config/agents/*.ts` with Zod. §4.5.
+- ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
 - **EOD consolidation not routed through brain** — markdown export is the write path, not a view. §4.6.
 - **sqlite-vec not installed** — FTS5 only; no semantic retrieval for memories. §4.2.
 - **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
@@ -209,13 +209,16 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] `buildAmbientContext()` called per turn and injected into the system prompt at `brain.ts:436`
 - [x] `ambient-context.test.ts` covers the format
 
-### 4.5 Persona unification — NOT DONE
+### 4.5 Persona unification — DONE
 
-- [ ] New file per department: `config/agents/engineering.ts`, `marketing.ts`, etc.
-- [ ] Zod schemas per agent (name, role, model, tools, delegates_to)
-- [ ] `src/brain/personas.ts` and V1 `config/personas.json` become generated from this single source
-- [ ] Both local brain and Claude fallback build prompts from the same data
-- [ ] Delete orphan agent names that exist in V1 but not in brain
+- [x] New file per department: `config/agents/engineering.ts`, `marketing.ts`, `seo.ts`, `automation.ts`, `data.ts`, `growth.ts`, `coordination.ts` — 28 agents total (27 team + Anton)
+- [x] Zod schema in `config/agents/_schema.ts` — validates at module load; duplicate-id and missing-field failures crash boot, not silent drift
+- [x] `config/agents/index.ts` loader assembles AGENTS_BY_ID / AGENTS_BY_NAME / DEPT_LEADS / findByName / getDeptMembers / getDeptLead
+- [x] `src/brain/personas.ts` (V2) now reads the loader — no more 16-vs-27 agent discrepancy
+- [x] `src/brain/team.js` (V1) now builds TEAM from the loader
+- [x] `src/memory/sessions.js` (V1 Claude path) reads `AGENTS_BY_NAME` — same personality/slackStyle/background as V2
+- [x] `config/personas.json` deleted
+- [x] Loader tests at `config/agents/index.test.ts` — 8 assertions, covers roster count, lead invariants, lookup, null-agentId rule
 
 ### 4.6 Wire EOD consolidation through brain — NOT DONE
 
@@ -593,7 +596,8 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints | 4.5      |
 | 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
 | 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
-|            | **NEXT: §4.5 persona unification → §4.6 EOD consolidation → §4.2 sqlite-vec. Phase 2.5 now verifiable, not just asserted.**                 | 3        |
+| 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
+|            | **NEXT: §4.6 EOD consolidation → §4.2 sqlite-vec → §4.3 proactive triggers. Branch `phase3/persona-unification`.**                          | 3        |
 
 ---
 
