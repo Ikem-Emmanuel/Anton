@@ -2,7 +2,7 @@
 // enforcement, retry cap, hop cap, and block/escalate/unblock paths.
 
 import { describe, expect, it } from 'vitest';
-import { agentContext, transition, type AgentContext } from './state-machine.js';
+import { type AgentContext, agentContext, transition } from './state-machine.js';
 
 const orchestrator: AgentContext = { agent: 'Anton', isOrchestrator: true };
 const human: AgentContext = { agent: 'Noel', isHuman: true };

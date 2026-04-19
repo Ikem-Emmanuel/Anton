@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* Anton design tokens — ported from Design/anton/project/tokens.css (§4 of DESIGN-PROMPT.md). */
+:root {
+  /* Warm-dark (default) */
+  --bg-page: #0f0d0b;
+  --bg-surface: #1a1714;
+  --bg-hover: #221e1a;
+  --bg-raised: #2a2622;
+
+  --text-primary: #f0ede8;
+  --text-secondary: #9e968e;
+  --text-tertiary: #6b645d;
+  --text-disabled: #413d38;
+
+  --border-subtle: #221f1b;
+  --border-default: #2a2724;
+  --border-strong: #3a3632;
+
+  --accent: #c4943a;
+  --accent-soft: rgba(196, 148, 58, 0.14);
+
+  --ok: #3d9970;
+  --work: #e8a03a;
+  --error: #d95f5f;
+  --info: #6b8fc4;
+
+  --hl-yellow: #fbda83;
+  --hl-coral: #e4938e;
+  --hl-blue: #8dbbff;
+
+  --font-sans: "Söhne", "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Berkeley Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  --r-chip: 6px;
+  --r-card: 8px;
+  --r-panel: 12px;
+}
+
+html[data-theme="true-dark"] {
+  --bg-page: #000;
+  --bg-surface: #0a0a0a;
+  --bg-hover: #141414;
+  --bg-raised: #1a1a1a;
+  --text-primary: #fff;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #666;
+  --border-subtle: #141414;
+  --border-default: #1f1f1f;
+  --border-strong: #2c2c2c;
+}
+
+html[data-theme="light"] {
+  --bg-page: #f3eee4;
+  --bg-surface: #fbf7ee;
+  --bg-hover: #ede6d7;
+  --bg-raised: #fff;
+  --text-primary: #1a1612;
+  --text-secondary: #4e463c;
+  --text-tertiary: #887f72;
+  --text-disabled: #bcb3a4;
+  --border-subtle: #e2d9c7;
+  --border-default: #cfc4ad;
+  --border-strong: #a89b80;
+  --accent: #925e0b;
+  --accent-soft: rgba(146, 94, 11, 0.12);
+  --ok: #2f7554;
+  --work: #b67a1c;
+  --error: #b53f3f;
+  --info: #4b6fa3;
+}
+
+/* Map CSS variables into Tailwind v4 @theme so utilities like `bg-page`,
+   `text-primary`, `border-subtle`, `bg-accent-soft` just work. */
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-surface: var(--bg-surface);
+  --color-hover: var(--bg-hover);
+  --color-raised: var(--bg-raised);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+  --color-disabled: var(--text-disabled);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-ok: var(--ok);
+  --color-work: var(--work);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --color-hl-yellow: var(--hl-yellow);
+  --color-hl-coral: var(--hl-coral);
+  --color-hl-blue: var(--hl-blue);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-chip: var(--r-chip);
+  --radius-card: var(--r-card);
+  --radius-panel: var(--r-panel);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  height: 100%;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 6px;
+  border: 2px solid var(--bg-page);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+@keyframes antonPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pulse {
+  animation: antonPulse 2000ms ease-in-out infinite;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.slide-in {
+  animation: slideInUp 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+.small {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.caps {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-ok {
+  background: var(--ok);
+}
+.dot-work {
+  background: var(--work);
+}
+.dot-err {
+  background: var(--error);
+}
+.dot-idle {
+  background: var(--text-tertiary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

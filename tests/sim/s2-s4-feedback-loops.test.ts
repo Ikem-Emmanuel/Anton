@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { process as brainProcess } from '../../src/brain/brain.js';
 import { getSimProgress, getSimWarnings, loadFixture, resetSim } from '../../src/brain/sim-mode.js';
-import { type AgentContext, transition, agentContext, type TaskState } from '../../src/brain/state-machine.js';
+import { type AgentContext, agentContext, type TaskState, transition } from '../../src/brain/state-machine.js';
 import { s2StripeBlocker } from '../fixtures/s2-stripe-blocker.js';
 import { s4QaRetryLimit } from '../fixtures/s4-qa-retry-limit.js';
 

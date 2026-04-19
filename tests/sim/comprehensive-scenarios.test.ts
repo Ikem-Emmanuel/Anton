@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { process as brainProcess } from '../../src/brain/brain.js';
 import { getSimProgress, getSimWarnings, loadFixture, resetSim } from '../../src/brain/sim-mode.js';
-import { type AgentContext, agentContext, transition, type TaskState } from '../../src/brain/state-machine.js';
+import { type AgentContext, agentContext, type TaskState, transition } from '../../src/brain/state-machine.js';
 import { s3SprintParallel } from '../fixtures/s3-sprint-parallel.js';
 import { s5ArchReject } from '../fixtures/s5-arch-reject.js';
 import { s6MultiHopAsk } from '../fixtures/s6-multi-hop-ask.js';

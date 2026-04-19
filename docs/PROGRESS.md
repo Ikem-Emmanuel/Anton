@@ -5,35 +5,41 @@
 
 ---
 
-## 📍 Current State (2026-04-19)
+## 📍 Current State (2026-04-19 — end of Phase 3)
 
-**Branch:** `phase2/memory`  
-**Active phase:** Phase 3A + 3B + 3.5 complete — ready for Phase 4 (UI) or Phase 3 refinements  
-**Test baseline:** 609 pass / 1 skipped — zero V1 flakes  
-**Sim scenarios:** 11 multi-agent tests (S1/S2/S4) running in ~7 ms without Ollama  
-**V1 memory:** 12 journal entries migrated to SQLite; all context spotlighted + ambient-wrapped  
-**Phase 2.5:** ✅ COMPLETE (10/10) — 5 commits  
-**Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs) — 4 commits  
+**Branch:** `phase3/persona-unification` — 7 commits ahead of `phase4/web-ui` (which is ~25 ahead of `main`)
+**Active phase:** Phase 3 complete; next branch will be Phase 5 hardware or Phase 6 self-training
+**Hardware:** 16GB Mac Mini ("leopardracer") — Tier-1 routing active. 64GB Mac Studio evaluated 2026-04-19, deferred.
+**Test baseline:** 705 pass (1 skipped) — zero V1 flakes; 65 new tests this Phase 3 branch
+**Sim scenarios:** S1/S2/S3/S4/S5/S6/S8 + skill-loop-integration running in ms without Ollama
+**V1 memory:** 12 journal entries migrated to SQLite; dual-write active on every new `appendSharedMemory` / `appendDeptMemory` / `appendDailyNote`
+**Phase 2.5:** ✅ COMPLETE (10/10 — closed 2026-04-19 with the brain eval harness)
+**Phase 3:** ✅ COMPLETE — distill, sqlite-vec, proactive loop, ambient, persona unification, EOD dual-write, feedback primitives, cross-agent skill sharing
+**Phase 3.5 Skill Loop:** ✅ COMPLETE (7 legs)
 **Phase 3A / 3B:** ✅ COMPLETE — action tags + state machine + simulation mode
+**Phase 4:** ✅ Core complete — Next.js 15, all 18 nav modules real, hybrid REST/WS transport live
+**Phase 4.5:** ✅ COMPLETE — hybrid REST hydrate + WS deltas for approvals/memories/tasks/events; `/event/[id]` dynamic
 
 ### Phase status overview
 
-| Phase                         | Status                | Progress                                                      |
-| ----------------------------- | --------------------- | ------------------------------------------------------------- |
-| 0 — Foundation                | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5                           |
-| 1 — Brain Core + Routing      | ✅ Verified working   | Behavioral issues fixed in Phase 2.5                          |
-| 2 — Memory (SQLite)           | ✅ SQLite done        | RAG/vault/LightRAG deferred                                   |
-| **2.5 — Stabilize**           | ✅ Complete           | 10/10 items shipped                                           |
-| **3A — Feedback primitives**  | ✅ Complete           | action tags, state machine, hop/retry caps                    |
-| **3B — Simulation mode**      | ✅ Complete           | ANTON_SIM_MODE + 3 scenarios (S1/S2/S4)                       |
-| **3 — Intelligence + Jarvis** | 🟡 Partial            | §4.1 distill + §4.4 ambient done; §4.2/§4.3/§4.5/§4.6 pending |
-| **3.5 — Skill Loop**          | ✅ Complete           | 7/7 Hermes gaps closed — all 6 learning-loop legs shipped     |
-| 4 — Web + Mobile              | ⏳ Design brief done  | Implementation blocked on 3                                   |
-| 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                            |
-| 6 — Self-Training             | ⏳ Not started        |                                                               |
-| 7 — Voice                     | ⏳ Not started        |                                                               |
-| 8 — Finance                   | ⏳ Not started        |                                                               |
-| 9 — Production hardening      | ⏳ Not started        |                                                               |
+| Phase                         | Status                | Progress                                                                                                        |
+| ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 0 — Foundation                | ✅ Mostly complete    | Docker/Obsidian deferred to Phase 5                                                                             |
+| 1 — Brain Core + Routing      | ✅ Verified working   | Behavioral issues fixed in Phase 2.5                                                                            |
+| 2 — Memory (SQLite)           | ✅ SQLite done        | Vault/LightRAG deferred; sqlite-vec landed in Phase 3 §4.2                                                      |
+| **2.5 — Stabilize**           | ✅ Complete           | 10/10 items shipped (eval harness at `tests/brain.eval.test.ts` was the last)                                   |
+| **3A — Feedback primitives**  | ✅ Complete           | action tags, state machine, hop/retry caps                                                                      |
+| **3B — Simulation mode**      | ✅ Complete           | ANTON_SIM_MODE + 3 scenarios (S1/S2/S4)                                                                         |
+| **3 — Intelligence + Jarvis** | ✅ Complete           | §4.1 distill, §4.2 sqlite-vec, §4.3 proactive loop, §4.4 ambient, §4.5 personas, §4.6 dual-write, §4.7 feedback |
+| **3.5 — Skill Loop**          | ✅ Complete           | 7/7 Hermes gaps closed + §4.5.6 cross-agent skill sharing                                                       |
+| **4 — Web (desktop)**         | ✅ Core complete      | 18 nav modules + 43 detail SSG pages + chat API wired                                                           |
+| **4.5 — Live Data Transport** | ✅ Complete           | REST hydrate + WS deltas; tray/memory/tasks/events all live                                                     |
+| 4b — Mobile shell             | ⏳ Deferred           | Gallery port from mobile.jsx; responsive Tailwind is alt path                                                   |
+| 5 — Hardware upgrade          | ⏳ Pending Mac Studio | Config-only change                                                                                              |
+| 6 — Self-Training             | ⏳ Not started        |                                                                                                                 |
+| 7 — Voice                     | ⏳ Not started        |                                                                                                                 |
+| 8 — Finance                   | ⏳ Not started        |                                                                                                                 |
+| 9 — Production hardening      | ⏳ Not started        |                                                                                                                 |
 
 ---
 
@@ -103,14 +109,24 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 
 ### Open / pending
 
-| Severity | Issue                                                                | Location                                     | Planned fix                                     |
-| -------- | -------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------- |
-| 🟠 Med   | Voice drift between local path & Claude fallback                     | `brain.ts` vs `trackedAsk` in `index.js:152` | §3.7 unified fallback (last Phase 2.5 item)     |
-| 🟡 Low   | `console.log` logs truncated thinking (150c) + handoff (60c) content | `brain.ts:242`, `brain.ts:268`               | Optional: gate behind `DEBUG_BRAIN=1`; deferred |
-| 🟡 Low   | Agent roster mismatch — `personas.ts` 15 vs V1 `sessions.js` 27+     |                                              | Phase 3 §4.5 persona unification                |
-| 🟡 Low   | Smoke script doesn't init SQLite → warnings per run                  | `scripts/smoke-brain.ts`                     | Minor — add `initSqliteMemory` call             |
-| 🟡 Low   | Biome lint shows pre-existing errors in V1 code                      | Multiple v1-archive files                    | Separate cleanup PR                             |
-| ⚪ Info  | V1 notify cooldown test flake                                        | `src/v1-archive/notify.test.js:113`          | Pre-existing; not touching V1 code              |
+| Severity | Issue                                                                | Location                              | Planned fix                                                |
+| -------- | -------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------- |
+| 🟡 Low   | `console.log` logs truncated thinking (150c) + handoff (60c) content | `brain.ts:242`, `brain.ts:268`        | Optional: gate behind `DEBUG_BRAIN=1`; deferred            |
+| 🟡 Low   | Smoke script doesn't init SQLite → warnings per run                  | `scripts/smoke-brain.ts`              | Minor — add `initSqliteMemory` call                        |
+| 🟡 Low   | Skill-share approval path is manual                                  | `src/heart/skill-sharing.js`          | Follow-up: wire `share skill N` Slack command → shareSkill |
+| 🟡 Low   | Shared skills surface to every agent                                 | `retrieveApplicableSkills` tag filter | Low priority until tag taxonomy exists (§4.5.6 follow-up)  |
+| ⚪ Info  | V1 notify cooldown test flake                                        | `src/heart/notify.test.js:113`        | Pre-existing — low priority                                |
+
+### Fixed in Phase 3 (this branch)
+
+| Severity | Issue                                                     | Location                                  | Fix                                                          |
+| -------- | --------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| 🟠 Med   | Voice drift between local path & Claude fallback          | `brain.ts` ↔ `trackedAsk` in `index.js`   | §3.7: unified `claude-fallback.ts` + shared system prompt    |
+| 🟠 Med   | Agent roster mismatch — personas.ts 15 vs sessions.js 27+ | `src/brain/personas.ts` + `personas.json` | §4.5: `config/agents/*.ts` single source (28 agents, Zod)    |
+| 🟠 Med   | V1 markdown memories invisible to V2 brain                | `appendDeptMemory` → markdown only        | §4.6: dual-write to SQLite; `buildMemoryContext` reads both  |
+| 🟠 Med   | No semantic retrieval — FTS5 keyword-only                 | `searchMemories`                          | §4.2: sqlite-vec hybrid (RRF merge of FTS5 + vector)         |
+| 🟠 Med   | Proactive scheduler was briefing-only                     | `src/heart/scheduler.js`                  | §4.3: EOD + event scan + stalled-task surfacer               |
+| 🟡 Low   | High-performing skills stayed private to their owner      | `skills` table                            | §4.5.6: 4h share-proposal scan via `src/heart/skill-sharing` |
 
 ---
 
@@ -118,14 +134,21 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 
 ### Unit tests (vitest)
 
-| Suite                             | Count   | Status                                               |
-| --------------------------------- | ------- | ---------------------------------------------------- |
-| `src/brain/pre-gate.test.ts`      | 39      | ✅ all pass                                          |
-| `src/brain/brain.test.ts`         | 5       | ✅ all pass (extractResponse)                        |
-| `src/memory/sqlite.test.ts`       | 10      | ✅ all pass                                          |
-| `src/memory/spotlighting.test.ts` | 10      | ✅ all pass (new, §3.9)                              |
-| V1 archive tests                  | ~420    | ✅ 420 pass, 1 flake (notify cooldown, pre-existing) |
-| **Total**                         | **486** | **484 pass / 1 flake / 1 skipped**                   |
+| Suite                             | Count   | Status                                                |
+| --------------------------------- | ------- | ----------------------------------------------------- |
+| `src/brain/*.test.ts`             | ~120    | ✅ pre-gate, brain, agent-actions, ambient, distill,  |
+|                                   |         | evaluate, feedback-capture, skill-extract, state-m    |
+| `src/memory/sqlite.test.ts`       | 10      | ✅ all pass                                           |
+| `src/memory/spotlighting.test.ts` | 10      | ✅ all pass                                           |
+| `src/memory/sqlite-vec.test.ts`   | 6       | ✅ new §4.2 — hybrid retrieval + RRF                  |
+| `src/memory/skills*.test.ts`      | ~35     | ✅ skill store, lifecycle, user model                 |
+| `src/memory/memory-v1.test.js`    | 12      | ✅ incl. 3 new dual-write SQLite assertions           |
+| `src/heart/proactive.test.js`     | 11      | ✅ new §4.3 — EOD/event-scan/stalled + init           |
+| `src/heart/skill-sharing.test.js` | 6       | ✅ new §4.5.6 — propose/dedup/maxPerRun               |
+| `tests/brain.eval.test.ts`        | 31      | ✅ new §3.8 — pre-gate + actions + process() pipeline |
+| `config/agents/index.test.ts`     | 8       | ✅ new §4.5 — loader invariants                       |
+| V1 heart/hands/nervous/eyes/spine | ~420    | ✅ 420 pass, 1 flake (notify cooldown, pre-existing)  |
+| **Total**                         | **706** | **705 pass / 1 flake / 1 skipped**                    |
 
 ### Smoke tests (live Ollama)
 
@@ -181,6 +204,52 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 ---
 
 ## 📝 Recent Work Log
+
+### 2026-04-19 — Phase 3 complete (branch `phase3/persona-unification`)
+
+Seven commits closed Phase 3 in one session after a TODO audit showed Phase 2.5
+was silently 90% done and the tracker had drifted. 65 new tests landed.
+
+1. **`f2e21a2` §3.8 brain eval harness** — `tests/brain.eval.test.ts` with 31
+   assertable cases. Three parts: pre-gate decisions (16), action-tag
+   extraction (9), end-to-end process() with mocked chat/classify/claude-
+   fallback (6). Asserts intent, needsClaude, handoffs, handledLocally,
+   latency. Closes Phase 2.5 — the last open item in that phase's DoD.
+2. **`77df146` §4.5 persona unification** — three duplicated agent sources
+   (team.js 27 + personas.json 28 + personas.ts 16) collapse into one
+   Zod-validated loader at `config/agents/*.ts`. V2 brain now sees all 28
+   personas (was 16 — 12 agents previously fell through to a generic prompt).
+   `personas.json` deleted; `src/brain/team.js`, `src/brain/personas.ts`,
+   and `src/memory/sessions.js` all read from the new source.
+3. **`34266fb` §4.6 V1 journals dual-write** — every `appendSharedMemory` /
+   `appendDeptMemory` / `appendDailyNote` now writes a row to the `memories`
+   table before touching markdown. `buildMemoryContext` sees V1 journals
+   without additional wiring. Schema change: dropped the
+   `CHECK(type IN …)` constraint (closed-world check that kept breaking);
+   existing prod DBs get a one-shot temp-table-swap migration on boot.
+4. **`f6502f3` §4.2 sqlite-vec hybrid retrieval** — `memories_vec` vec0
+   virtual table (768-dim, matching nomic-embed-text). `storeMemory` fires
+   background `indexMemoryEmbedding` via setImmediate (zero caller latency).
+   New `semanticSearchMemories`, `hybridSearchMemories` (RRF with k=60),
+   `buildRelevantMemoryContext`. Brain uses query-aware retrieval when the
+   message is ≥3 chars; falls back to time-based for stubs.
+5. **`1c089f8` §4.3 proactive trigger loop** — `src/heart/proactive.js`
+   with three triggers: EOD summary at 18:00 (via Riley through
+   `brain.process`), event scan every 15m (reads eventBus history, P2 on
+   error count threshold), stalled-task surfacer every 60m (SQLite
+   `findStalledTasks(24, 5)`). 4h distillation batch explicitly deferred —
+   inline distillation fires per turn already.
+6. **`6705e36` §4.5.6 cross-agent skill sharing** — `src/heart/skill-sharing.js`
+   runs `findShareableSkills` every 4h, proposes up to 3 eligible skills
+   (success_rate > 0.8, evidence ≥ 5) via notifyNoel P3, in-memory dedup so
+   the same skill doesn't nag. `share skill N` Slack command and tag ∩
+   my_domain retrieval filter are follow-ups.
+7. **`b0e19b2` docs(todo)** — TODO reconciliation; corrected ~40 stale
+   unchecked items to reflect actual code state.
+
+Phase 3 is complete bar two explicitly-deferred follow-ups (tag-based
+retrieval filtering, end-to-end share-skill approval command). Tests:
+640 → 705 passing (+65 new, 0 regressions). TypeScript clean.
 
 ### 2026-04-19 — Phase 3.5 Skill Loop complete + Phase 3A/3B shipped
 
@@ -299,33 +368,37 @@ dependency for CI.
 
 - `src/brain/*` files created (ollama-client, classifier, brain, thinking, personas)
 - Wired into Slack + web paths in `index.js`
-- V1 code archived to `src/v1-archive/`
+- V1 code moved to `src/v1-archive/` (later reorganized into organ folders on 2026-04-19)
 - Ollama 0.20.7 installed, models pulled, localhost-only bind
 
 ---
 
 ## 🎯 Next Work Session
 
-### Immediate (next session)
+### Immediate
 
-1. **§3.7 Unified Claude fallback** (3 hrs — only Phase 2.5 item left)
-   - New `src/brain/claude-fallback.ts` — single entry wrapping SDK / CLI
-   - Same persona source as local path
-   - `index.js` flow change: brain handles both paths internally
-   - Every Claude response written to SQLite for continuity
+1. **Open PR for `phase3/persona-unification` → `phase4/web-ui`** — 7 commits,
+   65 new tests, all green, TypeScript clean. Net: Phase 3 closed + Phase 2.5
+   DoD closed.
+2. Decide the next branch: Phase 5 (Mac Studio upgrade — blocked on hardware),
+   Phase 6 (self-training — first DPO run), or small follow-ups (share-skill
+   Slack command, task-lifecycle linking, Slack-thread parity for web
+   approvals).
 
-2. **Commit + PR** — land Phase 2.5 as one logical chunk
-   - Suggested commit breakdown:
-     - `feat(brain): circuit breaker + timeouts + schema-constrained classifier`
-     - `feat(brain): deterministic pre-gate + adaptive thinking`
-     - `feat(memory): spotlighting + V1 journal migration`
-     - `test(brain): eval harness baseline — 49 new tests`
-     - `feat(brain): unified Claude fallback path` (§3.7 when done)
+### Phase 3 follow-ups (tracked, not blocking)
 
-### Phase 3 preview (after Phase 2.5 lands)
+- `share skill N` Slack command → calls `shareSkill(id)` on approval
+- Tag ∩ my_domain retrieval filter for shared skills (needs taxonomy)
+- Nightly re-embed cron (only if embedding model changes)
+- 4h distillation batch safety-net (only if inline failures surface)
+- Task lifecycle linking: `[DONE:42 …]` transitions an existing HANDOFF row
+  instead of creating a new one (needs numeric task-id in action-tag parser)
 
-- Memory distillation pass (fact extraction per turn)
-- `sqlite-vec` hybrid retrieval (skip ChromaDB)
-- Proactive trigger loop (morning briefing, EOD, event scan)
-- Ambient context persona modulation
-- Persona unification across V1/V2
+### Phase 6 preview (self-training)
+
+- Training data collector: every turn → JSONL with user/agent/rating/source
+- Quality signal detector: already have `turn_evaluations.verdict` +
+  `implicit_signal` (Phase 3.5). Reuse as DPO pair generator inputs.
+- Mandatory eval gate before adapter swap (100% benchmark, <5% regression)
+- Idle-time scheduler — train only when Noel idle 5min + CPU <40%
+- Blocked on Mac Studio for model fine-tuning throughput

@@ -9,11 +9,11 @@
 //   npx tsx scripts/migrate-v1-memory.ts --apply         # actually inserts
 //   npx tsx scripts/migrate-v1-memory.ts --apply --reset # clears before insert (dangerous)
 
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { initSqliteMemory, storeMemory, getMemoryStats } from '../src/memory/sqlite.js';
-import { createHash } from 'node:crypto';
 import Database from 'better-sqlite3';
+import { getMemoryStats, initSqliteMemory, storeMemory } from '../src/memory/sqlite.js';
 
 const PROJECT_ROOT = join(import.meta.dirname, '..');
 const DEPT_DIR = join(PROJECT_ROOT, 'config', 'departments');

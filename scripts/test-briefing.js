@@ -7,9 +7,9 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initBriefing, runBriefing } from '../src/briefing.js';
-import { consumeBriefingBuffer, initNotify, notifyNoel, shutdownNotify } from '../src/notify.js';
-import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from '../src/watcher.js';
+import { initBriefing, runBriefing } from '../src/heart/briefing.js';
+import { consumeBriefingBuffer, initNotify, notifyNoel, shutdownNotify } from '../src/heart/notify.js';
+import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from '../src/heart/watcher.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');

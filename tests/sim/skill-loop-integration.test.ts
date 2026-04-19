@@ -3,11 +3,12 @@
 // ambient context, and the full prompt-build chain composes correctly.
 // Also exercises implicit-feedback capture wiring across sequential turns.
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { process as brainProcess } from '../../src/brain/brain.js';
+import type { SimFixture } from '../../src/brain/sim-mode.js';
 import { loadFixture, resetSim } from '../../src/brain/sim-mode.js';
 import {
   buildSkillsContext,
@@ -20,7 +21,6 @@ import {
   storeSkill,
   upsertUserModelEntry,
 } from '../../src/memory/sqlite.js';
-import type { SimFixture } from '../../src/brain/sim-mode.js';
 
 let tmpDir: string;
 

@@ -7,8 +7,8 @@
 // produced each memory.
 
 import { z } from 'zod';
-import { chatJSON } from './ollama-client.js';
 import { storeMemory } from '../memory/sqlite.js';
+import { chatJSON } from './ollama-client.js';
 
 const FactSchema = z.object({
   type: z.enum(['fact', 'decision', 'preference', 'commitment']),

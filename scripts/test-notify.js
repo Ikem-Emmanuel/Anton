@@ -8,7 +8,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { consumeBriefingBuffer, forceFlushDigest, initNotify, notifyNoel, shutdownNotify } from '../src/notify.js';
+import {
+  consumeBriefingBuffer,
+  forceFlushDigest,
+  initNotify,
+  notifyNoel,
+  shutdownNotify,
+} from '../src/heart/notify.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');

@@ -21,8 +21,309 @@ const PUBLIC_DIR = join(__dirname, '..', '..', 'public');
 let _server = null;
 let _wss = null;
 
-export function initWeb({ askAgent, port = 3000 }) {
-  _server = createServer((req, res) => {
+// CORS preflight + common headers so the Next.js dev server (typically on port
+// 3001) can POST to /api/chat without browser-side CORS rejection. In prod
+// both surfaces live on the same origin and these headers are harmless.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function readJsonBody(req, maxBytes = 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf-8')) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+// Fallback approvals source — returns the current demo set so the Next.js
+// UI has something to render when the service boots in isolation (no
+// live-brain approval feed yet). Replace by passing `approvalsSource`
+// into initWeb when the real source exists.
+const DEFAULT_APPROVALS = [
+  {
+    id: 1,
+    agent: 'Marcus',
+    dept: 'eng',
+    risk: 'L',
+    intent: 'Draft PRD for onboarding v3 and share with Alex.',
+    why: "Continuation of yesterday's scope review. No external writes.",
+    diff: null,
+  },
+  {
+    id: 2,
+    agent: 'James',
+    dept: 'eng',
+    risk: 'H',
+    intent: 'Push v1.2 to production.',
+    why: 'All tests green for 42m. Requires approval per red tier.',
+    diff: [
+      ['+', 'api/router.ts', '24 lines'],
+      ['-', 'api/router.ts', '9 lines'],
+      ['~', 'config/deploy.yaml', '3 lines'],
+    ],
+  },
+  {
+    id: 3,
+    agent: 'Sarah',
+    dept: 'mktg',
+    risk: 'M',
+    intent: 'Send launch email to 2,340 subscribers.',
+    why: 'Targeting "waitlist: dormant 30d". Copy reviewed by Kai.',
+    diff: [
+      ['subject', 'You asked us to build it. We did.'],
+      ['from', 'noel@anton.computer'],
+      ['audience', '2,340 contacts'],
+    ],
+  },
+  {
+    id: 4,
+    agent: 'Riley',
+    dept: 'mktg',
+    risk: 'L',
+    intent: 'Schedule 4 X posts across Thu–Sun.',
+    why: null,
+    diff: null,
+  },
+  { id: 5, agent: 'Priya', dept: 'data', risk: 'L', intent: 'Rebuild weekly retention cohort.', why: null, diff: null },
+];
+
+// Fallback memory set — small marker records so the /api/memories endpoint
+// is live before brain grows a real export. Replace via `memoriesSource`.
+const DEFAULT_MEMORIES = [
+  {
+    type: 'preference',
+    title: 'Noel prefers bullet summaries over prose in briefings.',
+    src: 'Slack · Mar 3',
+    hl: 'yellow',
+    conf: 3,
+  },
+  {
+    type: 'decision',
+    title: 'Use Qwen3 8B for local; Claude only for deep research.',
+    src: 'Settings · Feb 19',
+    hl: 'coral',
+    conf: 3,
+  },
+  {
+    type: 'fact',
+    title: 'Stripe subscription renews on the 14th of each month.',
+    src: 'Diana · Mar 14',
+    hl: 'blue',
+    conf: 3,
+  },
+];
+
+// Fallback tasks — seed so the kanban shows a plausible mix of columns.
+const DEFAULT_TASKS = [
+  {
+    id: 0,
+    title: 'Review launch email copy',
+    owner: 'Noel',
+    actor: 'Sarah',
+    col: 'incoming',
+    age: '22m',
+    risk: 'M',
+    why: 'Waiting on your approval before send',
+  },
+  {
+    id: 3,
+    title: 'Draft PRD · onboarding v3',
+    owner: 'Marcus',
+    actor: 'Marcus',
+    col: 'flight',
+    age: '1h',
+    pct: 68,
+    step: 'writing §5 error flows',
+  },
+  { id: 7, title: 'Pushed v1.2 to staging', owner: 'James', actor: 'James', col: 'done', age: '6m' },
+  {
+    id: 11,
+    title: 'Deploy v1.2 to production',
+    owner: 'James',
+    actor: 'James',
+    col: 'blocked',
+    age: '42m',
+    why: 'needs your approval (red tier)',
+  },
+];
+
+export function initWeb({
+  askAgent,
+  approvalsSource,
+  memoriesSource,
+  tasksSource,
+  eventsSource,
+  resolveApproval,
+  port = 3000,
+}) {
+  // Each source is an optional async callback returning the current records.
+  // Omit and the fallback mock is used — keeps the UI live during dev.
+  const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
+  const readMemories = memoriesSource || (() => DEFAULT_MEMORIES);
+  const readTasks = tasksSource || (() => DEFAULT_TASKS);
+  // Events default to the in-process ring buffer populated by emitEventLogged.
+  const readEvents = eventsSource || (() => getRecentEvents());
+  // resolveApproval({id, decision}) notifies the underlying agent + clears
+  // the pending-queue entry. When not wired, the endpoint 501s so the web
+  // UI can display a helpful error instead of a generic failure.
+  const handleResolve = resolveApproval || null;
+
+  _server = createServer(async (req, res) => {
+    // CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, CORS_HEADERS);
+      res.end();
+      return;
+    }
+
+    // GET /api/approvals — returns the current pending approval records.
+    // Shape mirrors web/lib/data/approvals.ts `Approval` type.
+    if (req.method === 'GET' && req.url === '/api/approvals') {
+      try {
+        const approvals = await readApprovals();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ approvals: approvals || [] }));
+      } catch (e) {
+        console.error('[Web] /api/approvals error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // POST /api/approvals/:id/approve|reject — Noel resolving an approval
+    // from the web UI. Forwards to resolveApproval so the agent gets told;
+    // returns {ok, id, decision}. 501 if resolveApproval wasn't wired.
+    const resolveMatch =
+      req.method === 'POST' && req.url && req.url.match(/^\/api\/approvals\/(\d+)\/(approve|reject)$/);
+    if (resolveMatch) {
+      const id = Number.parseInt(resolveMatch[1], 10);
+      const decision = resolveMatch[2] === 'approve' ? 'approved' : 'denied';
+      if (!handleResolve) {
+        res.writeHead(501, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'resolveApproval not wired on initWeb' }));
+        return;
+      }
+      try {
+        const result = await handleResolve({ id, decision });
+        if (!result || result.ok === false) {
+          const reason = result?.reason || 'unknown';
+          res.writeHead(reason === 'not_found' ? 404 : 500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+          res.end(JSON.stringify({ error: reason }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ ok: true, id, decision }));
+      } catch (e) {
+        console.error('[Web] resolve approval error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/memories — long-lived facts / decisions / preferences that
+    // Anton surfaces in briefings. Shape mirrors web/lib/data/memory.ts.
+    if (req.method === 'GET' && req.url === '/api/memories') {
+      try {
+        const memories = await readMemories();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ memories: memories || [] }));
+      } catch (e) {
+        console.error('[Web] /api/memories error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/tasks — kanban items across FOR YOU / IN FLIGHT / DONE / BLOCKED.
+    // Shape mirrors web/lib/data/tasks.ts `Task` type.
+    if (req.method === 'GET' && req.url === '/api/tasks') {
+      try {
+        const tasks = await readTasks();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ tasks: tasks || [] }));
+      } catch (e) {
+        console.error('[Web] /api/tasks error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/events — recent activity log (last 200 events, newest first).
+    // Shape mirrors web/lib/data/activity.ts `ActivityEvent` type.
+    if (req.method === 'GET' && req.url === '/api/events') {
+      try {
+        const events = await readEvents();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ events: events || [] }));
+      } catch (e) {
+        console.error('[Web] /api/events error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // JSON chat endpoint — used by the Next.js UI (and anything else that
+    // wants a programmatic chat surface). Same underlying askAgent pipeline
+    // as the WS handler below, just request/response instead of streaming.
+    if (req.method === 'POST' && req.url === '/api/chat') {
+      try {
+        const body = await readJsonBody(req);
+        const agent = typeof body.agent === 'string' && body.agent.trim() ? body.agent.trim() : 'Anton';
+        const text = typeof body.text === 'string' ? body.text.trim() : '';
+        if (!text) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+          res.end(JSON.stringify({ error: 'Missing text' }));
+          return;
+        }
+
+        // Collect handoff dispatches so the caller can render them too.
+        const handoffs = [];
+        const onHandoff = (targetAgent, handoffText) => {
+          handoffs.push({ agent: targetAgent, text: handoffText, timestamp: new Date().toISOString() });
+        };
+
+        const response = await askAgent(agent, text, onHandoff);
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(
+          JSON.stringify({
+            agent,
+            text: response || 'No response.',
+            handoffs,
+            timestamp: new Date().toISOString(),
+          })
+        );
+      } catch (e) {
+        console.error('[Web] /api/chat error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
     if (req.url === '/' || req.url === '/index.html') {
       // No cache in dev — always serve fresh
       res.writeHead(200, {
@@ -53,6 +354,9 @@ export function initWeb({ askAgent, port = 3000 }) {
 
   _wss.on('connection', (ws) => {
     console.log('[Web] Client connected');
+    // Announce the channel as live so new subscribers know the server is
+    // reachable. Clients can use this to flip a connected indicator.
+    ws.send(JSON.stringify({ type: 'hello', data: { serverTime: new Date().toISOString() } }));
 
     ws.on('message', async (data) => {
       try {
@@ -161,4 +465,41 @@ export function initWeb({ askAgent, port = 3000 }) {
 export function shutdownWeb() {
   if (_wss) _wss.close();
   if (_server) _server.close();
+}
+
+// ---------- Event emitters --------------------------------------------------
+// Broadcast a live event to every connected web client. Silently no-op when
+// the WSS isn't initialized (e.g. at startup or after shutdown). Brain code
+// calls these at state-change moments — approval created, memory written,
+// task transitioned — so the web stays live without polling.
+
+export function emit(type, data) {
+  if (!_wss) return;
+  _wss.broadcast({ type, data, timestamp: new Date().toISOString() });
+}
+
+export const emitApprovalCreated = (approval) => emit('approval.created', approval);
+export const emitApprovalResolved = (id, resolution) => emit('approval.resolved', { id, resolution });
+export const emitMemoryWritten = (memory) => emit('memory.written', memory);
+export const emitTaskCreated = (task) => emit('task.created', task);
+export const emitTaskUpdated = (task) => emit('task.updated', task);
+
+// Activity log — ring buffer of the last 200 events. Web hydrates via
+// GET /api/events; subsequent changes arrive as event.logged WS messages.
+// The ring is intentionally in-process + non-durable — it's a short-term
+// window for the UI, not a replacement for audit logging.
+const EVENT_RING_MAX = 200;
+const _eventRing = [];
+
+export function emitEventLogged(event) {
+  // Prepend so readers get newest-first without reversing. slice from the
+  // tail to evict old entries past EVENT_RING_MAX.
+  _eventRing.unshift(event);
+  if (_eventRing.length > EVENT_RING_MAX) _eventRing.length = EVENT_RING_MAX;
+  emit('event.logged', event);
+}
+
+/** Snapshot of the in-process event ring. Used by GET /api/events fallback. */
+export function getRecentEvents(limit = EVENT_RING_MAX) {
+  return _eventRing.slice(0, limit);
 }

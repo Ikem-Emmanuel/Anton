@@ -5,15 +5,12 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initWeb } from './src/spine/web.js';
-import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
-import { initAudit } from './src/v1-archive/audit.js';
-import { initBriefing } from './src/v1-archive/briefing.js';
-import { initContext } from './src/v1-archive/context.js';
-// V1 handle.js removed — brain handles classification now
-import { initLogger, logError, logMessage, logResponse } from './src/v1-archive/logger.js';
-import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/v1-archive/memory.js';
-import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/v1-archive/notify.js';
+import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/brain/team.js';
+import { describeImages, initVision } from './src/eyes/vision.js';
+import { initAudit } from './src/hands/audit.js';
+import { openDM, postAs, postTyping, replaceTyping } from './src/hands/slack.js';
+import { initBriefing } from './src/heart/briefing.js';
+import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/heart/notify.js';
 import {
   detectCommand,
   initOrchestrator,
@@ -21,10 +18,8 @@ import {
   startTeam,
   stopTeam,
   teamStatus,
-} from './src/v1-archive/orchestrator.js';
-import { initPriority } from './src/v1-archive/priority.js';
-import { channelToDept } from './src/v1-archive/router.js';
-// V1 route, isEveryoneRequest, detectCollaboration removed — brain handles routing
+} from './src/heart/orchestrator.js';
+import { initProactive } from './src/heart/proactive.js';
 import {
   cancelJob,
   formatTime,
@@ -35,13 +30,25 @@ import {
   loadPersistedTimes,
   parseTimeStr,
   scheduleJob,
-} from './src/v1-archive/scheduler.js';
-import { ask, consumeHandoffs, init as initSessions } from './src/v1-archive/sessions.js';
-import { openDM, postAs, postTyping, replaceTyping } from './src/v1-archive/slack.js';
-import { getBoardReport, initTaskQueue } from './src/v1-archive/taskqueue.js';
-import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/v1-archive/team.js';
-import { describeImages, initVision } from './src/v1-archive/vision.js';
-import { checkGitState, getHealthSnapshot, initWatcher } from './src/v1-archive/watcher.js';
+} from './src/heart/scheduler.js';
+import { checkGitState, getHealthSnapshot, initWatcher } from './src/heart/watcher.js';
+import { initContext } from './src/memory/context.js';
+import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory/memory-v1.js';
+import { ask, consumeHandoffs, init as initSessions } from './src/memory/sessions.js';
+import {
+  findShareableSkills,
+  findStalledTasks,
+  listMemories,
+  listTasks,
+  seedTasksIfEmpty,
+} from './src/memory/sqlite.js';
+import { getReport, initAnalytics, trackRequest } from './src/nervous/analytics.js';
+import { eventBus } from './src/nervous/eventbus.js';
+import { initLogger, logError, logMessage, logResponse } from './src/nervous/logger.js';
+import { initPriority } from './src/nervous/priority.js';
+import { channelToDept } from './src/nervous/router.js';
+import { getBoardReport, initTaskQueue } from './src/spine/taskqueue.js';
+import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -114,6 +121,86 @@ const channelCallCount = new Map(); // channelId → { count, resetAt }
 // Map value is an array so simultaneous requests from multiple agents don't
 // overwrite each other — they queue and are presented one at a time.
 const pendingApprovals = new Map(); // dmChannelId → ApprovalEntry[]
+
+// Monotonic id for web-surfaced approval records. Kept separate from Slack's
+// `ts` because the web UI wants a numeric id it can pass to delete/resolve.
+let _approvalIdCounter = 0;
+
+// Guess a risk level from the action type + summary. Conservative default is
+// 'M' (medium) so nothing gets auto-silenced. `H` when anything irreversible
+// or external is in play, `L` only for clearly internal draft actions.
+function guessRisk(actionType, summary) {
+  const haystack = `${actionType || ''} ${summary || ''}`.toLowerCase();
+  if (/deploy|push.+prod|publish|send.*email|send.*slack|money|payment|delete/.test(haystack)) return 'H';
+  if (/send|post|schedule|charge|book/.test(haystack)) return 'M';
+  return 'L';
+}
+
+// Transform a backend approval entry into the shape the web Approval Tray
+// renders. Also adds the generated `id` back onto the entry so resolve can
+// reference it.
+function entryToWebApproval(entry) {
+  return {
+    id: entry.id,
+    agent: entry.member?.name || 'Anton',
+    dept: entry.member?.dept || 'eng',
+    risk: guessRisk(entry.actionType, entry.summary),
+    intent: entry.summary || '(no summary)',
+    why: entry.fullDraft ? entry.fullDraft.slice(0, 240) : null,
+    diff: null,
+  };
+}
+
+// Flattened list of all pending approvals across DM channels — used as the
+// approvalsSource callback for the web /api/approvals endpoint.
+function allPendingApprovals() {
+  const out = [];
+  for (const queue of pendingApprovals.values()) {
+    for (const entry of queue) out.push(entryToWebApproval(entry));
+  }
+  return out;
+}
+
+// resolveApproval callback for the web: Noel clicked Approve/Reject in the
+// tray. Finds the entry by id, removes it from its queue, emits
+// approval.resolved, and fires the agent notification in the background.
+// Returns {ok} or {ok:false, reason:'not_found'}.
+//
+// Note: unlike the Slack DM path, this doesn't post a confirmation message
+// to Slack. Users watching the Slack thread won't see "Approved." appear.
+// Acceptable for MVP — web parity can be added later if needed.
+async function resolveApprovalFromWeb({ id, decision }) {
+  let foundEntry = null;
+  for (const [dm, queue] of pendingApprovals.entries()) {
+    const idx = queue.findIndex((e) => e.id === id);
+    if (idx === -1) continue;
+    foundEntry = queue[idx];
+    queue.splice(idx, 1);
+    if (queue.length === 0) pendingApprovals.delete(dm);
+    else pendingApprovals.set(dm, queue);
+    break;
+  }
+  if (!foundEntry) return { ok: false, reason: 'not_found' };
+
+  try {
+    emitApprovalResolved(id, decision);
+  } catch (e) {
+    console.warn('[Anton] approval.resolved emit failed:', e.message?.slice(0, 60));
+  }
+
+  // Tell the agent. Fire-and-forget — the HTTP response shouldn't block on
+  // a full agent turn, and any error is logged, not surfaced to the user.
+  const approved = decision === 'approved';
+  const message = approved
+    ? `Noel approved your ${foundEntry.actionType} request: "${foundEntry.summary}". Please execute it now. Original draft:\n${(foundEntry.fullDraft || '').slice(0, 1000)}`
+    : `Noel denied your ${foundEntry.actionType} request: "${foundEntry.summary}". Do not proceed. Stand by.`;
+
+  trackedAsk(foundEntry.member, message, `approval-${decision}-web`).catch((e) => {
+    console.warn('[Anton] agent notify failed:', e.message?.slice(0, 80));
+  });
+
+  return { ok: true };
+}
 
 // ─── Init subsystems ─────────────────────────────────────────
 // V1 Memory (kept for backward compat during migration)
@@ -216,11 +303,21 @@ async function handleApprovalRequest(member, actionType, summary, fullDraft, cha
   try {
     const dm = await openDM(client, NOEL_USER_ID);
 
-    // Queue the approval (multiple agents can request simultaneously)
-    const entry = { member, actionType, summary, fullDraft, channelId, ts };
+    // Queue the approval (multiple agents can request simultaneously). The
+    // `id` is monotonic so the web can refer to it stably; `dm` is kept for
+    // Slack routing when the user replies.
+    _approvalIdCounter += 1;
+    const entry = { id: _approvalIdCounter, member, actionType, summary, fullDraft, channelId, ts, dm };
     const queue = pendingApprovals.get(dm) || [];
     queue.push(entry);
     pendingApprovals.set(dm, queue);
+
+    // Broadcast to connected web clients so the Approval Tray lights up.
+    try {
+      emitApprovalCreated(entryToWebApproval(entry));
+    } catch (e) {
+      console.warn('[Anton] approval emit failed:', e.message?.slice(0, 60));
+    }
 
     // Only post to Noel if this is the first in queue (otherwise it's already waiting)
     if (queue.length === 1) {
@@ -745,6 +842,13 @@ if (SLACK_ENABLED)
             postApprovalDM(client, message.channel, queue[0], queue.length).catch(() => {});
           }
 
+          // Tell connected web clients so the tray drops this record.
+          try {
+            emitApprovalResolved(pending.id, approved ? 'approved' : 'denied');
+          } catch (e) {
+            console.warn('[Anton] approval.resolved emit failed:', e.message?.slice(0, 60));
+          }
+
           if (approved) {
             await postAs(
               client,
@@ -880,7 +984,44 @@ startPromise
         console.warn(`[Web] Brain not available (${e.message?.slice(0, 60)}). Using Claude-only mode.`);
       }
 
+      // Seed the kanban if it's empty so a fresh install has something to
+      // render out of the box. Real brain-driven tasks accumulate on top.
+      const seeded = seedTasksIfEmpty([
+        {
+          title: 'Review launch email copy',
+          owner: 'Noel',
+          actor: 'Sarah',
+          col: 'incoming',
+          age: '22m',
+          risk: 'M',
+          why: 'Waiting on your approval before send',
+        },
+        {
+          title: 'Draft PRD · onboarding v3',
+          owner: 'Marcus',
+          actor: 'Marcus',
+          col: 'flight',
+          age: '1h',
+          pct: 68,
+          step: 'writing §5 error flows',
+        },
+        { title: 'Pushed v1.2 to staging', owner: 'James', actor: 'James', col: 'done', age: '6m' },
+        {
+          title: 'Deploy v1.2 to production',
+          owner: 'James',
+          actor: 'James',
+          col: 'blocked',
+          age: '42m',
+          why: 'needs your approval (red tier)',
+        },
+      ]);
+      if (seeded > 0) console.log(`[Anton] Seeded ${seeded} demo tasks.`);
+
       const webResult = initWeb({
+        approvalsSource: allPendingApprovals,
+        memoriesSource: () => listMemories(50),
+        tasksSource: () => listTasks(50),
+        resolveApproval: resolveApprovalFromWeb,
         askAgent: async (agentName, text, onHandoff) => {
           try {
             // Override: @claude forces Claude session
@@ -964,6 +1105,22 @@ startPromise
 
     // Priority engine — maps events to notification severity
     initPriority({ notifyNoel });
+
+    // Proactive trigger loop (§4.3) — EOD summary 18:00, event scan every 15m,
+    // stalled-task surfacer every 1h. Lazy brain import keeps boot fast when
+    // only the Slack path is enabled.
+    initProactive({
+      scheduleJob,
+      cancelJob,
+      notifyNoel,
+      findStalledTasks,
+      findShareableSkills,
+      getEventHistory: () => eventBus.getHistory(200),
+      brainProcess: async (msg, opts) => {
+        const brainModule = await import('./src/brain/brain.ts');
+        return brainModule.process(msg, opts);
+      },
+    });
 
     // Anton startup identity — post to standup channel (skip on --watch restarts)
     const startupFile = join(DATA_DIR, '.last-startup');

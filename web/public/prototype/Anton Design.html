@@ -1,0 +1,169 @@
+<!doctype html>
+<html data-theme="warm-dark">
+<head>
+  <meta charset="utf-8"/>
+  <title>Anton — Navigable</title>
+  <link rel="stylesheet" href="tokens.css"/>
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+    #root { height: 100%; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="shared.jsx"></script>
+<script type="text/babel" src="mission-control.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="mobile.jsx"></script>
+<script type="text/babel" src="extras.jsx"></script>
+<script type="text/babel" src="new-screens.jsx"></script>
+<script type="text/babel" src="detail-screens.jsx"></script>
+<script type="text/babel" src="tier1.jsx"></script>
+<script type="text/babel" src="tier2.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function App() {
+  const [tweaks, setTweaks] = useState(loadTweaks());
+  const [tweaksOn, setTweaksOn] = useState(false);
+  const [route, setRoute] = useState(() => {
+    try { return localStorage.getItem('anton.route') || 'mc'; } catch { return 'mc'; }
+  });
+  const [routeParams, setRouteParams] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('anton.routeParams') || '{}'); } catch { return {}; }
+  });
+  const [settingsTab, setSettingsTab] = useState('trust');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', tweaks.theme);
+    applyAccent(tweaks.accent, tweaks.theme);
+    applyDensity(tweaks.density);
+  }, [tweaks.theme, tweaks.accent, tweaks.density]);
+
+  useEffect(() => { try { localStorage.setItem('anton.route', route); } catch {} }, [route]);
+  useEffect(() => { try { localStorage.setItem('anton.routeParams', JSON.stringify(routeParams)); } catch {} }, [routeParams]);
+
+  useEffect(() => {
+    const onMsg = e => {
+      if (!e.data || typeof e.data !== 'object') return;
+      if (e.data.type === '__activate_edit_mode') setTweaksOn(true);
+      if (e.data.type === '__deactivate_edit_mode') setTweaksOn(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({type:'__edit_mode_available'}, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const updateTweaks = (patch) => {
+    const next = { ...tweaks, ...patch };
+    setTweaks(next);
+    try { localStorage.setItem('anton.tweaks', JSON.stringify(next)); } catch {}
+    window.parent.postMessage({type:'__edit_mode_set_keys', edits: patch}, '*');
+  };
+
+  const nav = (r, params) => {
+    setRoute(r);
+    setRouteParams(params || {});
+  };
+
+  // Settings sub-tabs
+  const SettingsView = () => {
+    const tabs = [
+      { id:'trust',   label:'Trust tiers',   render: <Settings/> },
+      { id:'arch',    label:'Architecture',  render: <ArchScreen/> },
+      { id:'memory',  label:'Memory',        render: <MemorySettings/> },
+      { id:'voice',   label:'Voice',         render: <VoiceSettings/> },
+      { id:'notif',   label:'Notifications', render: <NotificationsSettings/> },
+      { id:'safety',  label:'Safety',        render: <SafetySettings/> },
+    ];
+    const cur = tabs.find(t => t.id === settingsTab) || tabs[0];
+    return (
+      <div style={{display:'flex', flexDirection:'column', height:'100%'}}>
+        <div style={{display:'flex', gap:4, padding:'10px 20px 0', borderBottom:'1px solid var(--border-subtle)', background:'var(--bg-page)'}}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={()=>setSettingsTab(t.id)} className="mono small" style={{
+              padding:'8px 14px', background:'transparent',
+              color: settingsTab===t.id ? 'var(--accent)' : 'var(--text-secondary)',
+              border:'none',
+              borderBottom: `2px solid ${settingsTab===t.id ? 'var(--accent)' : 'transparent'}`,
+              cursor:'pointer', fontSize:12, marginBottom:-1,
+            }}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{flex:1, overflow:'hidden'}}>{cur.render}</div>
+      </div>
+    );
+  };
+
+  // pending (approvals list → detail)
+  const ApprovalsRouter = () => <ApprovalDetail/>;
+
+  const MCVariantMap = { activity:'list', rails:'dept', grid:'grid', orbit:'orbit', terminal:'term' };
+  const mcView = MCVariantMap[tweaks.mission_control_variant] || 'list';
+
+  const routes = {
+    mc:       { render: <MissionControl defaultView={mcView} onNav={nav}/>, activeRail:'mc',       tray:'normal' },
+    brief:    { render: <Briefing/>,                                         activeRail:'brief',    tray:'normal' },
+    chat:     { render: <ChatModule/>,                                       activeRail:'chat',     tray:'hidden' },
+    team:     { render: <DeptChart onNav={nav}/>,                            activeRail:'team',     tray:'normal' },
+    pending:  { render: <ApprovalsRouter/>,                                  activeRail:'pending',  tray:'hidden' },
+    memory:   { render: <MemoryBrowser onNav={nav}/>,                        activeRail:'memory',   tray:'normal' },
+    log:      { render: <ActivityTimeline onNav={nav}/>,                     activeRail:'log',      tray:'normal' },
+    hands:    { render: <IntegrationsHub onNav={nav}/>,                      activeRail:'hands',    tray:'hidden' },
+    settings: { render: <SettingsView/>,                                     activeRail:'settings', tray:'hidden' },
+
+    // Tier-1 modules
+    tasks:    { render: <TasksModule onNav={nav}/>,                          activeRail:'tasks',    tray:'hidden' },
+    inbox:    { render: <InboxModule onNav={nav}/>,                          activeRail:'inbox',    tray:'hidden' },
+    calendar: { render: <CalendarModule onNav={nav}/>,                       activeRail:'calendar', tray:'hidden' },
+    lock:     { render: <LockScreen onUnlock={()=>nav('mc')}/>,              activeRail:'lock',     tray:'hidden', chromeless:true },
+
+    // Tier-2 modules
+    docs:     { render: <DocumentsModule onNav={nav}/>,                      activeRail:'docs',     tray:'hidden' },
+    research: { render: <ResearchModule onNav={nav}/>,                       activeRail:'research', tray:'hidden' },
+    people:   { render: <PeopleModule onNav={nav}/>,                         activeRail:'people',   tray:'hidden' },
+    expenses: { render: <ExpensesModule onNav={nav}/>,                       activeRail:'expenses', tray:'hidden' },
+    travel:   { render: <TravelModule onNav={nav}/>,                         activeRail:'travel',   tray:'hidden' },
+    usage:    { render: <UsageModule onNav={nav}/>,                          activeRail:'usage',    tray:'hidden' },
+
+    // Detail routes
+    agent:         { render: <AgentDetailView agent={routeParams.agent}     onNav={nav}/>, activeRail:'team',   tray:'hidden' },
+    'memory-item': { render: <MemoryItemDetail memoryId={routeParams.memoryId} onNav={nav}/>, activeRail:'memory', tray:'hidden' },
+    event:         { render: <ActivityEventDetail eventId={routeParams.eventId} onNav={nav}/>, activeRail:'log',   tray:'hidden' },
+    integration:   { render: <IntegrationDetail intId={routeParams.intId}    onNav={nav}/>, activeRail:'hands',  tray:'hidden' },
+  };
+  const cur = routes[route] || routes.mc;
+
+  if (cur.chromeless) {
+    return (
+      <div style={{height:'100%', display:'flex', flexDirection:'column', background:'var(--bg-page)'}}>
+        {cur.render}
+        <TweaksPanel tweaks={tweaks} onChange={updateTweaks} visible={tweaksOn}/>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'var(--bg-page)'}}>
+      <WebShell
+        center={cur.render}
+        activeRail={cur.activeRail}
+        trayMode={cur.tray}
+        showHints={tweaks.show_keyboard_hints}
+        onNav={nav}
+      />
+      <TweaksPanel tweaks={tweaks} onChange={updateTweaks} visible={tweaksOn}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

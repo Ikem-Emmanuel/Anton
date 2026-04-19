@@ -8,19 +8,27 @@
 // config/models.ts. Hardware upgrades change only that file. No model string hardcoded anywhere.
 
 import { detectTier, models, taskRouting } from '../../config/models.js';
-import { buildMemoryContext, buildSkillsContext, storeConversation, updateImplicitSignal } from '../memory/sqlite.js';
+import {
+  buildMemoryContext,
+  buildRelevantMemoryContext,
+  buildSkillsContext,
+  createTask,
+  storeConversation,
+  updateImplicitSignal,
+} from '../memory/sqlite.js';
+import { emitEventLogged } from '../spine/web.js';
+import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { buildAmbientContext } from './ambient-context.js';
 import { classify } from './classifier.js';
-import { type AgentAction, extractAgentActions, stripActionTags } from './agent-actions.js';
 import { claudeFallback } from './claude-fallback.js';
 import { distillConversation } from './distill.js';
 import { evaluateTurn } from './evaluate.js';
 import { captureImplicitFeedback } from './feedback-capture.js';
-import { extractSkillCandidate } from './skill-extract.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
 import { isSimModeActive, nextSimResponse } from './sim-mode.js';
+import { extractSkillCandidate } from './skill-extract.js';
 import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
 
 export interface BrainResponse {
@@ -42,6 +50,77 @@ export interface BrainResponse {
     route: string;
     reason: string;
   };
+}
+
+// Map an AgentAction type to the ActivityType the web timeline renders.
+// Keeps brain semantics (HANDOFF/ASK/BLOCK/APPROVE/REJECT/DONE) decoupled
+// from the UI vocabulary.
+function actionToActivityType(type: string): string {
+  if (type === 'HANDOFF' || type === 'ASK') return 'handoff';
+  if (type === 'DONE') return 'complete';
+  if (type === 'BLOCK' || type === 'APPROVE' || type === 'REJECT') return 'approval';
+  return 'system';
+}
+
+// Map an action to a kanban task row when that makes sense. Returns null
+// when the action doesn't correspond to persistent work (e.g. APPROVE /
+// REJECT — those close approvals, not tasks). Design v1: every qualifying
+// action creates its own task row. Lifecycle tracking (linking a DONE to
+// the HANDOFF that started it) needs task_ids on action tags — deferred.
+function actionToTaskInput(a: AgentAction, speaker: string): Parameters<typeof createTask>[0] | null {
+  const title = a.content ? a.content.slice(0, 140) : `${a.type}${a.target ? `:${a.target}` : ''}`;
+  if (a.type === 'HANDOFF' && a.target) {
+    return { title, owner: a.target, actor: a.target, col: 'flight' };
+  }
+  if (a.type === 'ASK') {
+    // ASK to Noel lands in the FOR YOU column; ASK to another agent is flight.
+    const target = a.target || 'Noel';
+    const toNoel = target === 'Noel';
+    return {
+      title,
+      owner: toNoel ? 'Noel' : target,
+      actor: toNoel ? speaker : target,
+      col: toNoel ? 'incoming' : 'flight',
+      why: toNoel ? a.content : undefined,
+    };
+  }
+  if (a.type === 'DONE') {
+    return { title: `${speaker} completed: ${title}`, owner: speaker, actor: speaker, col: 'done' };
+  }
+  if (a.type === 'BLOCK') {
+    return { title, owner: speaker, actor: speaker, col: 'blocked', why: a.content };
+  }
+  return null;
+}
+
+// Log + broadcast the full action list and persist qualifying actions as
+// kanban tasks. Replaces the inline console.log, drives the web timeline,
+// and keeps the Tasks board in sync. All side effects tolerate a missing
+// WSS / SQLite (sim mode, tests, offline CLI) — emit() and createTask()
+// both no-op when uninitialized.
+function reportActions(actions: AgentAction[], agentName: string): void {
+  if (actions.length === 0) return;
+  const summary = actions.map((a) => `${a.type}${a.target ? `:${a.target}` : ''}`).join(', ');
+  console.log(`[Actions] ${summary}`);
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  for (const a of actions) {
+    const headline = `${a.type}${a.target ? `:${a.target}` : ''}`;
+    emitEventLogged({
+      t: ts,
+      agent: agentName,
+      type: actionToActivityType(a.type),
+      text: a.content ? `${headline} — ${a.content.slice(0, 100)}` : headline,
+      detail: null,
+    });
+    const taskInput = actionToTaskInput(a, agentName);
+    if (taskInput) {
+      try {
+        createTask(taskInput);
+      } catch (e) {
+        console.warn(`[Brain] createTask failed for ${a.type}:`, (e as Error).message?.slice(0, 80));
+      }
+    }
+  }
 }
 
 // Parse all action tags from an agent response. Validates HANDOFF and ASK targets
@@ -337,9 +416,15 @@ export async function process(
 
   // Build system prompt once — used by BOTH local responder and Claude fallback
   // so voice is consistent across paths. This is the fix for the "voice drift" bug.
+  // Memory retrieval (§4.2): prefer query-aware hybrid search (FTS5 + vec, RRF
+  // merged) when the message is long enough to retrieve against; fall back to
+  // the time-based recent view for stubs like "hi" / "ok".
   let memoryContext = '';
   try {
-    memoryContext = buildMemoryContext(options?.agent);
+    memoryContext =
+      message.trim().length >= 3
+        ? await buildRelevantMemoryContext(message, options?.agent)
+        : buildMemoryContext(options?.agent);
   } catch {}
 
   // Skill retrieval (Phase 3.5 §4.5.1) — keyed on the incoming request's
@@ -393,10 +478,7 @@ export async function process(
       console.log(
         `[CLAUDE] ${agentName} | ${intent}/${complexity} depth=${depth} conf=${confidence.toFixed(2)} reason=${reason} | ${result.tokensOut}t | ${durationMs}ms`
       );
-      if (actionsFromText.length > 0) {
-        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-        console.log(`[Actions] ${summary}`);
-      }
+      reportActions(actionsFromText, agentName);
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);
@@ -501,10 +583,7 @@ export async function process(
       `[${selfEscalated ? 'CLAUDE' : 'LOCAL'}] ${agentName} | ${intent}/${complexity} depth=${depth} | ${result.tokensOut}t | ${durationMs}ms | conf=${confidence.toFixed(2)} | ${reason}`
     );
 
-    if (actionsFromText.length > 0) {
-      const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-      console.log(`[Actions] ${summary}`);
-    }
+    reportActions(actionsFromText, agentName);
 
     addToHistory(agentName, 'user', message);
     addToHistory(agentName, 'assistant', finalText);
@@ -565,10 +644,7 @@ export async function process(
       const handoffs = Array.from(handoffMap.entries()).map(([agent, msg]) => ({ agent, message: msg }));
 
       console.log(`[CLAUDE] ${agentName} | ${failureReason} fallback | ${claudeResult.tokensOut}t | ${durationMs}ms`);
-      if (actionsFromText.length > 0) {
-        const summary = actionsFromText.map((a) => `${a.type}${a.target ? ':' + a.target : ''}`).join(', ');
-        console.log(`[Actions] ${summary}`);
-      }
+      reportActions(actionsFromText, agentName);
 
       addToHistory(agentName, 'user', message);
       addToHistory(agentName, 'assistant', finalText);

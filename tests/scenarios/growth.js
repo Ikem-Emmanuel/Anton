@@ -2005,7 +2005,7 @@ export const scenarios = [
     title: 'Experiment results reversed by Simpson paradox',
     agentKey: 'maya',
     message: `maya our A/B test showed variant B winning overall (+12% conversion) but when i segment by user type, variant A wins in every single segment. i think this is Simpson's paradox. how do i explain this to the team and what's the right decision?`,
-    tags: ["simpsons-paradox", 'experiment-analysis', 'segmentation'],
+    tags: ['simpsons-paradox', 'experiment-analysis', 'segmentation'],
     difficulty: 'advanced',
   },
   {
