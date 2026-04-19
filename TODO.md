@@ -2,50 +2,46 @@
 
 > Local LLM as the operating system. Claude for heavy lifting. Anton as JARVIS.
 > Timeline: 14 weeks (12 V2 + 2 Phase 2.5). Current: 16GB Mac. Target: Mac Studio 128GB.
-> **Active branch:** `phase2/memory` — stabilize before continuing.
+> **Active branch:** `phase4/web-ui` — Phase 4.5 live transport shipped; Phase 2.5 stabilization mostly absorbed along the way.
 
 ---
 
-## 1. Reality Check (2026-04-18 audit)
+## 1. Reality Check (2026-04-19 audit)
+
+The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded brain. Most of what it called broken has since been fixed. This block reflects the code as of today — verified by grep, not by memory.
 
 ### What's actually working
 
 - V1 (Claude Agent SDK) 27-agent team with Slack + Web + notifications + briefings — fully operational
-- V2 brain module exists at `src/brain/*` and is wired into Slack + web paths
-- SQLite memory store at `src/memory/sqlite.ts` (WAL mode, FTS5, ACID) — functional
-- Brain's `storeConversation()` and `buildMemoryContext()` are called per turn
-- `data/brain/anton.db` populated (74KB, conversations + memories tables)
-- 421 V1 tests + 5 V2 `extractResponse` tests passing
+- V2 brain at `src/brain/*` — full pipeline: pre-gate → classifier → responder → evaluate → distill → skill-extract → feedback-capture
+- Ollama client: opossum circuit breaker (3 fails/60s, 30s reset probe), wall-clock timeouts via `Promise.race`, schema-constrained format, 2s startup health check
+- `taskRouting` consulted live in `brain.ts:routeForClassification()` — logical model names only
+- Adaptive thinking: depth is classifier-driven; `timeoutForDepth()` scales 10s/20s/45s/60s by depth
+- Unified Claude fallback at `src/brain/claude-fallback.ts` — SAME system prompt as local responder (voice-drift fixed)
+- SQLite memory store with FTS5 + WAL + tasks + skills + turn_evaluations + user_model
+- Memory spotlighting module at `src/memory/spotlighting.ts` with tests
+- V1 markdown → SQLite migration at `scripts/migrate-v1-memory.ts`
+- Web UI (Next.js 15 + Tailwind v4) with hybrid REST/WS transport, live approvals / memories / tasks / events
+- 640/641 tests pass (1 skipped live SDK smoke)
 - Ollama bound to `127.0.0.1:11434` (CVE-2025-63389 mitigated)
 - V1 code reorganized into organ folders (`src/brain/`, `src/memory/`, `src/nervous/`, `src/heart/`, `src/hands/`, `src/eyes/`, `src/spine/`)
 
-### What's BROKEN in the current branch
+### What's genuinely BROKEN or NOT STARTED
 
-- **`think: true` hardcoded** at `src/brain/brain.ts:128` → every message takes 15–60s even greetings
-- **Dead classifier**: `src/brain/classifier.ts` is 147 lines, zero callers
-- **Dead thinking controls**: `getThinkingDepth`, `buildThinkingPrompt`, `getMaxTokensForDepth` in `src/brain/thinking.ts` — never called
-- **`[NEEDS_CLAUDE]` self-tagging** at `brain.ts:142` — non-deterministic Claude routing depends on Qwen3 output
-- **No Ollama timeouts** — `ollamaConfig.timeout: 30_000` defined but never passed; a hung generation blocks Slack forever
-- **Soft JSON mode** — `chatJSON` uses `format: 'json'`, not schema-constrained `format: <schema>`
-- **Hardcoded `'local-fast'`** at `brain.ts:120` → `taskRouting` table never consulted → hardware upgrade won't auto-propagate
-- **Handoff false positives** — NL fallback at `brain.ts:222` triggers on "let me check with Sarah"
-- **Two memory systems**: V2 SQLite vs V1 `config/departments/*/MEMORY.md` — don't share
-- **Voice drift**: local path uses `getAntonSystem()`; Claude fallback uses V1 `personas.json`
-- **Regex still in index.js**: system cmds (`567`), schedule (`416`), approval (`357`), Sarah auto-dispatch (`380`)
-- **`claudeConfig` dead** — CLI path promised, never invoked (SDK path used instead)
-- **Tests**: only 5 unit tests cover the brain (`extractResponse` only); `tests/brain-e2e.md` is a checklist with zero assertions
+- **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
+- **Persona source-of-truth not unified** — `config/personas.json` (V1) + `src/brain/personas.ts` (V2) still separate. No `config/agents/*.ts` with Zod. §4.5.
+- **EOD consolidation not routed through brain** — markdown export is the write path, not a view. §4.6.
+- **sqlite-vec not installed** — FTS5 only; no semantic retrieval for memories. §4.2.
+- **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
+- **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
+- **Langfuse / observability** — nothing yet. Logs are `console.log`.
+- **Voice / finance / self-training / mobile** — all post-Phase-4.
 
-### What's NOT started
+### What's in-flight but loose-ended
 
-- No circuit breaker / retry policy
-- No Langfuse tracing
-- No ChromaDB / LightRAG / Obsidian vault
-- No `config/agents/` schemas
-- No `src/hands/claude.ts` CLI fallback
-- No proactive trigger loop
-- No eval harness
-- No web/mobile design
-- No voice / finance / self-training
+- **Task lifecycle linking** — `[DONE:42 ...]` can't transition the originating task; DONE creates a new row. Needs agent-actions parser + `actionToTaskInput` change. §5.5.3 follow-up.
+- **Slack-thread parity** — web-initiated approve/reject doesn't post confirmation back to Slack. §5.5.4 follow-up.
+- **index.js regex handlers** — system cmds / schedule / approval routing still use regex in `index.js` rather than brain. Not a blocker; noted for later sweep.
 
 ---
 
@@ -96,99 +92,84 @@
 
 ---
 
-## 3. Phase 2.5 — STABILIZE (NEXT 3–5 DAYS, ~20 hours)
+## 3. Phase 2.5 — STABILIZE (MOSTLY COMPLETE)
 
-> Goal: the brain _feels_ connected. Greetings in <3s. Deterministic Claude routing. One voice across paths. Branch PR-ready.
+> Goal: the brain _feels_ connected. Greetings in <3s. Deterministic Claude routing. One voice across paths.
+> Status as of 2026-04-19: 9 of 10 sub-items shipped while Phase 4 was in flight. Only the eval harness (§3.8) is genuinely open.
 
-**Execute in this order. Every task references `docs/BRAIN-V2.1-PLAN.md`.**
+### 3.1 Safety first — circuit breaker + timeouts — DONE
 
-### 3.1 Safety first — circuit breaker + timeouts (2 hrs)
+- [x] opossum circuit breaker (3 fails/60s window, 30s reset probe) — `src/brain/ollama-client.ts:93`
+- [x] Wall-clock timeout via `Promise.race` — `ollama-client.ts:76-79` (ollama npm client has no native abort; Promise.race is the practical equivalent)
+- [x] `CircuitOpenError` caught in `brain.ts` → falls through to Claude — `brain.ts` try/catch around `chat()`
+- [x] Startup `isHealthy()` with 2s timeout guards against Ollama cold-start hanging boot — `ollama-client.ts:141`
 
-- [ ] `npm install opossum`
-- [ ] Wrap `chat()` in `src/brain/ollama-client.ts` with `AbortController` (10s min depth, 60s deep depth)
-- [ ] Add opossum circuit breaker: open after 3 failures in 60s, half-open probe after 30s
-- [ ] Catch circuit-open in `brain.ts` → fall through to Claude
-- [ ] Add startup retry loop in `initBrain()` — Ollama takes 10-15s to warm after Mac wake
+### 3.2 Make taskRouting live — DONE
 
-### 3.2 Make taskRouting live — one-line unlock (1 hr)
+- [x] `routeForClassification()` consults `taskRouting[compound]` / `taskRouting[intent]` — `brain.ts:307`
+- [x] `resolveModel()` looks up concrete model by logical name — `brain.ts:297`
+- [x] Hardware upgrade now = edit `config/models.ts` only
 
-- [ ] Delete hardcoded `models['local-fast']` at `brain.ts:120`
-- [ ] Lookup model via `taskRouting[logicalName]` based on classification
-- [ ] Hardware upgrade now = edit `config/models.ts` only
+### 3.3 Wire adaptive thinking — DONE
 
-### 3.3 Wire adaptive thinking — speed (2 hrs)
+- [x] Classifier runs first (`classify()` at `brain.ts:390`), then responder at classifier's `adaptiveDepth`
+- [x] `think` is depth-driven via `shouldThink` in `ollama-client.ts:50` — no longer hardcoded to `true`
+- [x] Depth-scoped max tokens via `getMaxTokensForDepth()` — `brain.ts` passes per-call
+- [x] Depth-scoped temperature via `getTemperatureForDepth()` — same path
+- [x] `timeoutForDepth()` budgets: minimal 10s / standard 20s / detailed 45s / deep 60s — `brain.ts:317`
 
-- [ ] Classify first (cheap pre-pass), then responder at computed depth
-- [ ] `think: true` only for `detailed` / `deep`
-- [ ] Pass `getMaxTokensForDepth(depth)` instead of hardcoded 2048
-- [ ] Pass `getTemperatureForDepth(depth)`
-- [ ] Target: greeting <3s, simple Q <6s, analysis <15s on Tier 1
+### 3.4 Schema-constrained classifier — DONE
 
-### 3.4 Schema-constrained classifier — reliability (3 hrs)
+- [x] `schema?: object` param on `ChatOptions` — `ollama-client.ts:23`
+- [x] `requestBody.format = options.schema` when schema provided — `ollama-client.ts:67`
+- [x] `chatJSON` suppresses `jsonMode` when schema set (avoid redundant grammar) — `ollama-client.ts:122`
 
-- [ ] Add `schema?: object` param to `ChatOptions`
-- [ ] Change `chatJSON` to pass `format: <schema>` when schema provided (Ollama 0.5+)
-- [ ] `npm install zod-to-json-schema`
-- [ ] In `classifier.ts`, pass `zodToJsonSchema(ClassificationSchema)` to chatJSON
-- [ ] Remove the "moderate"/"medium" preprocessor hack (no longer needed)
-- [ ] Restore classifier as first step in brain.process()
+### 3.5 Deterministic pre-gate — DONE
 
-### 3.5 Deterministic pre-gate — skip LLM on obvious cases (2 hrs)
+- [x] `src/brain/pre-gate.ts` implements `@claude` / `@local` prefixes, code-block detection, long-input detection, approval/schedule intent seeds
+- [x] `preGate()` called first in `brain.process()` — `brain.ts:376`
+- [x] `skipClassifier` flag bypasses classifier when pre-gate is confident — `brain.ts:388`
+- [x] Tests in `src/brain/pre-gate.test.ts`
 
-- [ ] New file `src/brain/pre-gate.ts`:
-  - `@claude ` prefix → force Claude
-  - `@local ` prefix → force local
-  - ` ``` ` code block → `needsClaude: true`
-  - token count > 400 → `needsClaude: true`
-  - `^(yes|no|approve|deny|ok|👍|👎)` → intent: approval
-  - `^(schedule|remind|at \d)` → intent: schedule
-- [ ] Call pre-gate in `brain.ts` before classifier
-- [ ] If pre-gate returns intent, skip classifier entirely
+### 3.6 Delete handoff NL fallback — DONE
 
-### 3.6 Delete handoff NL fallback (30 min)
+- [x] NL fallback removed from `brain.ts`. Only explicit `[HANDOFF:Name]` tags are accepted (via `extractAgentActions`).
+- [x] Classifier-emitted handoffs merged with tag-extracted handoffs via `handoffMap` — `brain.ts:466-469`
 
-- [ ] Remove `brain.ts:222-234` (natural-language delegation detection)
-- [ ] Only accept explicit `[HANDOFF:Name]` tags
-- [ ] Classifier already produces explicit `handoffs[]` when needed
+### 3.7 Unified Claude fallback path — DONE
 
-### 3.7 Unified Claude fallback path (3 hrs)
+- [x] `src/brain/claude-fallback.ts` exists and is the single entry point
+- [x] `claudeFallback(message, systemPrompt, ...)` called directly from `brain.ts:457` — no detour through V1 `trackedAsk`
+- [x] SAME `systemPrompt` built once at `brain.ts:450` and used by BOTH local responder and Claude — voice drift fixed
+- [x] Claude results written to SQLite via `storeConversation()` on the Claude path
 
-- [ ] New file `src/brain/claude-fallback.ts` — one entry point for Claude calls
-- [ ] Wraps either Anthropic SDK (current V1 path) OR `claude -p` CLI
-- [ ] Uses SAME persona source as local path
-- [ ] Every Claude response written to SQLite via `storeConversation()`
-- [ ] `index.js` flow: brain.process() handles both cases internally; remove branch to `trackedAsk`
-
-### 3.8 Eval harness — confidence (3 hrs)
+### 3.8 Eval harness — NOT DONE (only genuinely open Phase 2.5 item)
 
 - [ ] Convert `tests/brain-e2e.md` checklist into `tests/brain.eval.ts`
 - [ ] 20 test cases minimum, assertable via `vitest`
 - [ ] Cases: greeting, simple Q, code-block, long-input, explicit handoff, yes/no approval, schedule, research request
-- [ ] Asserts: intent, needsClaude, handoffs, handledLocally, latency
+- [ ] Asserts: intent, needsClaude, handoffs, handledLocally, latency budgets per depth
 - [ ] Add to `npm test`
 
-### 3.9 Memory injection scanning + spotlighting (2 hrs)
+### 3.9 Memory spotlighting — DONE (verify wiring)
 
-- [ ] Wrap all external content in `<EXTERNAL_CONTENT>` tags before injection
-- [ ] Strip `<|im_start|>`, `[SYSTEM]`, `</s>` and other system-marker tokens from retrieved memories
-- [ ] Audit all `console.log()` calls in brain subsystem — remove content logging, keep classifications
+- [x] `src/memory/spotlighting.ts` with `src/memory/spotlighting.test.ts`
+- [ ] TODO: confirm `buildMemoryContext()` routes through spotlighting before returning the context string (quick grep-verify, file a fix if not)
 
-### 3.10 V1 markdown memory migration (2 hrs)
+### 3.10 V1 markdown memory migration — DONE
 
-- [ ] Script: read `config/departments/*/MEMORY.md` files
-- [ ] Parse dated entries into SQLite `memories` table with `type: 'journal'`
-- [ ] Brain's `buildMemoryContext` already reads from `memories` — now gets V1 context too
-- [ ] V1 `appendDeptMemory` rewritten to INSERT into SQLite (markdown export becomes a daily cron)
+- [x] `scripts/migrate-v1-memory.ts` parses `config/departments/*/MEMORY.md` into SQLite
+- [x] Brain's `buildMemoryContext` reads the same `memories` table → V1 and V2 memories now merge at read time
+- [ ] Follow-up: V1 `appendDeptMemory` still writes markdown as primary; could invert so SQLite is the write path and markdown is a daily export. Low priority — both paths work.
 
 ### Phase 2.5 Definition of Done
 
-- [ ] Greeting round-trip < 5s on 16GB
-- [ ] Code-block message routes to Claude without LLM classification
-- [ ] Classifier returns valid JSON on 100/100 manual cases (schema-constrained)
-- [ ] Ollama hang does not block Slack handler (circuit breaker fires)
-- [ ] Same question produces same voice regardless of local/Claude path
-- [ ] 20 eval cases green in CI
-- [ ] Branch committed and PR-ready
+- [x] Ollama hang does not block Slack handler (circuit breaker fires)
+- [x] Same question produces same voice regardless of local/Claude path (unified `systemPrompt`)
+- [x] Schema-constrained classifier (format: schema) — no soft JSON mode when schema set
+- [ ] **NOT YET** — Greeting round-trip < 5s on 16GB (needs measurement; §3.8 eval harness would verify)
+- [ ] **NOT YET** — 20 eval cases green in CI (§3.8)
+- [ ] **NOT YET** — Code-block route-to-Claude verified by assertable test (§3.8)
 
 ---
 
@@ -196,13 +177,15 @@
 
 > Memory becomes continuous. Anton speaks first. Persona unified.
 
-### 4.1 Memory distillation
+### 4.1 Memory distillation — DONE
 
-- [ ] After-turn async fact extraction (local Qwen3 8B, think:false)
-- [ ] Schema: `{type: 'fact'|'decision'|'preference'|'commitment', text, confidence}`
-- [ ] FTS5 + vector retrieval top-5 injected into next turn
+- [x] After-turn async fact extraction via `distillConversation()` in `src/brain/distill.ts` (Qwen3 8B, think:false, schema-constrained)
+- [x] Schema: `{type, text, confidence}` with types 'fact'|'decision'|'preference'|'commitment'
+- [x] `distill.test.ts` covers the extraction and storage path
+- [x] FTS5 retrieval of top memories injected into next turn via `buildMemoryContext()`
+- [ ] Vector (sqlite-vec) retrieval — §4.2 below
 
-### 4.2 sqlite-vec hybrid retrieval (SKIP ChromaDB)
+### 4.2 sqlite-vec hybrid retrieval — NOT DONE
 
 - [ ] `npm install sqlite-vec`
 - [ ] Extend `src/memory/sqlite.ts`: `embeddings` table, nomic-embed-text indexing
@@ -220,36 +203,36 @@
 - [ ] Every 4h distillation batch
 - [ ] Output through same `_slackBrain` — consistent voice
 
-### 4.4 Ambient context persona modulation
+### 4.4 Ambient context persona modulation — DONE
 
-- [ ] `src/brain/ambient-context.ts` — builds "Anton, it is 23:45 Saturday..."
-- [ ] Injected into every system prompt
-- [ ] Includes: time, idle duration, recent pattern, open items
+- [x] `src/brain/ambient-context.ts` builds time/day/idle-duration/open-items context
+- [x] `buildAmbientContext()` called per turn and injected into the system prompt at `brain.ts:436`
+- [x] `ambient-context.test.ts` covers the format
 
-### 4.5 Persona unification
+### 4.5 Persona unification — NOT DONE
 
 - [ ] New file per department: `config/agents/engineering.ts`, `marketing.ts`, etc.
 - [ ] Zod schemas per agent (name, role, model, tools, delegates_to)
-- [ ] `personas.ts` and V1 `personas.json` become generated from this single source
+- [ ] `src/brain/personas.ts` and V1 `config/personas.json` become generated from this single source
 - [ ] Both local brain and Claude fallback build prompts from the same data
 - [ ] Delete orphan agent names that exist in V1 but not in brain
 
-### 4.6 Wire EOD consolidation through brain
+### 4.6 Wire EOD consolidation through brain — NOT DONE
 
-- [ ] Replace V1 `appendDeptMemory` with SQLite INSERT
+- [ ] Replace V1 `appendDeptMemory` with SQLite INSERT as primary write path
 - [ ] Nightly Qwen3 8B pass summarizes day's conversations per agent
 - [ ] Stored in `agent_journals` table
 - [ ] Markdown export becomes a daily cron (`data/memory/YYYY-MM-DD.md`) — human-readable only
 
-### 4.7 Phase 3A — Feedback primitives (see `docs/RESEARCH-MULTI-AGENT.md`)
+### 4.7 Phase 3A — Feedback primitives — DONE
 
-- [ ] (4.7.1) Add SQLite tables: `tasks`, `task_events`, `pending_asks`
-- [ ] (4.7.2) Extend `extractHandoffs()` → `extractAgentActions()`: parses `[ASK:]`, `[BLOCK:]`, `[APPROVE:]`, `[REJECT:]`, `[DONE:]`
-- [ ] (4.7.3) Implement `brain.transition(taskId, event, byAgent)` — pure function with authority table
-- [ ] (4.7.4) Add `hop_count` increment (cap 20 → auto-escalate)
-- [ ] (4.7.5) Add `retry_count` increment on `needs-fix` (cap 3 → auto-escalate)
-- [ ] (4.7.6) Semantic ask dedup — hash(task + asker + question[:100]), check last 10 events
-- [ ] (4.7.7) Validate `HANDOFF`/`ASK` targets against `TEAM_NAMES`
+- [x] (4.7.1) SQLite `tasks` table shipped (see §5.5.3); `task_events` / `pending_asks` still rolled into tasks.col for now (simplification until it's a pain)
+- [x] (4.7.2) `extractAgentActions()` in `src/brain/agent-actions.ts` parses HANDOFF, ASK, BLOCK, APPROVE, REJECT, DONE — with tests
+- [x] (4.7.3) `src/brain/state-machine.ts` implements `transition()` with authority table; `state-machine.test.ts` covers the transitions
+- [ ] (4.7.4) `hop_count` auto-escalate — not yet wired
+- [ ] (4.7.5) `retry_count` on `needs-fix` — not yet wired
+- [ ] (4.7.6) Semantic ask dedup — not yet wired
+- [x] (4.7.7) HANDOFF/ASK target validation against TEAM_NAMES — `extractAndValidateActions()` in `brain.ts:125`
 
 ### 4.8 Phase 3B — Simulation mode + fixtures
 
@@ -269,58 +252,56 @@
 
 > Slot between memory (Phase 2/3) and training (Phase 6). Skills improve _within-session_; DPO improves weights _across weeks_. See `docs/BRAIN-V2.1-PLAN.md §4.5.`
 
-### 4.5.1 Named skill library with `context_pattern → approach` keying (3 hrs)
+### 4.5.1 Named skill library — DONE
 
-- [ ] (4.5.1a) Create `skills` SQLite table (`context_pattern`, `approach` JSON, `owner_agent`, `success/failure_count`, `supersedes_id`, `deprecated`, `embedding`)
-- [ ] (4.5.1b) Create `src/memory/skills.ts` module: `storeSkill`, `retrieveApplicableSkills(request, agent, topK=3)`, `markSkillUsed(id, outcome)`, `deprecateSkill(id)`
-- [ ] (4.5.1c) Wire `retrieveApplicableSkills()` into `brain.process()` — injected as `[APPLICABLE SKILLS]` block distinct from `[ORG MEMORY]`
+- [x] (4.5.1a) `skills` SQLite table with `context_pattern`, `approach`, `owner_agent`, success/failure counts, supersedes_id, deprecated, embedding
+- [x] (4.5.1b) `src/memory/skills.ts` with `storeSkill`, `retrieveApplicableSkills`, `markSkillUsed`, `deprecateSkill` — `skills.test.ts` covers it
+- [x] (4.5.1c) `buildSkillsContext()` called in `brain.process()` at `brain.ts:428`, injected as a separate block
 
-### 4.5.2 Outcome-evaluation pass (2 hrs)
+### 4.5.2 Outcome-evaluation pass — DONE
 
-- [ ] (4.5.2a) Create `turn_evaluations` SQLite table (4 scores + verdict + implicit_signal)
-- [ ] (4.5.2b) Create `src/brain/evaluate.ts` — Qwen3 8B judge pass, schema-constrained, 4 criteria (task-addressed, role-appropriate, hallucination-free, action-ready)
-- [ ] (4.5.2c) Fire-and-forget from `brain.process()` after every successful turn (local + Claude)
-- [ ] (4.5.2d) Write verdict to `turn_evaluations`; update skill success/failure counts when skill was used
+- [x] (4.5.2a) `turn_evaluations` table with 4 scores + verdict + implicit_signal
+- [x] (4.5.2b) `src/brain/evaluate.ts` — `evaluateTurn()` with schema-constrained Qwen3 judge
+- [x] (4.5.2c) Fired fire-and-forget after each turn
+- [x] (4.5.2d) Verdict stored; skill success/failure updated when a skill was used
 
-### 4.5.3 Implicit feedback capture (1.5 hrs)
+### 4.5.3 Implicit feedback capture — DONE
 
-- [ ] (4.5.3a) Create `src/brain/feedback-capture.ts` — `captureImplicitFeedback(prevAgentTurn, currentUserTurn)` returning `'accepted' | 'corrected' | 'ambiguous'`
-- [ ] (4.5.3b) Three-stage signal pipeline: explicit keywords → edit-distance → semantic similarity
-- [ ] (4.5.3c) Writes to `turn_evaluations.implicit_signal`; runs on every incoming user turn before the next `brain.process()` call
+- [x] (4.5.3a) `src/brain/feedback-capture.ts` with `captureImplicitFeedback()`
+- [x] (4.5.3b) Three-stage pipeline (keywords → edit-distance → semantic)
+- [x] (4.5.3c) Writes to `turn_evaluations.implicit_signal`; runs on user turn before next brain call
 
-### 4.5.4 Skill refinement via supersedes chain (2 hrs)
+### 4.5.4 Skill refinement via supersedes chain — DONE
 
-- [ ] (4.5.4a) On `good` verdict + positive implicit signal + novel approach for existing `context_pattern` → create candidate skill with `supersedes_id` pointing to prior
-- [ ] (4.5.4b) Candidate becomes preferred after 3 successful uses (vs existing's last-5 success rate)
-- [ ] (4.5.4c) Retrieval returns newest non-deprecated per lineage
+- [x] (4.5.4a/b/c) `src/memory/skills-lifecycle.test.ts` covers supersedes-and-candidate flow; retrieval returns newest non-deprecated per lineage
 
-### 4.5.5 Structured user model (2 hrs)
+### 4.5.5 Structured user model — DONE
 
-- [ ] (4.5.5a) Create `user_model` SQLite table — 4 dimensions (`output_format`, `decision`, `task_pattern`, `feedback`)
-- [ ] (4.5.5b) Per-dimension evolution rules: `output_format` requires 3 consistent observations; `decision` locks at first explicit choice with override history; `task_pattern` time-of-day indexed; `feedback` trends feed into skill success rates
-- [ ] (4.5.5c) Inject high-confidence rows as `[USER MODEL]` block in `buildAmbientContext()`, 6-line cap
+- [x] (4.5.5a) `user_model` table with 4 dimensions
+- [x] (4.5.5b) Per-dimension evolution rules in `src/memory/sqlite.ts` — tested in `user-model.test.ts`
+- [x] (4.5.5c) High-confidence rows injected as `[USER MODEL]` block via ambient-context
 
-### 4.5.6 Cross-agent skill sharing (1.5 hrs)
+### 4.5.6 Cross-agent skill sharing — NOT DONE
 
 - [ ] (4.5.6a) Add `shared` (bool) + `tags` (JSON array) columns to `skills`
 - [ ] (4.5.6b) Auto-surface share proposals when skill hits success_rate > 0.8 AND evidence > 5
 - [ ] (4.5.6c) Anton DMs Noel proposal; on approval, skill moves to shared pool; retrieval filter includes `owner_agent = X OR (shared = 1 AND tags ∩ my_domain)`
 
-### 4.5.7 Integration wiring
+### 4.5.7 Integration wiring — DONE (4.5.7a/b); 4.5.7c rolls into Phase 6
 
-- [ ] (4.5.7a) Extend `distillConversation()` (already shipped) to also emit skill candidates when `verdict = good` + novel `context_pattern`
-- [ ] (4.5.7b) Phase 3B feedback state machine: `verified` transition can require eval-pass verdict ≥ 0.6 (configurable per agent)
-- [ ] (4.5.7c) Phase 6 self-training: reuse `turn_evaluations.verdict` + `implicit_signal` as the DPO quality signal — delete the planned separate detector
+- [x] (4.5.7a) `distillConversation()` emits skill candidates on `verdict = good` + novel pattern (via `extractSkillCandidate` in `skill-extract.ts`)
+- [x] (4.5.7b) State-machine gates `verified` on eval-pass verdict threshold
+- [ ] (4.5.7c) Phase 6 self-training reuse — deferred to Phase 6
 
 ### 4.5.8 Acceptance criteria
 
-- [ ] Every completed turn writes a `turn_evaluations` row with 4 scores + verdict
-- [ ] Every `good`-verdict turn with novel `context_pattern` creates a skill
-- [ ] `retrieveApplicableSkills()` returns ≤ 3 skills, < 2k tokens, < 200ms
-- [ ] Implicit-feedback capture catches ≥ 70% of Noel's corrections on replay
-- [ ] `user_model` populates 4 dimensions with ≥ 2 rows each within a week
-- [ ] At least 1 skill shared across agents via review flow
-- [ ] Phase 3.5 demo: same task asked twice — second time retrieves and uses skill, observably faster + more consistent
+- [x] Every completed turn writes a `turn_evaluations` row — verified by test coverage
+- [x] Every `good`-verdict turn with novel `context_pattern` creates a skill
+- [ ] `retrieveApplicableSkills()` < 2k tokens, < 200ms — **not measured in CI yet** (§3.8 eval harness would cover)
+- [ ] Implicit-feedback capture ≥ 70% corrections on replay — **no corpus yet**
+- [ ] `user_model` 4 dimensions × ≥ 2 rows in a week — **no telemetry assertion yet**
+- [ ] At least 1 skill shared across agents via review flow — **blocked on §4.5.6**
+- [ ] Demo: same task twice, second time faster + more consistent — **not benchmarked**
 
 ---
 
@@ -584,37 +565,43 @@ Upgrade path = edit `config/models.ts` only.
 
 ## 14. Progress Log
 
-| Date       | What                                                                                                                                              | Phase    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                              | V1       |
-| 2026-04-14 | V2 architecture researched and documented                                                                                                         | Planning |
-| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                               | Planning |
-| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                          | Hardware |
-| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                                 | 0        |
-| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                         | 0        |
-| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                          | 0        |
-| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                             | 1        |
-| 2026-04-14 | Brain wired into Slack + web paths                                                                                                                | 1        |
-| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                            | 1        |
-| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                           | 1        |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                          | 4.5      |
-| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                                     | 2        |
-| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                           | 2        |
-| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                           | 1        |
-| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                             | 2.5      |
-| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                                 | 2.5      |
-| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                                   | 2.5      |
-| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                                    | 4        |
-| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                              | —        |
-|            | **NEXT: Execute Phase 2.5 — circuit breaker → routing → thinking → classifier → pre-gate → handoff → fallback → eval → spotlighting → migration** | 2.5      |
+| Date       | What                                                                                                                                           | Phase    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                           | V1       |
+| 2026-04-14 | V2 architecture researched and documented                                                                                                      | Planning |
+| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                            | Planning |
+| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                       | Hardware |
+| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                              | 0        |
+| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                      | 0        |
+| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                       | 0        |
+| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                          | 1        |
+| 2026-04-14 | Brain wired into Slack + web paths                                                                                                             | 1        |
+| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                         | 1        |
+| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                        | 1        |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                       | 4.5      |
+| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                                  | 2        |
+| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                        | 2        |
+| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                        | 1        |
+| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                          | 2.5      |
+| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                              | 2.5      |
+| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                                | 2.5      |
+| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                                 | 4        |
+| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                           | —        |
+| 2026-04-18 | Phase 3.5 skill loop shipped — skills + evaluate + feedback-capture + user_model + skill-extract modules all landed with tests                 | 3.5      |
+| 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                             | 2.5      |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                       | 4.5      |
+| 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints    | 4.5      |
+| 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                             | —        |
+|            | **NEXT: §3.8 brain eval harness (assertable) → then §4.5 persona unification + §4.2 sqlite-vec + §4.6 EOD consolidation → stop claiming done** | 2.5+3    |
 
 ---
 
 ## 15. Canonical References
 
-- `docs/BRAIN-V2.1-PLAN.md` — revised architecture + Phase 2.5 fixes (THIS IS THE SOURCE OF TRUTH)
+- `docs/BRAIN-V2.1-PLAN.md` — revised architecture + Phase 2.5 fixes (historical; code now ahead of plan in places)
 - `docs/ARCHITECTURE-BRAIN.md` — original Phase 1 design (historical)
 - `docs/DESIGN-PROMPT.md` — web + mobile design brief
-- `src/brain/*` — current implementation (branch `phase2/memory`)
-- `tests/brain.eval.ts` — routing eval harness (Phase 2.5 §3.8)
+- `src/brain/*` — current implementation (branch `phase4/web-ui`)
+- `src/memory/*` — SQLite, skills, user_model, spotlighting
+- `tests/brain.eval.ts` — routing eval harness (Phase 2.5 §3.8) — **NOT YET CREATED**
 - `data/brain/anton.db` — SQLite memory (WAL mode, FTS5)
