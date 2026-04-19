@@ -17,7 +17,7 @@
 - `data/brain/anton.db` populated (74KB, conversations + memories tables)
 - 421 V1 tests + 5 V2 `extractResponse` tests passing
 - Ollama bound to `127.0.0.1:11434` (CVE-2025-63389 mitigated)
-- V1 code preserved in `src/v1-archive/` (43 files, not deleted)
+- V1 code reorganized into organ folders (`src/brain/`, `src/memory/`, `src/nervous/`, `src/heart/`, `src/hands/`, `src/eyes/`, `src/spine/`)
 
 ### What's BROKEN in the current branch
 
@@ -60,7 +60,7 @@
 - [x] `config/models.ts` with model routing config
 - [x] Bind Ollama to localhost only (CVE-2025-63389 fix)
 - [x] Organ system READMEs created
-- [x] V1 code preserved in `src/v1-archive/`
+- [x] V1 code reorganized into organ folders — `src/brain/`, `src/memory/`, `src/nervous/`, `src/heart/`, `src/hands/`, `src/eyes/`, `src/spine/`
 - [ ] Docker Compose: Redis, ChromaDB, Nginx, Langfuse — **deferred to Phase 5**
 - [ ] `config/agents/` Zod schemas — **moved to Phase 3**
 - [ ] Langfuse observability — **deferred to Phase 4**
@@ -597,6 +597,7 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-14 | Brain wired into Slack + web paths                                                                                                                | 1        |
 | 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                            | 1        |
 | 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                           | 1        |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                          | 4.5      |
 | 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                                     | 2        |
 | 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                           | 2        |
 | 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                           | 1        |
