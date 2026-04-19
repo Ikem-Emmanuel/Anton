@@ -31,7 +31,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
 - ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
 - ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
-- **sqlite-vec not installed** — FTS5 only; no semantic retrieval for memories. §4.2.
+- ~~sqlite-vec not installed~~ — **DONE 2026-04-19**. Hybrid FTS5+vector retrieval with RRF merge; brain uses it per turn. §4.2.
 - **Proactive scheduler is the V1 briefing only** — no event-scan every 15m, no stalled-task surfacer, no distillation batch cron. §4.3.
 - **Cross-agent skill sharing** — skill table has data, no proposal-and-approval flow. §4.5.6.
 - **Langfuse / observability** — nothing yet. Logs are `console.log`.
@@ -185,10 +185,16 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] FTS5 retrieval of top memories injected into next turn via `buildMemoryContext()`
 - [ ] Vector (sqlite-vec) retrieval — §4.2 below
 
-### 4.2 sqlite-vec hybrid retrieval — NOT DONE
+### 4.2 sqlite-vec hybrid retrieval — DONE
 
-- [ ] `npm install sqlite-vec`
-- [ ] Extend `src/memory/sqlite.ts`: `embeddings` table, nomic-embed-text indexing
+- [x] `npm install sqlite-vec` (v0.1.9)
+- [x] `memories_vec` vec0 virtual table (768-dim, matches nomic-embed-text)
+- [x] Extension loads on `initSqliteMemory`; failures degrade to FTS5-only gracefully (`isVecEnabled()`)
+- [x] `storeMemory` now fires background `indexMemoryEmbedding` via setImmediate — no caller change, no latency tax
+- [x] `semanticSearchMemories` / `hybridSearchMemories` (RRF with k=60) / `buildRelevantMemoryContext` exported from `src/memory/sqlite.ts`
+- [x] `brain.process()` now calls `buildRelevantMemoryContext(message, agent)` when the message is ≥3 chars; falls back to time-based view for stubs
+- [x] 6 tests in `src/memory/sqlite-vec.test.ts` cover indexing, semantic ranking, RRF merging, limit, FTS5 fallback
+- [ ] Nightly re-embed cron if the embedding model changes — deferred, single-model for now
 - [ ] Nightly embeds new memories
 - [ ] RRF-merge BM25 (FTS5) + vector similarity
 - [ ] Returns top-5 in <1ms — no separate service, no Docker
@@ -601,7 +607,8 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
 | 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
 | 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
-|            | **NEXT: §4.2 sqlite-vec → §4.3 proactive triggers → §4.5.6 cross-agent skill sharing. Branch `phase3/persona-unification`.**                | 3        |
+| 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
+|            | **NEXT: §4.3 proactive trigger loop → §4.5.6 cross-agent skill sharing → persona prompt injection perf benchmark. Branch phase3/\*.**       | 3        |
 
 ---
 
