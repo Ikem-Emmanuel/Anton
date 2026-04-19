@@ -2,7 +2,7 @@
 
 > Local LLM as the operating system. Claude for heavy lifting. Anton as JARVIS.
 > Timeline: 14 weeks (12 V2 + 2 Phase 2.5). Current: 16GB Mac. Target: Mac Studio 128GB.
-> **Active branch:** `phase4/web-ui` — Phase 4.5 live transport shipped; Phase 2.5 stabilization mostly absorbed along the way.
+> **Trunk state:** `main` = 2026-04-19 merge of phase4/web-ui. Phases 2 / 2.5 / 3 / 3A / 3B / 3.5 / 4 / 4.5 all landed. Next frontier: Phase 5 (hardware), Phase 6 (self-training), Phase 7 (voice).
 
 ---
 
@@ -22,13 +22,13 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - Memory spotlighting module at `src/memory/spotlighting.ts` with tests
 - V1 markdown → SQLite migration at `scripts/migrate-v1-memory.ts`
 - Web UI (Next.js 15 + Tailwind v4) with hybrid REST/WS transport, live approvals / memories / tasks / events
-- 640/641 tests pass (1 skipped live SDK smoke)
+- 705/706 tests pass (1 skipped live SDK smoke) — up from 640 after Phase 3 shipped
 - Ollama bound to `127.0.0.1:11434` (CVE-2025-63389 mitigated)
 - V1 code reorganized into organ folders (`src/brain/`, `src/memory/`, `src/nervous/`, `src/heart/`, `src/hands/`, `src/eyes/`, `src/spine/`)
 
 ### What's genuinely BROKEN or NOT STARTED
 
-- **No assertable brain eval harness** — `tests/brain-e2e.md` is still a markdown checklist. No `tests/brain.eval.ts`. §3.8.
+- ~~No assertable brain eval harness~~ — **DONE 2026-04-19**. `tests/brain.eval.test.ts` with 31 cases (pre-gate + action tags + mocked process()). §3.8.
 - ~~Persona source-of-truth not unified~~ — **DONE** 2026-04-19. `config/agents/*.ts` with Zod schema; both V1 and V2 read from the same loader.
 - ~~EOD consolidation not routed through brain~~ — **DONE 2026-04-19** (dual-write to SQLite). Nightly-summarization layer still TBD. §4.6.
 - ~~sqlite-vec not installed~~ — **DONE 2026-04-19**. Hybrid FTS5+vector retrieval with RRF merge; brain uses it per turn. §4.2.
