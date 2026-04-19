@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeptChip, Kbd, RiskPip } from '@/components/ui/primitives';
 import { useApprovals } from '@/hooks/use-approvals';
+import { approveApproval, rejectApproval } from '@/lib/api/approvals';
 import { cn } from '@/lib/cn';
 
 function DiffRow({ row }: { row: [string, string, string?] }) {
@@ -32,7 +33,29 @@ function AgentMonogram({ agent }: { agent: string }) {
 export function ApprovalTray() {
   const { approvals, loading, error } = useApprovals();
   const [expanded, setExpanded] = useState<number[]>([2]);
+  // Per-id "busy" set so we can disable buttons + show pending during the
+  // round-trip. The WS approval.resolved event will remove the card on
+  // success; on failure we surface a tray-level message and re-enable.
+  const [busy, setBusy] = useState<Set<number>>(() => new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
   const toggle = (id: number) => setExpanded((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+
+  const handleDecision = async (id: number, kind: 'approve' | 'reject') => {
+    setBusy((prev) => new Set(prev).add(id));
+    setActionError(null);
+    try {
+      await (kind === 'approve' ? approveApproval(id) : rejectApproval(id));
+      // Card removal is driven by the approval.resolved WS event, not by
+      // local state — keeps a single source of truth.
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+      setBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -42,7 +65,9 @@ export function ApprovalTray() {
           <span className="mono small text-work">{approvals.length}</span>
         </div>
         <div className="mono small text-tertiary mt-1">
-          {error ? (
+          {actionError ? (
+            <span className="text-error">action failed · {actionError}</span>
+          ) : error ? (
             <span className="text-error">offline · showing cached</span>
           ) : loading ? (
             'loading…'
@@ -55,12 +80,14 @@ export function ApprovalTray() {
         {approvals.map((a) => {
           const isOpen = expanded.includes(a.id);
           const isHigh = a.risk === 'H';
+          const isBusy = busy.has(a.id);
           return (
             <div
               key={a.id}
               className={cn(
                 'mb-2 rounded-card px-3 pt-3 pb-2.5 border',
-                isHigh ? 'bg-hover border-error' : 'bg-surface border-border-default'
+                isHigh ? 'bg-hover border-error' : 'bg-surface border-border-default',
+                isBusy && 'opacity-60'
               )}
             >
               <div className="flex items-center gap-2 mb-1.5">
@@ -86,13 +113,31 @@ export function ApprovalTray() {
               )}
 
               <div className="flex gap-1.5 items-center">
-                <Button variant="primary" size="sm" className="flex-1">
-                  Approve <Kbd>A</Kbd>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                  disabled={isBusy}
+                  onClick={() => handleDecision(a.id, 'approve')}
+                >
+                  {isBusy ? (
+                    '…'
+                  ) : (
+                    <>
+                      Approve <Kbd>A</Kbd>
+                    </>
+                  )}
                 </Button>
-                <Button variant="secondary" size="sm" className="flex-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1"
+                  disabled={isBusy}
+                  onClick={() => handleDecision(a.id, 'reject')}
+                >
                   Reject <Kbd>R</Kbd>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => toggle(a.id)}>
+                <Button variant="ghost" size="sm" onClick={() => toggle(a.id)} disabled={isBusy}>
                   {isOpen ? '−' : 'why?'}
                 </Button>
               </div>
