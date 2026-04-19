@@ -9,6 +9,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { ApprovalTray } from '@/components/layout/approval-tray';
 import { CommandPalette } from '@/components/layout/command-palette';
+import { TweaksPanel } from '@/components/layout/tweaks-panel';
 import { Kbd } from '@/components/ui/primitives';
 import { cn } from '@/lib/cn';
 import { isSection, NAV_ITEMS, type Route } from '@/lib/nav';
@@ -155,6 +156,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       </div>
       <CommandBar />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <TweaksPanel />
     </div>
   );
 }
