@@ -1,5 +1,9 @@
 'use client';
+// Team — department org chart. Anton on top, 6 dept cards below with their
+// agent rosters. Each agent row deep-links into /agent/[name]. Bottom panel
+// shows the top handoff routes across the team for the last week.
 
+import Link from 'next/link';
 import { StatusGlow, TrustBadge } from '@/components/ui/primitives';
 import { AGENTS, DEPARTMENTS } from '@/lib/data';
 
@@ -11,155 +15,94 @@ const HANDOFF_ROUTES: Array<[string, string, number, string]> = [
   ['Priya', 'Alex', 9, 'data → product'],
 ];
 
-export default function DeptChart() {
-  const deptAgents = (id: string) => AGENTS.filter((a) => a.d === id);
+const MAX_HANDOFFS = 34;
+
+function DeptCard({ deptId, deptName, deptColor }: { deptId: string; deptName: string; deptColor: string }) {
+  const agents = AGENTS.filter((a) => a.d === deptId);
+  const active = agents.filter((a) => a.s === 'working').length;
   return (
-    <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto' }}>
-      <div className="mono caps" style={{ color: 'var(--text-tertiary)' }}>
-        TEAM / DEPARTMENTS
+    <div
+      className="bg-surface border border-border-subtle rounded-card px-4 py-4 flex flex-col gap-2.5"
+      style={{ borderTop: `3px solid ${deptColor}` }}
+    >
+      <div className="flex items-baseline gap-2">
+        <span className="text-base font-medium">{deptName}</span>
+        <span className="flex-1" />
+        <span className="mono small text-tertiary">{agents.length}</span>
       </div>
-      <h1 style={{ fontSize: 26, fontWeight: 500, margin: '4px 0 8px' }}>Departments</h1>
-      <p style={{ color: 'var(--text-secondary)', marginTop: 0, marginBottom: 28, maxWidth: 720 }}>
+      <div className="flex gap-2 items-center">
+        <span className="mono small caps text-tertiary text-[10px]">
+          {active > 0 ? <span className="text-work">● {active} active</span> : <span>○ idle</span>}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1 mt-1">
+        {agents.map((a) => (
+          <Link
+            key={a.n}
+            href={`/agent/${encodeURIComponent(a.n)}`}
+            className="flex items-center gap-2 px-2 py-1.5 cursor-pointer bg-page border border-border-subtle rounded-sm hover:bg-hover"
+          >
+            <StatusGlow s={a.s} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium">{a.n}</div>
+              <div className="mono small text-tertiary text-[10px]">{a.r}</div>
+            </div>
+            <TrustBadge tier={a.t} />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HandoffRow({ from, to, n, why }: { from: string; to: string; n: number; why: string }) {
+  const pct = (n / MAX_HANDOFFS) * 100;
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="mono small w-20 text-primary">{from}</span>
+      <span className="mono text-tertiary">→</span>
+      <span className="mono small w-20 text-primary">{to}</span>
+      <div className="flex-1 h-1 bg-page rounded-sm relative">
+        <div className="absolute left-0 top-0 h-full bg-accent rounded-sm" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="mono small text-secondary w-7 text-right">{n}</span>
+      <span className="mono small text-tertiary w-[120px]">{why}</span>
+    </div>
+  );
+}
+
+export default function DeptChart() {
+  return (
+    <div className="px-8 py-6 h-full overflow-auto">
+      <div className="mono caps text-tertiary">TEAM / DEPARTMENTS</div>
+      <h1 className="text-[26px] font-medium mt-1 mb-2">Departments</h1>
+      <p className="text-secondary mt-0 mb-7 max-w-[720px]">
         15 agents across 6 departments. Anton sits above — routes work, holds context, enforces trust tiers.
       </p>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <div
-          style={{
-            padding: '14px 24px',
-            background: 'var(--bg-surface)',
-            border: '2px solid var(--accent)',
-            borderRadius: 'var(--r-panel)',
-            textAlign: 'center',
-            minWidth: 240,
-          }}
-        >
-          <div className="mono small caps" style={{ color: 'var(--accent)' }}>
-            CORE · ANTON
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 500, marginTop: 4 }}>◉ Anton</div>
-          <div className="mono small" style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>
-            personal OS · 3d 14h uptime
-          </div>
+      <div className="flex justify-center mb-1.5">
+        <div className="px-6 py-3.5 bg-surface border-2 border-accent rounded-panel text-center min-w-[240px]">
+          <div className="mono small caps text-accent">CORE · ANTON</div>
+          <div className="text-lg font-medium mt-1">◉ Anton</div>
+          <div className="mono small text-tertiary mt-0.5">personal OS · 3d 14h uptime</div>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-        <div style={{ width: 2, height: 24, background: 'var(--border-strong)' }} />
+      <div className="flex justify-center mb-5">
+        <div className="w-0.5 h-6 bg-border-strong" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {DEPARTMENTS.map((dept) => {
-          const agents = deptAgents(dept.id);
-          const active = agents.filter((a) => a.s === 'working').length;
-          return (
-            <div
-              key={dept.id}
-              style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                borderTop: `3px solid ${dept.color}`,
-                borderRadius: 'var(--r-card)',
-                padding: '16px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 16, fontWeight: 500 }}>{dept.name}</span>
-                <span style={{ flex: 1 }} />
-                <span className="mono small" style={{ color: 'var(--text-tertiary)' }}>
-                  {agents.length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="mono small caps" style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
-                  {active > 0 ? <span style={{ color: 'var(--work)' }}>● {active} active</span> : <span>○ idle</span>}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                {agents.map((a) => (
-                  <div
-                    key={a.n}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '6px 8px',
-                      cursor: 'pointer',
-                      background: 'var(--bg-page)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 4,
-                    }}
-                  >
-                    <StatusGlow s={a.s} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{a.n}</div>
-                      <div className="mono small" style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
-                        {a.r}
-                      </div>
-                    </div>
-                    <TrustBadge tier={a.t} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-3 gap-3">
+        {DEPARTMENTS.map((dept) => (
+          <DeptCard key={dept.id} deptId={dept.id} deptName={dept.name} deptColor={dept.color} />
+        ))}
       </div>
 
-      <div style={{ marginTop: 32 }}>
-        <div className="mono caps" style={{ color: 'var(--text-tertiary)', marginBottom: 8 }}>
-          TOP HAND-OFF ROUTES · LAST 7 DAYS
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--r-card)',
-            padding: 14,
-          }}
-        >
-          {HANDOFF_ROUTES.map(([from, to, n, why], i) => {
-            const pct = (n / 34) * 100;
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="mono small" style={{ width: 80, color: 'var(--text-primary)' }}>
-                  {from}
-                </span>
-                <span className="mono" style={{ color: 'var(--text-tertiary)' }}>
-                  →
-                </span>
-                <span className="mono small" style={{ width: 80, color: 'var(--text-primary)' }}>
-                  {to}
-                </span>
-                <div
-                  style={{ flex: 1, height: 4, background: 'var(--bg-page)', borderRadius: 2, position: 'relative' }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      width: `${pct}%`,
-                      background: 'var(--accent)',
-                      borderRadius: 2,
-                    }}
-                  />
-                </div>
-                <span className="mono small" style={{ color: 'var(--text-secondary)', width: 28, textAlign: 'right' }}>
-                  {n}
-                </span>
-                <span className="mono small" style={{ color: 'var(--text-tertiary)', width: 120 }}>
-                  {why}
-                </span>
-              </div>
-            );
-          })}
+      <div className="mt-8">
+        <div className="mono caps text-tertiary mb-2">TOP HAND-OFF ROUTES · LAST 7 DAYS</div>
+        <div className="flex flex-col gap-1.5 bg-surface border border-border-subtle rounded-card p-3.5">
+          {HANDOFF_ROUTES.map(([from, to, n, why]) => (
+            <HandoffRow key={`${from}-${to}`} from={from} to={to} n={n} why={why} />
+          ))}
         </div>
       </div>
     </div>

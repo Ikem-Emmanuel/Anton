@@ -4,6 +4,7 @@
 // chips, last-sync time, and a state-appropriate action button (connect /
 // reconnect / manage). Category filter at top narrows the grid.
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FilterChip } from '@/components/ui/filter-chip';
@@ -81,8 +82,8 @@ function IntegrationActions({ status }: { status: IntegrationStatus }) {
 
 function IntegrationCard({ i }: { i: Integration }) {
   return (
-    <button
-      type="button"
+    <Link
+      href={`/integration/${i.id}`}
       className={cn(
         'text-left px-4 py-3.5 bg-surface cursor-pointer rounded-card flex flex-col gap-2 border hover:bg-hover',
         STATUS_BORDER[i.status]
@@ -118,7 +119,7 @@ function IntegrationCard({ i }: { i: Integration }) {
         <span className="flex-1" />
         <IntegrationActions status={i.status} />
       </div>
-    </button>
+    </Link>
   );
 }
 

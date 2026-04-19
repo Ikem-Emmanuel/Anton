@@ -1,126 +1,90 @@
 'use client';
+// Activity timeline — scrollable event feed. Verbosity toggle expands each
+// row into a reasoning/token detail block. Agent chips filter the list
+// (visual only in this pass). Each row deep-links to /event/[id].
 
+import Link from 'next/link';
 import { useState } from 'react';
+import { FilterChip } from '@/components/ui/filter-chip';
+import { cn } from '@/lib/cn';
 import { ACTIVITY, type ActivityType } from '@/lib/data';
 
 const TYPE_COLOR: Record<ActivityType, string> = {
-  tool: 'var(--info)',
-  think: 'var(--text-secondary)',
-  write: 'var(--accent)',
-  search: 'var(--hl-blue)',
-  handoff: 'var(--work)',
-  complete: 'var(--ok)',
-  approval: 'var(--work)',
-  system: 'var(--text-tertiary)',
+  tool: 'text-info border-l-info',
+  think: 'text-secondary border-l-secondary',
+  write: 'text-accent border-l-accent',
+  search: 'text-info border-l-info',
+  handoff: 'text-work border-l-work',
+  complete: 'text-ok border-l-ok',
+  approval: 'text-work border-l-work',
+  system: 'text-tertiary border-l-tertiary',
 };
 
 const VERBOSITY_LABEL = ['Summary', 'Normal', 'Full trace'];
+const AGENT_FILTERS = ['Marcus', 'James', 'Ada', 'Kai', 'Priya', 'Sarah'];
 
 export default function ActivityTimeline() {
   const [verbosity, setVerbosity] = useState(1);
-
   return (
-    <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+    <div className="px-8 py-6 h-full overflow-auto">
+      <div className="flex items-center justify-between mb-[18px]">
         <div>
-          <div className="mono caps" style={{ color: 'var(--text-tertiary)' }}>
-            ACTIVITY
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em' }}>247 events today</div>
+          <div className="mono caps text-tertiary">ACTIVITY</div>
+          <div className="text-[22px] font-medium tracking-[-0.01em]">247 events today</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="mono small" style={{ color: 'var(--text-tertiary)' }}>
-            verbosity
-          </span>
+        <div className="flex items-center gap-2">
+          <span className="mono small text-tertiary">verbosity</span>
           {[0, 1, 2].map((v) => (
-            <button
-              key={v}
-              onClick={() => setVerbosity(v)}
-              className="mono small"
-              style={{
-                padding: '4px 10px',
-                background: verbosity === v ? 'var(--accent-soft)' : 'transparent',
-                color: verbosity === v ? 'var(--accent)' : 'var(--text-secondary)',
-                border: `1px solid ${verbosity === v ? 'var(--accent)' : 'var(--border-default)'}`,
-                borderRadius: 'var(--r-chip)',
-                cursor: 'pointer',
-              }}
-            >
+            <FilterChip key={v} active={verbosity === v} onClick={() => setVerbosity(v)}>
               {VERBOSITY_LABEL[v]}
-            </button>
+            </FilterChip>
           ))}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {['Marcus', 'James', 'Ada', 'Kai', 'Priya', 'Sarah'].map((n) => (
+      <div className="flex gap-1.5 mb-4 flex-wrap">
+        {AGENT_FILTERS.map((n) => (
           <button
+            type="button"
             key={n}
-            className="mono small"
-            style={{
-              padding: '3px 9px',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-chip)',
-              cursor: 'pointer',
-            }}
+            className="mono small px-2.5 py-1 bg-transparent text-secondary border border-border-default rounded-chip cursor-pointer hover:bg-hover/40"
           >
             {n} ×
           </button>
         ))}
       </div>
 
-      {ACTIVITY.map((a, i) => (
-        <div
-          key={i}
-          style={{
-            padding: '10px 14px',
-            marginBottom: 4,
-            cursor: 'pointer',
-            border: '1px solid var(--border-subtle)',
-            borderLeft: `2px solid ${TYPE_COLOR[a.type]}`,
-            borderRadius: 0,
-            background: 'var(--bg-surface)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="mono small" style={{ color: 'var(--text-tertiary)', width: 60 }}>
-              {a.t}
-            </span>
-            <span className="mono small caps" style={{ color: TYPE_COLOR[a.type], width: 64 }}>
-              {a.type}
-            </span>
-            <span style={{ fontSize: 13, width: 72 }}>{a.agent}</span>
-            <span className="mono small" style={{ color: 'var(--text-secondary)', flex: 1 }}>
-              {a.text}
-            </span>
-            {verbosity >= 1 && a.detail && (
-              <span className="mono small" style={{ color: 'var(--text-tertiary)' }}>
-                {a.detail}
-              </span>
-            )}
-          </div>
-          {verbosity >= 2 && (
+      {ACTIVITY.map((a, i) => {
+        const colorClass = TYPE_COLOR[a.type];
+        const [textClass, borderClass] = colorClass.split(' ');
+        return (
+          <Link key={`${a.t}-${a.agent}-${i}`} href={`/event/${i}`} className="block">
             <div
-              className="mono small"
-              style={{
-                marginTop: 8,
-                paddingTop: 8,
-                borderTop: '1px dashed var(--border-subtle)',
-                color: 'var(--text-tertiary)',
-                paddingLeft: 72,
-              }}
+              className={cn(
+                'px-3.5 py-2.5 mb-1 cursor-pointer border border-border-subtle border-l-2 bg-surface hover:bg-hover',
+                borderClass
+              )}
             >
-              reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
-              <br />
-              tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
-              <br />
-              parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
+              <div className="flex items-center gap-3">
+                <span className="mono small text-tertiary w-[60px]">{a.t}</span>
+                <span className={cn('mono small caps w-16', textClass)}>{a.type}</span>
+                <span className="text-[13px] w-[72px]">{a.agent}</span>
+                <span className="mono small text-secondary flex-1">{a.text}</span>
+                {verbosity >= 1 && a.detail && <span className="mono small text-tertiary">{a.detail}</span>}
+              </div>
+              {verbosity >= 2 && (
+                <div className="mono small mt-2 pt-2 border-t border-dashed border-border-subtle text-tertiary pl-[72px]">
+                  reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
+                  <br />
+                  tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
+                  <br />
+                  parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+          </Link>
+        );
+      })}
     </div>
   );
 }
