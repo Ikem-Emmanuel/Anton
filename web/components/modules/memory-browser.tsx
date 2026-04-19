@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { FilterChip } from '@/components/ui/filter-chip';
 import { Kbd } from '@/components/ui/primitives';
+import { useMemories } from '@/hooks/use-memories';
 import { cn } from '@/lib/cn';
-import { MEMORIES, type Memory } from '@/lib/data';
+import type { Memory } from '@/lib/data';
 
 const HL_CLASS: Record<Memory['hl'], string> = {
   yellow: 'bg-[var(--hl-yellow)]',
@@ -56,6 +57,12 @@ function MemoryCard({ m, id }: { m: Memory; id: number }) {
 
 export default function MemoryBrowser() {
   const [active, setActive] = useState(0);
+  const { memories, loading, error } = useMemories();
+  const statusText = error
+    ? `offline · showing cached · ${memories.length} memories`
+    : loading
+      ? `loading…`
+      : `${memories.length.toLocaleString()} memories · 12 edited this week`;
   return (
     <div className="px-8 py-6 h-full overflow-auto">
       <div className="flex items-center gap-2.5 mb-3.5">
@@ -73,9 +80,9 @@ export default function MemoryBrowser() {
           </FilterChip>
         ))}
         <span className="flex-1" />
-        <span className="mono small text-tertiary">1,487 memories · 12 edited this week</span>
+        <span className={cn('mono small', error ? 'text-error' : 'text-tertiary')}>{statusText}</span>
       </div>
-      {MEMORIES.map((m, i) => (
+      {memories.map((m, i) => (
         <MemoryCard key={m.title} m={m} id={i} />
       ))}
     </div>
