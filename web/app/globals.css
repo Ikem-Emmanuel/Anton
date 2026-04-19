@@ -1,4 +1,6 @@
-/* Anton design tokens — ported from Design/anton/project/tokens.css (§4 of DESIGN-PROMPT.md) */
+@import "tailwindcss";
+
+/* Anton design tokens — ported from Design/anton/project/tokens.css (§4 of DESIGN-PROMPT.md). */
 :root {
   /* Warm-dark (default) */
   --bg-page: #0f0d0b;
@@ -35,11 +37,6 @@
   --r-chip: 6px;
   --r-card: 8px;
   --r-panel: 12px;
-  --r-hard: 0px;
-
-  --t-fast: 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --t-mid: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --t-slow: 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 html[data-theme="true-dark"] {
@@ -73,6 +70,43 @@ html[data-theme="light"] {
   --work: #b67a1c;
   --error: #b53f3f;
   --info: #4b6fa3;
+}
+
+/* Map CSS variables into Tailwind v4 @theme so utilities like `bg-page`,
+   `text-primary`, `border-subtle`, `bg-accent-soft` just work. */
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-surface: var(--bg-surface);
+  --color-hover: var(--bg-hover);
+  --color-raised: var(--bg-raised);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+  --color-disabled: var(--text-disabled);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-ok: var(--ok);
+  --color-work: var(--work);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --color-hl-yellow: var(--hl-yellow);
+  --color-hl-coral: var(--hl-coral);
+  --color-hl-blue: var(--hl-blue);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-chip: var(--r-chip);
+  --radius-card: var(--r-card);
+  --radius-panel: var(--r-panel);
 }
 
 * {

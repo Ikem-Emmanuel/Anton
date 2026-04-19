@@ -1,10 +1,5 @@
-import { WebShell } from './ui/shell';
-import MissionControl from './ui/mission-control';
+import { WebShell } from '@/components/layout/shell';
 
 export default function Page() {
-  return (
-    <WebShell>
-      <MissionControl />
-    </WebShell>
-  );
+  return <WebShell />;
 }

@@ -4,8 +4,8 @@
 // those will land in a follow-up. Ported from
 // Design/anton/project/mission-control.jsx (the MC_List + MCKpiStrip paths).
 
-import { AGENTS } from '../lib/data';
-import { DeptChip, StatusGlow, TrustBadge } from './primitives';
+import { AGENTS } from '@/lib/data';
+import { DeptChip, StatusGlow, TrustBadge } from '@/components/ui/primitives';
 
 const KPIS: Array<{ label: string; val: string; sub: string; c: string }> = [
   { label: 'Active', val: '7', sub: 'of 15', c: 'var(--work)' },
