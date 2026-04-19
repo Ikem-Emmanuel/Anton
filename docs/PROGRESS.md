@@ -55,7 +55,7 @@ Phase 1 was marked "done" but had four behavioral bugs. Phase 2.5 fixed them. Cu
 
 ---
 
-## 🟡 Phase 2.5 — Stabilize (in progress)
+## ✅ Phase 2.5 — Stabilize (complete, 10/10)
 
 ### Shipped (9 items)
 
