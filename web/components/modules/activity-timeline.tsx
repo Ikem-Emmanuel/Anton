@@ -24,12 +24,6 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 const VERBOSITY_LABEL = ['Summary', 'Normal', 'Full trace'];
 const AGENT_FILTERS = ['Marcus', 'James', 'Ada', 'Kai', 'Priya', 'Sarah'];
 
-// Index-based detail pages were SSG'd from build-time ACTIVITY. Live events
-// streaming in from WS don't have matching static routes; only indices that
-// match the baseline ACTIVITY array are safe to link. Larger indices render
-// without a link until /event/[id] is made dynamic (follow-up).
-const BASELINE_EVENT_COUNT = 9;
-
 export default function ActivityTimeline() {
   const [verbosity, setVerbosity] = useState(1);
   const { events, loading, error } = useEvents();
@@ -72,39 +66,33 @@ export default function ActivityTimeline() {
       {events.map((a, i) => {
         const colorClass = TYPE_COLOR[a.type];
         const [textClass, borderClass] = colorClass.split(' ');
-        const rowBody = (
-          <div
-            className={cn(
-              'px-3.5 py-2.5 mb-1 border border-border-subtle border-l-2 bg-surface',
-              i < BASELINE_EVENT_COUNT && 'cursor-pointer hover:bg-hover',
-              borderClass
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <span className="mono small text-tertiary w-[60px]">{a.t}</span>
-              <span className={cn('mono small caps w-16', textClass)}>{a.type}</span>
-              <span className="text-[13px] w-[72px]">{a.agent}</span>
-              <span className="mono small text-secondary flex-1">{a.text}</span>
-              {verbosity >= 1 && a.detail && <span className="mono small text-tertiary">{a.detail}</span>}
-            </div>
-            {verbosity >= 2 && (
-              <div className="mono small mt-2 pt-2 border-t border-dashed border-border-subtle text-tertiary pl-[72px]">
-                reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
-                <br />
-                tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
-                <br />
-                parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
-              </div>
-            )}
-          </div>
-        );
         const key = `${a.t}-${a.agent}-${i}`;
-        return i < BASELINE_EVENT_COUNT ? (
+        return (
           <Link key={key} href={`/event/${i}`} className="block">
-            {rowBody}
+            <div
+              className={cn(
+                'px-3.5 py-2.5 mb-1 border border-border-subtle border-l-2 bg-surface cursor-pointer hover:bg-hover',
+                borderClass
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span className="mono small text-tertiary w-[60px]">{a.t}</span>
+                <span className={cn('mono small caps w-16', textClass)}>{a.type}</span>
+                <span className="text-[13px] w-[72px]">{a.agent}</span>
+                <span className="mono small text-secondary flex-1">{a.text}</span>
+                {verbosity >= 1 && a.detail && <span className="mono small text-tertiary">{a.detail}</span>}
+              </div>
+              {verbosity >= 2 && (
+                <div className="mono small mt-2 pt-2 border-t border-dashed border-border-subtle text-tertiary pl-[72px]">
+                  reasoning: evaluated 3 candidate files · chose specs/onboarding.md based on recency
+                  <br />
+                  tokens: in 412 · out 128 · cost $0.0003 · model qwen3-8b-local
+                  <br />
+                  parent: &lt;delegate #abc7&gt; · permalink /activity/e-{14852 + i}
+                </div>
+              )}
+            </div>
           </Link>
-        ) : (
-          <div key={key}>{rowBody}</div>
         );
       })}
     </div>

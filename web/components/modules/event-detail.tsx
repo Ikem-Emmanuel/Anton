@@ -1,11 +1,12 @@
 'use client';
 // Activity event detail — per-event trace + context + safety checks.
-// Reached via /event/[id] from the Activity timeline.
+// Reached via /event/[id] from the Activity timeline. Event id is an index
+// into the live events list from useEvents() — not stable across new event
+// arrivals, but acceptable for a single-session drill-down.
 
-import { notFound } from 'next/navigation';
 import { BackBar } from '@/components/ui/back-bar';
 import { Button } from '@/components/ui/button';
-import { ACTIVITY } from '@/lib/data';
+import { useEvents } from '@/hooks/use-events';
 
 function KvRow({ k, v, checked }: { k: string; v: string; checked?: boolean }) {
   return (
@@ -18,8 +19,18 @@ function KvRow({ k, v, checked }: { k: string; v: string; checked?: boolean }) {
 }
 
 export function EventDetail({ eventId }: { eventId: number }) {
-  const e = ACTIVITY[eventId];
-  if (!e) notFound();
+  const { events, loading, error } = useEvents();
+
+  if (Number.isNaN(eventId) || eventId < 0) {
+    return <EventMissing message="Invalid event id." />;
+  }
+  if (loading && events.length === 0) {
+    return <EventMissing message="Loading event…" />;
+  }
+  const e = events[eventId];
+  if (!e) {
+    return <EventMissing message={error ? `Couldn't load events: ${error}` : 'Event not found.'} />;
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -93,6 +104,17 @@ export function EventDetail({ eventId }: { eventId: number }) {
             <KvRow k="Rollback" v="snapshot saved" checked />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EventMissing({ message }: { message: string }) {
+  return (
+    <div className="h-full flex flex-col">
+      <BackBar label="event detail" crumb="Log" crumbHref="/log" />
+      <div className="flex-1 flex items-center justify-center">
+        <span className="mono small text-tertiary">{message}</span>
       </div>
     </div>
   );

@@ -424,7 +424,7 @@
 - [x] `web/lib/api/events.ts` — `fetchEvents()` typed client
 - [x] `web/hooks/use-events.ts` — REST hydrate + WS subscribe to `event.logged`; client-side cap at 200
 - [x] `web/components/modules/activity-timeline.tsx` — uses the hook; status line shows loading / offline-cached / live count
-- [ ] Follow-up: `/event/[id]` detail route is still SSG'd from build-time `ACTIVITY`. Live-streamed events don't have matching detail pages, so the timeline only links the first 9 rows (`BASELINE_EVENT_COUNT`). Making the detail route dynamic will drop this guard.
+- [x] `/event/[id]` route made dynamic. `EventDetail` now hydrates from `useEvents()` (same hook as the timeline); `generateStaticParams` / `dynamicParams` dropped; `BASELINE_EVENT_COUNT` guard in the timeline removed so every row deep-links. Tradeoff: id is an index into the live list, so a new arrival while on a detail page shifts the row — acceptable for a single-session drill-down.
 
 ### 5.5.6 Definition of Done
 
