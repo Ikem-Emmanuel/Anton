@@ -1,27 +1,63 @@
 # Dependencies
 node_modules/
 
-# Environment
+# Environment & secrets
 .env
 .env.*
+!.env.example
 slack-channels.env
 
-# Runtime data
+# All runtime data lives under data/
+/data/
+
+# Legacy runtime files at root (pre-restructure)
 sessions.json
 .last-startup
+schedule.json
+sprint-state.json
+SHARED-MEMORY.md
+skill-versions.json.bak
 
-# Generated / ephemeral
-analytics/
-logs/
-daily/
-inbox/
-outbox/
-tasks/
+# Claude Code internal
+.claude/
+
+# Old service directory (migrated to root)
+service/
+
+# Old root-level dirs (migrated to data/ or config/)
+/analytics/
+/logs/
+/daily/
+/inbox/
+/outbox/
+/tasks/
+/shared/
+/memory/
 
 # OS
 .DS_Store
 *.swp
 *.swo
+*~
 
 # Backups
 *.bak
+
+# Audit database (generated, not source)
+*.db
+*.db-wal
+*.db-shm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
