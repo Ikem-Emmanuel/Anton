@@ -397,6 +397,83 @@ export function deprecateSkill(id: number): void {
   db.prepare(`UPDATE skills SET deprecated = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
 }
 
+// Find existing non-deprecated skills matching a context pattern. Used by §4.5.4
+// to decide whether a new candidate supersedes a prior skill (same pattern,
+// different approach, better track record) or is a novel addition.
+export function findSkillsByPattern(contextPattern: string, owner: string): Skill[] {
+  if (!db) return [];
+  const cleaned = contextPattern
+    .slice(0, 200)
+    .replace(/[^\w\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t.length > 2)
+    .map((t) => `"${t}"`)
+    .join(' OR ');
+  if (!cleaned) return [];
+  try {
+    return db
+      .prepare(
+        `SELECT s.*
+         FROM skills_fts fts
+         JOIN skills s ON s.id = fts.rowid
+         WHERE skills_fts MATCH ?
+           AND s.deprecated = 0
+           AND s.owner_agent = ?
+         ORDER BY fts.rank ASC
+         LIMIT 5`
+      )
+      .all(cleaned, owner) as Skill[];
+  } catch {
+    return [];
+  }
+}
+
+// Phase 3.5 §4.5.6 — find skills eligible for cross-agent sharing.
+// Threshold: success_rate > 0.8 AND evidence > 5 AND currently private.
+export function findShareableSkills(): Skill[] {
+  if (!db) return [];
+  return db
+    .prepare(
+      `SELECT *
+       FROM skills
+       WHERE deprecated = 0
+         AND shared = 0
+         AND (success_count + failure_count) >= 5
+         AND (CAST(success_count AS REAL) / (success_count + failure_count)) > 0.8
+       ORDER BY success_count DESC
+       LIMIT 20`
+    )
+    .all() as Skill[];
+}
+
+export function shareSkill(id: number, tags?: string[]): void {
+  if (!db) return;
+  if (tags) {
+    db.prepare(`UPDATE skills SET shared = 1, tags = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      JSON.stringify(tags),
+      id
+    );
+  } else {
+    db.prepare(`UPDATE skills SET shared = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+  }
+}
+
+// Get successors — skills that supersede this one via supersedes_id chain.
+export function getSkillLineage(id: number): Skill[] {
+  if (!db) return [];
+  return db
+    .prepare(
+      `WITH RECURSIVE lineage(id) AS (
+         SELECT id FROM skills WHERE id = ?
+         UNION ALL
+         SELECT s.id FROM skills s JOIN lineage l ON s.supersedes_id = l.id
+       )
+       SELECT * FROM skills WHERE id IN lineage ORDER BY created_at ASC`
+    )
+    .all(id) as Skill[];
+}
+
 // Build the [APPLICABLE SKILLS] prompt block — injected by brain.ts
 // alongside [ORG MEMORY] and [AMBIENT].
 export function buildSkillsContext(request: string, agent: string, topK = 3): string {
