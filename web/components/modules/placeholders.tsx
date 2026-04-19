@@ -204,22 +204,6 @@ export function IntegrationsHub() {
   );
 }
 
-export function Chat() {
-  return (
-    <Placeholder
-      label="CHAT"
-      sub="Conversational surface"
-      source="new-screens.jsx"
-      preview={[
-        'Threads per agent + group channels (engineering, marketing)',
-        'Streaming responses with thinking-depth + model disclosure',
-        'Inline source citations, handoff markers, ASK/BLOCK indicators',
-        'Voice input via push-to-talk',
-      ]}
-    />
-  );
-}
-
 export function ApprovalsHub() {
   return (
     <Placeholder
