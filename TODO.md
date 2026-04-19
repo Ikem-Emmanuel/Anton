@@ -399,13 +399,15 @@
 - [x] `web/hooks/use-tasks.ts` — REST hydrate + subscribe to `task.created` / `task.updated`
 - [x] Components consume hooks (loading / `offline · showing cached` / live count states)
 
-### 5.5.3 Brain-side emit wiring (MOSTLY DONE — only task state-machine emit deferred)
+### 5.5.3 Brain-side emit wiring (DONE)
 
 - [x] `src/memory/sqlite.ts` — `emitMemoryWritten(record)` fires after every successful `storeMemory()` insert (commit d643122)
 - [x] `src/brain/brain.ts` — `reportActions()` helper consolidates the action-log and emits `event.logged` per action (HANDOFF / ASK / BLOCK / APPROVE / REJECT / DONE), replacing the two duplicated log blocks (commit a941ee4)
 - [x] `index.js` — Slack approval gate now mirrors to web: `emitApprovalCreated` on queue, `emitApprovalResolved` on yes/no reply; `approvalsSource` passed to `initWeb` so GET /api/approvals returns the live queue instead of DEFAULT_APPROVALS (commit cd9ca99)
 - [x] `src/memory/sqlite.ts` — `listMemories(limit)` export; `index.js` wires `memoriesSource: () => listMemories(50)` into `initWeb` so GET /api/memories pulls live SQLite state (commit 5d3a498)
-- [ ] `src/brain/state-machine.ts` — on state transitions, call `emitTaskUpdated(task)` — **deferred**: no persistent task store exists yet. Design note: "task" is conceptually agent queued work, but today it's only surfaced as `agent.q` counts — not individually addressable. Design decision needed before wiring.
+- [x] **Task store** — new `tasks` table in SQLite (mirrors web `Task` type verbatim), `createTask` / `updateTask` / `transitionTask` / `listTasks` / `seedTasksIfEmpty` exports, all CRUD broadcasts `task.created` / `task.updated` (commit 893805e). `tasksSource` wired into `initWeb`; 4-task demo seed runs on empty DB.
+- [x] **Brain → tasks** — `reportActions()` now calls `createTask` for qualifying actions: HANDOFF → flight row for target; ASK:Noel → incoming row for Noel; ASK:Agent → flight for agent; DONE → done row; BLOCK → blocked row with why (commit 8ab76b7).
+- [ ] Follow-up: lifecycle linking. DONE arrives as a new row rather than transitioning the original HANDOFF row. Needs action tags to carry task_ids so a HANDOFF response's DONE/BLOCK can update the originating task. Deferred — requires extending the action-tag schema.
 
 ### 5.5.4 Approve / reject POST endpoints (DONE — commit f7b5278)
 
