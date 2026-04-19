@@ -3,8 +3,9 @@
 // density switching. Toggle with ⌘;.
 
 import { useEffect, useState } from 'react';
+import { useTweaks } from '@/hooks/use-tweaks';
 import { cn } from '@/lib/cn';
-import { ACCENTS, type AccentKey, type Density, type Theme, type Tweaks, useTweaks } from '@/lib/tweaks';
+import { ACCENTS, type AccentKey, type Density, type Theme, type Tweaks } from '@/lib/theme';
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

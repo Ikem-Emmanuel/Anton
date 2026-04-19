@@ -12,8 +12,9 @@
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { postChat } from '@/lib/api/chat';
 import { cn } from '@/lib/cn';
-import { ANTON_MSGS, type ChatMessage, CHAT_THREADS, type ChatThread } from '@/lib/data';
+import { ANTON_MSGS, CHAT_THREADS, type ChatMessage, type ChatThread } from '@/lib/data';
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -243,21 +244,6 @@ function Conversation({
       <Composer onSend={onSend} disabled={sending} />
     </div>
   );
-}
-
-type ChatResponse = { agent: string; text: string; handoffs?: Array<{ agent: string; text: string }> };
-
-async function postChat(agent: string, text: string): Promise<ChatResponse> {
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agent, text }),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
-    throw new Error(body.hint || body.error || `HTTP ${res.status}`);
-  }
-  return (await res.json()) as ChatResponse;
 }
 
 export default function Chat() {
