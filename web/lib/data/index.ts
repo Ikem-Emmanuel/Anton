@@ -17,6 +17,7 @@ export * from './memory';
 export * from './people';
 export * from './primitives';
 export * from './research';
+export * from './settings';
 export * from './tasks';
 export * from './travel';
 export * from './usage';
