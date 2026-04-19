@@ -1,7 +1,7 @@
 'use client';
 
-import { AGENTS } from '@/lib/data';
 import { DeptChip } from '@/components/ui/primitives';
+import { AGENTS } from '@/lib/data';
 
 const TIERS = ['SUGGEST', 'DRAFT', 'EXECUTE', 'AUTO'];
 const TIER_INDEX: Record<string, number> = { green: 3, amber: 1, red: 0 };

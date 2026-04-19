@@ -2,7 +2,7 @@
 // Manual test for the brain — tests classification + local response
 // Usage: npx tsx scripts/test-brain.ts
 
-import { initBrain, process as brainProcess, getBrainHealth } from '../src/brain/brain.js';
+import { process as brainProcess, getBrainHealth, initBrain } from '../src/brain/brain.js';
 
 console.log('--- Anton Brain Test ---\n');
 

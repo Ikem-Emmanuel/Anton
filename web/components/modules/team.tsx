@@ -1,7 +1,7 @@
 'use client';
 
-import { AGENTS, DEPARTMENTS } from '@/lib/data';
 import { StatusGlow, TrustBadge } from '@/components/ui/primitives';
+import { AGENTS, DEPARTMENTS } from '@/lib/data';
 
 const HANDOFF_ROUTES: Array<[string, string, number, string]> = [
   ['Marcus', 'Ada', 34, 'UI review'],
@@ -74,11 +74,7 @@ export default function DeptChart() {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span className="mono small caps" style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
-                  {active > 0 ? (
-                    <span style={{ color: 'var(--work)' }}>● {active} active</span>
-                  ) : (
-                    <span>○ idle</span>
-                  )}
+                  {active > 0 ? <span style={{ color: 'var(--work)' }}>● {active} active</span> : <span>○ idle</span>}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
@@ -140,7 +136,9 @@ export default function DeptChart() {
                 <span className="mono small" style={{ width: 80, color: 'var(--text-primary)' }}>
                   {to}
                 </span>
-                <div style={{ flex: 1, height: 4, background: 'var(--bg-page)', borderRadius: 2, position: 'relative' }}>
+                <div
+                  style={{ flex: 1, height: 4, background: 'var(--bg-page)', borderRadius: 2, position: 'relative' }}
+                >
                   <div
                     style={{
                       position: 'absolute',

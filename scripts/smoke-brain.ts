@@ -1,7 +1,7 @@
 // Phase 2.5 smoke test — runs the brain end-to-end against live Ollama.
 // Usage: npx tsx scripts/smoke-brain.ts
 
-import { process, initBrain, getBrainHealth } from '../src/brain/brain.js';
+import { getBrainHealth, initBrain, process } from '../src/brain/brain.js';
 
 const cases: Array<{
   name: string;

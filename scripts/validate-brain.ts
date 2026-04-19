@@ -4,9 +4,9 @@
 //
 // Usage: npx tsx scripts/validate-brain.ts
 
-import { initBrain, process as brainProcess, getBrainHealth } from '../src/brain/brain.js';
-import { initSqliteMemory } from '../src/memory/sqlite.js';
 import { join } from 'node:path';
+import { process as brainProcess, getBrainHealth, initBrain } from '../src/brain/brain.js';
+import { initSqliteMemory } from '../src/memory/sqlite.js';
 
 const PROJECT_ROOT = join(import.meta.dirname, '..');
 const LINE = '─'.repeat(92);

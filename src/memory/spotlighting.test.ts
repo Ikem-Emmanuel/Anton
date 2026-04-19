@@ -1,6 +1,6 @@
 // Tests for the prompt-injection defense layer on memory retrieval.
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { sanitizeMemoryContent } from './sqlite.js';
 
 describe('Memory spotlighting / sanitization', () => {

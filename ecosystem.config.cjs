@@ -12,16 +12,18 @@ try {
 } catch {}
 
 module.exports = {
-  apps: [{
-    name: 'anton-service',
-    script: join(__dirname, 'index.js'),
-    cwd: __dirname,
-    env: {
-      ...envVars,
-      NODE_ENV: 'production',
+  apps: [
+    {
+      name: 'anton-service',
+      script: join(__dirname, 'index.js'),
+      cwd: __dirname,
+      env: {
+        ...envVars,
+        NODE_ENV: 'production',
+      },
+      max_restarts: 5,
+      restart_delay: 3000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
     },
-    max_restarts: 5,
-    restart_delay: 3000,
-    log_date_format: 'YYYY-MM-DD HH:mm:ss',
-  }],
+  ],
 };

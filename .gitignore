@@ -46,6 +46,9 @@ service/
 # Design handoff archives (content is extracted alongside)
 *.zip
 
+# Design handoff: keep README, exclude duplicated prototype dir (canonical copy in web/public/prototype/)
+Design/anton/project/
+
 # Audit database (generated, not source)
 *.db
 *.db-wal

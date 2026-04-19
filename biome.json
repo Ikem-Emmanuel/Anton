@@ -24,6 +24,16 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/data", "!**/coverage", "!**/.claude", "!**/v1-archive"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/data",
+      "!**/coverage",
+      "!**/.claude",
+      "!**/v1-archive",
+      "!**/web/.next",
+      "!**/web/public/prototype",
+      "!**/Design"
+    ]
   }
 }

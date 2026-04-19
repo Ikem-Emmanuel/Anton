@@ -2,8 +2,8 @@
 // filters, activity verbosity, approval risk, settings tiers, MC
 // toolbar. One component, reused everywhere.
 
-import { cn } from '@/lib/cn';
 import type { ComponentPropsWithoutRef } from 'react';
+import { cn } from '@/lib/cn';
 
 interface FilterChipProps extends ComponentPropsWithoutRef<'button'> {
   active?: boolean;

@@ -29,10 +29,8 @@
   --hl-coral: #e4938e;
   --hl-blue: #8dbbff;
 
-  --font-sans:
-    "Söhne", "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:
-    "Berkeley Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "Söhne", "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Berkeley Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
 
   --r-chip: 6px;
   --r-card: 8px;

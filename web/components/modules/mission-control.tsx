@@ -1,11 +1,12 @@
 'use client';
+
 // Mission Control — default landing screen. List-view only in this initial
 // port. The design has 5 variants (list / dept / grid / orbit / terminal);
 // those will land in a follow-up. Ported from
 // Design/anton/project/mission-control.jsx (the MC_List + MCKpiStrip paths).
 
-import { AGENTS } from '@/lib/data';
 import { DeptChip, StatusGlow, TrustBadge } from '@/components/ui/primitives';
+import { AGENTS } from '@/lib/data';
 
 const KPIS: Array<{ label: string; val: string; sub: string; c: string }> = [
   { label: 'Active', val: '7', sub: 'of 15', c: 'var(--work)' },
@@ -52,13 +53,7 @@ function KpiStrip() {
 
 function AgentRow({ a, i }: { a: (typeof AGENTS)[number]; i: number }) {
   const barW =
-    a.s === 'working'
-      ? 40 + ((i * 13) % 50)
-      : a.s === 'complete'
-        ? 72
-        : a.s === 'error'
-          ? 18
-          : 8 + ((i * 7) % 12);
+    a.s === 'working' ? 40 + ((i * 13) % 50) : a.s === 'complete' ? 72 : a.s === 'error' ? 18 : 8 + ((i * 7) % 12);
   const task =
     a.s === 'working'
       ? `running: ${['draft_prd', 'read_file', 'run_sql', 'search', 'plan'][i % 5]}`

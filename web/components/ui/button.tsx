@@ -2,16 +2,15 @@
 // rendering a consistently-styled interactive control. Matches the
 // design tokens exactly.
 
-import { cn } from '@/lib/cn';
 import type { ComponentPropsWithoutRef } from 'react';
+import { cn } from '@/lib/cn';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'selected';
 type Size = 'sm' | 'md';
 
 const VARIANT: Record<Variant, string> = {
   primary: 'bg-accent text-page border border-accent hover:brightness-110',
-  secondary:
-    'bg-transparent text-secondary border border-border-default hover:bg-hover hover:text-primary',
+  secondary: 'bg-transparent text-secondary border border-border-default hover:bg-hover hover:text-primary',
   ghost: 'bg-transparent text-tertiary border-0 hover:text-primary',
   danger: 'bg-transparent text-error border border-error hover:bg-error/10',
   selected: 'bg-accent-soft text-accent border border-accent',
@@ -32,12 +31,14 @@ export function Button({
   variant = 'secondary',
   size = 'md',
   mono = true,
+  type = 'button',
   className,
   children,
   ...rest
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={cn(
         'rounded-chip cursor-pointer transition-colors',
         'disabled:opacity-40 disabled:cursor-not-allowed',

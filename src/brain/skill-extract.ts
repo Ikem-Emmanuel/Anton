@@ -14,8 +14,8 @@
 // Fire-and-forget. Errors are logged, not thrown.
 
 import { z } from 'zod';
-import { chatJSON } from './ollama-client.js';
 import { findSkillsByPattern, storeSkill } from '../memory/sqlite.js';
+import { chatJSON } from './ollama-client.js';
 
 const CandidateSchema = z.object({
   title: z.string().min(5).max(80),

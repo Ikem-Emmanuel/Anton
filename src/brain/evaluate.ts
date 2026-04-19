@@ -9,8 +9,8 @@
 // to a 'neutral' verdict rather than blocking anything.
 
 import { z } from 'zod';
-import { chatJSON } from './ollama-client.js';
 import { storeTurnEvaluation } from '../memory/sqlite.js';
+import { chatJSON } from './ollama-client.js';
 
 const EvalSchema = z.object({
   task_addressed: z.number().min(0).max(1),

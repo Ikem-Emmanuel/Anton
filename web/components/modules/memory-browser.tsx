@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MEMORIES } from '@/lib/data';
 import { Kbd } from '@/components/ui/primitives';
+import { MEMORIES } from '@/lib/data';
 
 const HL_COLOR: Record<string, string> = {
   yellow: 'var(--hl-yellow)',

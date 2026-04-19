@@ -1,9 +1,9 @@
 // Tests for the structured user model (Phase 3.5 §4.5.5).
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildUserModelContext,
   closeSqliteMemory,

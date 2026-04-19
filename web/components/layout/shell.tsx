@@ -5,12 +5,12 @@
 // New modules register there, not here. Dependency-inverted.
 
 import { useEffect, useState } from 'react';
-import { cn } from '@/lib/cn';
-import { NAV_ITEMS, type Route, isSection } from '@/lib/nav';
-import { ROUTE_VIEWS } from '@/lib/routes';
 import { ApprovalTray } from '@/components/layout/approval-tray';
 import { CommandPalette } from '@/components/layout/command-palette';
 import { Kbd } from '@/components/ui/primitives';
+import { cn } from '@/lib/cn';
+import { isSection, NAV_ITEMS, type Route } from '@/lib/nav';
+import { ROUTE_VIEWS } from '@/lib/routes';
 
 function Titlebar({ now, onOpenPalette }: { now: string; onOpenPalette: () => void }) {
   return (
@@ -22,6 +22,7 @@ function Titlebar({ now, onOpenPalette }: { now: string; onOpenPalette: () => vo
       <span className="mono small text-tertiary">{now} · 3d 14h</span>
       <span className="w-px h-3.5 bg-border-default" />
       <button
+        type="button"
         onClick={onOpenPalette}
         className="mono small text-secondary bg-transparent border-0 cursor-pointer p-0 hover:text-primary"
       >
@@ -39,7 +40,7 @@ function LeftRail({ active, onNav }: { active: Route; onNav: (r: Route) => void 
           if (isSection(i)) {
             return (
               <div
-                key={`sec-${idx}`}
+                key={`sec-${i.sec}`}
                 className={cn(
                   'mono small caps text-tertiary tracking-[0.1em] text-[9px] px-2.5',
                   idx === 0 ? 'pt-0.5 pb-1.5' : 'pt-3 pb-1'
@@ -52,18 +53,15 @@ function LeftRail({ active, onNav }: { active: Route; onNav: (r: Route) => void 
           const on = active === i.id;
           return (
             <button
+              type="button"
               key={i.id}
               onClick={() => onNav(i.id)}
               className={cn(
                 'flex items-center gap-2.5 px-2.5 py-[5px] rounded-md text-left text-[13px] cursor-pointer transition-colors',
-                on
-                  ? 'bg-hover text-primary'
-                  : 'bg-transparent text-secondary hover:bg-hover/40'
+                on ? 'bg-hover text-primary' : 'bg-transparent text-secondary hover:bg-hover/40'
               )}
             >
-              <span className={cn('mono w-4', on ? 'text-accent' : 'text-tertiary')}>
-                {i.glyph}
-              </span>
+              <span className={cn('mono w-4', on ? 'text-accent' : 'text-tertiary')}>{i.glyph}</span>
               <span className="flex-1">{i.label}</span>
               {i.badge ? <span className="mono small text-work">{i.badge}</span> : null}
               <span className="mono small text-tertiary text-[10px]">{i.k}</span>
@@ -92,7 +90,10 @@ function CommandBar() {
         className="mono flex-1 bg-transparent border-0 outline-0 text-primary text-sm"
       />
       <span className="mono small text-tertiary">@local</span>
-      <button className="mono small bg-transparent border border-border-default text-secondary px-2 py-[3px] rounded-chip cursor-pointer hover:text-primary">
+      <button
+        type="button"
+        className="mono small bg-transparent border border-border-default text-secondary px-2 py-[3px] rounded-chip cursor-pointer hover:text-primary"
+      >
         mic
       </button>
       <Kbd>⌘</Kbd>
@@ -108,9 +109,7 @@ export function WebShell() {
 
   useEffect(() => {
     const tick = () =>
-      setNow(
-        new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-      );
+      setNow(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
     tick();
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);

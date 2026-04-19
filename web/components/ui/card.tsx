@@ -2,8 +2,8 @@
 // activity cards, integration tiles, option cards, etc. SRP: just a container
 // with the design-system surface styling. Everything inside is children.
 
-import { cn } from '@/lib/cn';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
 interface CardProps extends ComponentPropsWithoutRef<'div'> {
   /** Visual variant — surface (default), hover (sunken), raised (modal), flat (page bg). */
@@ -29,15 +29,7 @@ const RADIUS: Record<NonNullable<CardProps['radius']>, string> = {
   none: 'rounded-none',
 };
 
-export function Card({
-  variant = 'surface',
-  radius = 'card',
-  accent,
-  className,
-  style,
-  children,
-  ...rest
-}: CardProps) {
+export function Card({ variant = 'surface', radius = 'card', accent, className, style, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(BG[variant], RADIUS[radius], 'border border-border-subtle', className)}
@@ -51,10 +43,7 @@ export function Card({
 
 export function CardHeader({ children, className, ...rest }: ComponentPropsWithoutRef<'div'>) {
   return (
-    <div
-      className={cn('px-4 py-3 border-b border-border-subtle flex items-center gap-2', className)}
-      {...rest}
-    >
+    <div className={cn('px-4 py-3 border-b border-border-subtle flex items-center gap-2', className)} {...rest}>
       {children}
     </div>
   );
@@ -70,10 +59,7 @@ export function CardBody({ children, className, ...rest }: ComponentPropsWithout
 
 export function CardFooter({ children, className, ...rest }: ComponentPropsWithoutRef<'div'>) {
   return (
-    <div
-      className={cn('px-4 py-3 border-t border-border-subtle flex items-center gap-2', className)}
-      {...rest}
-    >
+    <div className={cn('px-4 py-3 border-t border-border-subtle flex items-center gap-2', className)} {...rest}>
       {children}
     </div>
   );

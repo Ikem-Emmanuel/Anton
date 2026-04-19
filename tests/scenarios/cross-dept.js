@@ -7,10 +7,11 @@
  */
 
 export const scenarios = [
-
   // ─── XD-A: Product Launch Coordination ────────────────────────────────────
   {
-    id: 'XD-A1', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A1',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'ProductHunt launch day coordination kickoff',
     agentKey: 'riley',
     message: `Riley, ProductHunt launch is May 2026. I need a cross-team coordination plan — eng freeze dates, marketing asset deadlines, growth tracking setup, and data dashboards ready. Who owns what and when?`,
@@ -18,7 +19,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-A2', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A2',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Pre-launch readiness checklist across all departments',
     agentKey: 'sarah',
     message: `Sarah, two weeks before ProductHunt launch I want a readiness checklist that engineering, marketing, SEO, growth, and data all sign off on. Can you draft it and assign owners?`,
@@ -26,7 +29,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-A3', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A3',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Launch day war room schedule',
     agentKey: 'riley',
     message: `Riley, on launch day I need a war room schedule — who's monitoring what, escalation paths if something breaks, and how marketing/growth/eng communicate in real time. Set it up.`,
@@ -34,7 +39,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-A4', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A4',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Feature freeze coordination with marketing announcement timing',
     agentKey: 'sarah',
     message: `Sarah, I need engineering's feature freeze date aligned with marketing's announcement schedule. Diana is planning a teaser campaign starting 3 weeks before launch. Get Marcus and Diana to agree on dates.`,
@@ -42,7 +49,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-A5', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A5',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Growth metrics instrumentation before launch',
     agentKey: 'riley',
     message: `Riley, before we launch on ProductHunt, Sam and the data team need to have all tracking instrumented and validated. Make sure growth, data, and engineering are aligned on what gets measured and that it's tested in staging.`,
@@ -50,7 +59,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-A6', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A6',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'SEO pre-launch content pipeline',
     agentKey: 'sarah',
     message: `Sarah, Nina says we need 10 SEO-optimized landing pages live before ProductHunt launch. That requires content from marketing, technical review from engineering, and SEO sign-off. Can you coordinate the pipeline?`,
@@ -58,7 +69,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-A7', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A7',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Launch retrospective planning',
     agentKey: 'riley',
     message: `Riley, schedule a post-launch retrospective for 48 hours after ProductHunt goes live. All departments need to attend. Prepare a template that covers what worked, what didn't, and immediate next actions.`,
@@ -66,7 +79,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-A8', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A8',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Investor update coordinated across eng and marketing',
     agentKey: 'sarah',
     message: `Sarah, I need an investor update email timed to the ProductHunt launch. It needs real metrics from data, product highlights from engineering, and copy from marketing. Coordinate Ada, Marcus, and Diana to get this done.`,
@@ -74,7 +89,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-A9', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A9',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Support surge plan for launch week',
     agentKey: 'riley',
     message: `Riley, on ProductHunt launch we'll get a traffic and support surge. I need a plan for who handles inbound questions, how engineering supports live issues, and how marketing monitors sentiment. Cover all three departments.`,
@@ -82,7 +99,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-A10', block: 'XD-A', blockName: 'Product Launch Coordination',
+    id: 'XD-A10',
+    block: 'XD-A',
+    blockName: 'Product Launch Coordination',
     title: 'Launch metrics target alignment',
     agentKey: 'riley',
     message: `Riley, I want all departments aligned on launch success metrics before we go live. Growth has conversion targets, data has engagement KPIs, marketing has acquisition goals, and engineering has uptime SLOs. Get everyone's numbers in one doc.`,
@@ -92,7 +111,9 @@ export const scenarios = [
 
   // ─── XD-B: Feature Rollout ────────────────────────────────────────────────
   {
-    id: 'XD-B1', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B1',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Agent memory feature end-to-end rollout',
     agentKey: 'riley',
     message: `Riley, the agent memory feature is done in engineering. Walk me through the full rollout: QA sign-off, DevOps deployment, marketing announcement, and growth tracking. Who does what in what order?`,
@@ -100,7 +121,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-B2', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B2',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'QA blocking DevOps deployment',
     agentKey: 'riley',
     message: `Riley, Priya says the new budget enforcer feature isn't ready for production — she found 3 edge cases. Omar has a deployment window in 2 hours. How do we handle this? Do we delay or ship with a flag?`,
@@ -108,7 +131,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-B3', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B3',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Marketing announcement timing vs deployment',
     agentKey: 'sarah',
     message: `Sarah, Diana has a tweet scheduled for 10am announcing the new dashboard feature, but Omar says deployment is 11am. We have a 1-hour gap. Either Diana pushes the tweet or Omar pulls the deployment window forward. Coordinate.`,
@@ -116,7 +141,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-B4', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B4',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Growth tracking instrumented before feature ships',
     agentKey: 'riley',
     message: `Riley, Maya has an A/B experiment planned for the new onboarding flow that ships next sprint. She needs engineering to add 3 tracking events before the feature goes live. Make sure Sam, Carlos, and James are coordinated.`,
@@ -124,7 +151,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-B5', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B5',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Feature flag rollout percentage coordination',
     agentKey: 'riley',
     message: `Riley, we're rolling out the new agent config UI behind a feature flag — 10% this week, 50% next, 100% in two weeks. I need marketing to know the schedule so they don't announce early, and growth to have dashboards ready at each milestone.`,
@@ -132,7 +161,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-B6', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B6',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Backend API ready but frontend not — partial rollout',
     agentKey: 'sarah',
     message: `Sarah, James finished the new agents API endpoint but Elena says the frontend won't be ready for another sprint. Marketing wants to announce the feature now. What's the plan?`,
@@ -140,7 +171,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-B7', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B7',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Post-rollout performance regression',
     agentKey: 'riley',
     message: `Riley, 30 minutes after deploying the new SSE streaming feature, Ada is seeing p99 latency spike to 4s. Omar needs to decide: rollback or patch forward. Meanwhile marketing already sent the announcement email. What's the call?`,
@@ -148,7 +181,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-B8', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B8',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'SEO meta tags needed before feature page ships',
     agentKey: 'sarah',
     message: `Sarah, Elena is shipping the new agent marketplace page next week but Nina says the page won't rank without proper meta tags, schema markup, and a canonical URL strategy. Can you get Nina and Elena to sort this out before it ships?`,
@@ -156,7 +191,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-B9', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B9',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Staged rollout communication plan',
     agentKey: 'riley',
     message: `Riley, for the upcoming trading pipeline feature rollout I want a communication plan — internal Slack updates at each stage, external marketing copy for when it's fully live, and a data report 7 days post-launch. Assign to the right people.`,
@@ -164,7 +201,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-B10', block: 'XD-B', blockName: 'Feature Rollout',
+    id: 'XD-B10',
+    block: 'XD-B',
+    blockName: 'Feature Rollout',
     title: 'Mobile rollout requires App Store review timing',
     agentKey: 'sarah',
     message: `Sarah, Kai says the new mobile app version needs App Store review which takes 3-5 days. Diana wants to announce the feature on the same day as the web release. Coordinate timing so marketing doesn't announce before mobile is live.`,
@@ -174,7 +213,9 @@ export const scenarios = [
 
   // ─── XD-C: Incident Response ──────────────────────────────────────────────
   {
-    id: 'XD-C1', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C1',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Production API down — all-hands incident',
     agentKey: 'marcus',
     message: `Marcus, production API is returning 503s. This is affecting paying customers. I need engineering diagnosing, DevOps on infrastructure, and marketing drafting a status page update simultaneously. Coordinate now.`,
@@ -182,7 +223,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C2', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C2',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Data loss incident — eng + data + comms',
     agentKey: 'marcus',
     message: `Marcus, we have a potential data integrity issue — Ben found duplicate records in the agents table. I need James to investigate the source, Carlos to assess blast radius, and Diana to draft a customer communication. Go.`,
@@ -190,7 +233,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C3', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C3',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Security breach suspected — lockdown protocol',
     agentKey: 'marcus',
     message: `Marcus, Omar found unusual API traffic patterns suggesting a credential stuffing attempt. I need security response from engineering, immediate status from DevOps on firewall rules, and a decision on whether to notify customers. Cross-dept lockdown.`,
@@ -198,7 +243,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C4', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C4',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Incident postmortem coordination',
     agentKey: 'riley',
     message: `Riley, last night's incident is resolved. I need a postmortem that includes Marcus's root cause analysis, Omar's infra timeline, and Ada's impact metrics. Schedule it and make sure all three are prepared.`,
@@ -206,7 +253,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-C5', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C5',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Marketing sent incorrect feature announcement',
     agentKey: 'riley',
     message: `Riley, Alex just sent an email campaign announcing a feature that isn't actually shipped yet. Engineering hasn't deployed it. I need a retraction plan from marketing and a real deployment timeline from engineering ASAP.`,
@@ -214,7 +263,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-C6', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C6',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Database slow queries impacting all teams',
     agentKey: 'marcus',
     message: `Marcus, Iris is reporting that her ML pipeline is timing out, Ben's analytics queries are taking 20s, and the frontend is getting 500s on dashboard load — all pointing to slow DB queries. Get James and Carlos coordinating on this now.`,
@@ -222,7 +273,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C7', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C7',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'CI/CD pipeline failure blocks all teams',
     agentKey: 'riley',
     message: `Riley, Omar says the GitHub Actions pipeline is broken — every team's PRs are failing CI. Engineering, growth, and data all have code waiting to merge. I need this unblocked in the next hour.`,
@@ -230,7 +283,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-C8', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C8',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Customer-reported bug goes viral on Twitter',
     agentKey: 'riley',
     message: `Riley, a user tweeted that Mission Control deleted their agent config and it's getting traction. Mia is seeing it blow up on social. I need engineering to investigate the bug, marketing to draft a response, and data to assess how many users were affected.`,
@@ -238,7 +293,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C9', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C9',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Third-party API outage affects product',
     agentKey: 'marcus',
     message: `Marcus, the Anthropic API has been down for 20 minutes. Our agents are non-functional. I need a customer status update from marketing, a fallback plan from engineering, and an estimated impact report from data. Coordinate.`,
@@ -246,7 +303,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-C10', block: 'XD-C', blockName: 'Incident Response',
+    id: 'XD-C10',
+    block: 'XD-C',
+    blockName: 'Incident Response',
     title: 'Incident during ProductHunt launch day',
     agentKey: 'marcus',
     message: `Marcus, it's launch day and the signup flow is broken — new users can't create accounts. We're live on ProductHunt right now. Engineering needs to hotfix immediately, marketing needs to pause ads, and growth needs to monitor sign-up recovery. War room, now.`,
@@ -256,7 +315,9 @@ export const scenarios = [
 
   // ─── XD-D: Content-Engineering Pipeline ──────────────────────────────────
   {
-    id: 'XD-D1', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D1',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Technical blog post requires engineering review',
     agentKey: 'diana',
     message: `Diana, Alex drafted a technical blog post about our agent architecture but Marcus says it contains inaccuracies about the HMAC auth system. I need a review workflow — Alex writes, Marcus reviews for accuracy, Nina optimizes for SEO. Set it up.`,
@@ -264,7 +325,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-D2', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D2',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'API documentation requires both eng and content input',
     agentKey: 'nina',
     message: `Nina, our API docs are outdated and ranking poorly. I need James to update the technical accuracy, Alex to improve the prose, and you to optimize the structure for search. Can you coordinate the three-way workflow?`,
@@ -272,7 +335,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D3', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D3',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Marketing landing page needs real performance benchmarks',
     agentKey: 'diana',
     message: `Diana, the new "10x faster agents" landing page claim needs real numbers from engineering. Marcus needs to run benchmarks, Ben needs to pull production stats, and Alex needs to write copy that's accurate. Don't let marketing ship numbers we can't back up.`,
@@ -280,7 +345,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D4', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D4',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Video demo script requires product accuracy',
     agentKey: 'diana',
     message: `Diana, Mia is producing a demo video for ProductHunt. The script needs to be technically accurate — I want Marcus or Sarah to review it before production starts. Set up the review loop.`,
@@ -288,7 +355,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-D5', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D5',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'SEO requires structured data from engineering',
     agentKey: 'nina',
     message: `Nina, Raj says we need JSON-LD schema markup on our product pages for better search results. That requires Elena to implement it in the frontend. Can you scope the schema requirements and get it in the next sprint?`,
@@ -296,7 +365,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D6', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D6',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Changelog page auto-generation from git commits',
     agentKey: 'diana',
     message: `Diana, I want a public changelog that's automatically generated from our release commits. This needs Felix or Theo to build the automation, James to ensure commit format is consistent, and Alex to write the copy template. Coordinate.`,
@@ -304,7 +375,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D7', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D7',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Feature release notes require eng, content, and growth',
     agentKey: 'sarah',
     message: `Sarah, for every feature we ship I want a 3-layer release note: engineering writes the technical spec, Alex adapts it for customers, and Sam ensures tracking links are embedded for growth attribution. Build this pipeline.`,
@@ -312,7 +385,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D8', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D8',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Case study requires real customer data from data team',
     agentKey: 'diana',
     message: `Diana, Alex is writing a customer case study and needs real usage metrics — agents run, tokens saved, tasks automated. Ben should pull the data, Alex writes the story, and Nina optimizes for SEO. Who leads this?`,
@@ -320,7 +395,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-D9', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D9',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Technical content review SLA agreement',
     agentKey: 'riley',
     message: `Riley, marketing keeps getting blocked on engineering reviews — Marcus takes 3+ days to review technical blog posts. I need an SLA agreed between Diana and Marcus: max 24h review turnaround with a backup reviewer if Marcus is unavailable.`,
@@ -328,7 +405,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-D10', block: 'XD-D', blockName: 'Content-Engineering Pipeline',
+    id: 'XD-D10',
+    block: 'XD-D',
+    blockName: 'Content-Engineering Pipeline',
     title: 'Product screenshots in marketing are outdated',
     agentKey: 'diana',
     message: `Diana, half the marketing site is showing screenshots of the old UI. Elena needs to generate new ones after each major release, marketing needs to update assets, and Nina needs to ensure alt text is SEO-optimized. Set up a refresh cadence.`,
@@ -338,7 +417,9 @@ export const scenarios = [
 
   // ─── XD-E: Data-Driven Decisions ──────────────────────────────────────────
   {
-    id: 'XD-E1', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E1',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Conversion funnel analysis drives feature priority',
     agentKey: 'ada',
     message: `Ada, Nadia says conversion is dropping at the agent configuration step. I need Ben to analyze the funnel, Nadia to propose growth interventions, and Sarah to prioritize the engineering fix in the sprint. Coordinate the three-way loop.`,
@@ -346,7 +427,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-E2', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E2',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Marketing channel ROI analysis changes budget allocation',
     agentKey: 'ada',
     message: `Ada, Ben's latest analysis shows email is 4x ROI vs paid social. Diana wants to shift budget to email but Lucas needs engineering to build better email automation. Pull the analysis, brief Diana, and get Felix involved for the automation side.`,
@@ -354,7 +437,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E3', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E3',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Churn signal triggers cross-team response',
     agentKey: 'nadia',
     message: `Nadia, Iris's ML model flagged 12 accounts showing churn signals. I need growth to activate retention campaigns, marketing to send targeted emails, and engineering to flag these accounts in the dashboard. Coordinate across the three teams.`,
@@ -362,7 +447,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-E4', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E4',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'SEO performance data informs content strategy',
     agentKey: 'ada',
     message: `Ada, Yuki has a detailed SEO performance report. I need Yuki to brief Nina, Nina to update the content roadmap with Raj, and marketing to adjust the blog schedule with Alex. Make sure the data flows all the way to execution.`,
@@ -370,7 +457,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E5', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E5',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Agent usage patterns inform product roadmap',
     agentKey: 'ada',
     message: `Ada, I want a monthly data review where Ben's usage analysis feeds directly into Sarah's sprint planning. Set up the recurring workflow — Ben produces the report, Ada synthesizes insights, Sarah adjusts priorities.`,
@@ -378,7 +467,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E6', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E6',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'A/B test result requires eng + growth + data sign-off',
     agentKey: 'nadia',
     message: `Nadia, Maya's experiment on the pricing page reached statistical significance — variant B wins at 18% better conversion. I need Maya to present findings, Ada to validate the stats, and James to ship the winning variant. Coordinate the handoff.`,
@@ -386,7 +477,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E7', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E7',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Engagement metrics drive email campaign targeting',
     agentKey: 'ada',
     message: `Ada, I want Ben's engagement segments feeding Lucas's email campaigns automatically. Users who haven't run an agent in 7 days should get a reactivation email; power users should get feature tips. Wire up the data-to-marketing pipeline.`,
@@ -394,7 +487,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E8', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E8',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Infrastructure cost spike requires data + devops analysis',
     agentKey: 'ada',
     message: `Ada, our cloud costs spiked 40% this month. I need Carlos to analyze query patterns, Ben to correlate with feature usage, and Omar to identify infra waste. Give me a joint report from data and devops.`,
@@ -402,7 +497,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E9', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E9',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'NPS scores feed product and marketing decisions',
     agentKey: 'ada',
     message: `Ada, our NPS survey results are in — score is 42, down from 51. I need Ben to segment the detractors by feature area, Sarah to create tickets for top complaints, and Diana to address concerns in the next email campaign. Cross-dept response.`,
@@ -410,7 +507,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-E10', block: 'XD-E', blockName: 'Data-Driven Decisions',
+    id: 'XD-E10',
+    block: 'XD-E',
+    blockName: 'Data-Driven Decisions',
     title: 'Real-time dashboard for launch day requires all teams',
     agentKey: 'ada',
     message: `Ada, I want a launch day dashboard that shows sign-ups (growth/Sam), site uptime (Omar), conversion rate (Maya), and social mentions (Mia) — all in one view. Get Carlos to build the pipeline and make it live before launch day.`,
@@ -420,7 +519,9 @@ export const scenarios = [
 
   // ─── XD-F: Sprint Handoffs ────────────────────────────────────────────────
   {
-    id: 'XD-F1', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F1',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Backend to frontend handoff for agents API',
     agentKey: 'sarah',
     message: `Sarah, James finished the agents CRUD API. Elena needs to integrate it in the dashboard. I want a clean handoff — API contract, example responses, error codes, and a 30-minute sync between James and Elena. Coordinate it.`,
@@ -428,7 +529,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-F2', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F2',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Frontend to QA handoff for new dashboard',
     agentKey: 'riley',
     message: `Riley, Elena says the dashboard redesign is ready for QA. Priya needs a test plan, access to the staging environment, and a list of known issues. Make sure Elena doesn't hand off to Priya without those three things.`,
@@ -436,7 +539,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-F3', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F3',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'QA to DevOps deployment handoff',
     agentKey: 'riley',
     message: `Riley, Priya signed off on the agent budget feature. Omar needs a deploy checklist, migration scripts, and a rollback plan from engineering before he deploys. Make sure the handoff is complete before Omar touches production.`,
@@ -444,7 +549,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-F4', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F4',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'DevOps to Growth — deployed feature tracking handoff',
     agentKey: 'riley',
     message: `Riley, Omar deployed the new onboarding flow. Sam needs confirmation that the deployment is live, the correct feature flag is enabled, and that tracking events are firing. Set up a post-deploy verification between Omar and Sam.`,
@@ -452,7 +559,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-F5', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F5',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Sprint review prep requires all department leads',
     agentKey: 'riley',
     message: `Riley, sprint review is Friday. I need each department lead to submit: what shipped, what didn't, and blockers for next sprint. Engineering (Marcus), Marketing (Diana), Data (Ada), Growth (Nadia) — get them all prepped.`,
@@ -460,7 +569,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-F6', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F6',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Mid-sprint scope change ripples across departments',
     agentKey: 'sarah',
     message: `Sarah, I need to cut the mobile feature from this sprint to focus on the ProductHunt launch. This affects Kai (eng), Diana (marketing needs to update the roadmap), and Sam (growth needs to adjust tracking plans). Coordinate the scope change.`,
@@ -468,7 +579,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-F7', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F7',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Design assets needed from marketing for eng implementation',
     agentKey: 'sarah',
     message: `Sarah, Elena needs the final design assets from marketing — logo variants, color palette, and component specs — to implement the new brand update. Diana's team has them but hasn't shared. Unblock this.`,
@@ -476,7 +589,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-F8', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F8',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Data pipeline handoff from engineering to data team',
     agentKey: 'riley',
     message: `Riley, Carlos built a new event streaming pipeline but the data team (Ben, Iris) haven't been briefed on the schema. James needs to hand off the event taxonomy before Ben can build dashboards. Schedule the handoff.`,
@@ -484,7 +599,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-F9', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F9',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Sprint velocity data feeds capacity planning',
     agentKey: 'riley',
     message: `Riley, I need Ben to pull sprint velocity data for the last 8 sprints and feed it to Sarah so she can do accurate capacity planning for the ProductHunt sprint. Connect them.`,
@@ -492,7 +609,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-F10', block: 'XD-F', blockName: 'Sprint Handoffs',
+    id: 'XD-F10',
+    block: 'XD-F',
+    blockName: 'Sprint Handoffs',
     title: 'Automation team handoff to all departments',
     agentKey: 'riley',
     message: `Riley, Felix's team just shipped 4 workflow automations — one each for engineering, marketing, data, and growth. Each team needs a demo and onboarding. Schedule 4 separate 20-minute handoff sessions this week.`,
@@ -502,7 +621,9 @@ export const scenarios = [
 
   // ─── XD-G: Customer Feedback Loop ────────────────────────────────────────
   {
-    id: 'XD-G1', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G1',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Customer reports agent keeps losing context',
     agentKey: 'sarah',
     message: `Sarah, a paying customer DM'd saying their agent loses context between sessions. This needs: Marcus to triage the bug, James to investigate, and Diana to acknowledge the customer with an ETA. Coordinate the response.`,
@@ -510,7 +631,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G2', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G2',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Feature request popular across multiple customers',
     agentKey: 'sarah',
     message: `Sarah, I've seen 8 different customers request Slack integration in the last month. I need Ben to quantify the demand in our data, Sarah to evaluate sprint feasibility, and Diana to communicate we're working on it. Run the loop.`,
@@ -518,7 +641,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G3', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G3',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'App store reviews going negative — multi-team response',
     agentKey: 'diana',
     message: `Diana, our App Store rating dropped from 4.6 to 3.9 this week. Three common complaints: slow load times, confusing onboarding, and missing features. I need engineering on performance, Sarah on onboarding UX, and marketing on a response strategy.`,
@@ -526,7 +651,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-G4', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G4',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Customer success interview insights route to product',
     agentKey: 'sarah',
     message: `Sarah, I ran 5 customer interviews last week. Common themes: users want better agent templates and clearer pricing. I need this to reach Marcus (eng roadmap), Diana (marketing messaging), and Nadia (pricing experiments). Route the insights.`,
@@ -534,7 +661,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G5', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G5',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Support ticket spike needs engineering + comms response',
     agentKey: 'riley',
     message: `Riley, support tickets are up 300% today — all related to the new API rate limiting we shipped yesterday. I need James to either raise the limits or document the change, and Diana to send an explanatory email to affected customers today.`,
@@ -542,7 +671,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G6', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G6',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Beta feedback session requires all teams to listen',
     agentKey: 'sarah',
     message: `Sarah, we're doing a beta customer feedback session next week. I want representatives from engineering (Marcus), marketing (Diana), growth (Nadia), and data (Ada) all in the session. They each need to come with 2 questions and leave with action items.`,
@@ -550,7 +681,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G7', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G7',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Customer data request requires legal + eng + comms',
     agentKey: 'marcus',
     message: `Marcus, a customer wants a full export of their agent data — GDPR data portability request. James needs to build the export, Omar needs to ensure the delivery is secure, and Diana needs to respond within the legal deadline. 30 days, starting now.`,
@@ -558,7 +691,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-G8', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G8',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Feature deprecation communication plan',
     agentKey: 'sarah',
     message: `Sarah, we're deprecating the legacy agent v1 API in 60 days. I need engineering to communicate migration steps, marketing to draft a deprecation announcement, and growth to identify which customers are still using it. Coordinate.`,
@@ -566,7 +701,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G9', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G9',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Power user advisory board inputs product roadmap',
     agentKey: 'sarah',
     message: `Sarah, I'm setting up a 5-person power user advisory board. I need Ben to identify top users by usage, Diana to draft the invite email, Sarah to structure the quarterly sync agenda, and Marcus to prepare the product roadmap for review.`,
@@ -574,7 +711,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-G10', block: 'XD-G', blockName: 'Customer Feedback Loop',
+    id: 'XD-G10',
+    block: 'XD-G',
+    blockName: 'Customer Feedback Loop',
     title: 'Refund request reveals billing edge case',
     agentKey: 'riley',
     message: `Riley, a customer requested a refund because our billing charged them twice. James needs to investigate the billing bug, Omar needs to ensure it's not a wider issue, and Diana needs to personally reach out to the customer. Coordinate the fix + comms.`,
@@ -584,7 +723,9 @@ export const scenarios = [
 
   // ─── XD-H: SEO-Engineering Alignment ─────────────────────────────────────
   {
-    id: 'XD-H1', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H1',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Core Web Vitals failing — SEO requires eng fix',
     agentKey: 'nina',
     message: `Nina, our Core Web Vitals are in the red — LCP 4.2s, CLS 0.18. Google is penalizing our rankings. I need Elena to fix the frontend performance issues and James to optimize the API response times. Give Nina the requirements list to hand to engineering.`,
@@ -592,7 +733,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-H2', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H2',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Dynamic sitemap generation requires backend work',
     agentKey: 'nina',
     message: `Nina, Raj says our sitemap is static and not covering new agent template pages. James needs to build a dynamic sitemap endpoint, Elena needs to add the sitemap link to robots.txt, and Yuki needs to submit it to Search Console. Coordinate.`,
@@ -600,7 +743,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H3', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H3',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'URL structure change requires eng + SEO sign-off',
     agentKey: 'marcus',
     message: `Marcus, Nina wants to change the URL structure for agent templates from /templates/[id] to /agents/templates/[name] for better SEO. Elena needs to implement redirects, James needs to update the API, and Yuki needs to monitor ranking impact. Plan it.`,
@@ -608,7 +753,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H4', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H4',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Server-side rendering required for SEO',
     agentKey: 'nina',
     message: `Nina, Raj found 12 pages that are client-side rendered and not indexed by Google. Elena needs to convert them to SSR in Next.js, and James needs to ensure the API supports server-side data fetching. Nina, give them the priority list.`,
@@ -616,7 +763,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H5', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H5',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Page speed budget set jointly by SEO and engineering',
     agentKey: 'nina',
     message: `Nina, I want a jointly agreed page speed budget between SEO and engineering: max LCP 2.5s, max bundle size 200KB per route. Nina sets the targets, Marcus enforces them in CI, Elena implements them. Create the agreement.`,
@@ -624,7 +773,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H6', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H6',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'New feature pages need SEO review before launch',
     agentKey: 'nina',
     message: `Nina, I want a rule that any new marketing or product page must go through SEO review before it ships. Set up the gate with Elena and James — they submit for Nina's review, Nina responds within 48h. Document the SLA.`,
@@ -632,7 +783,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-H7', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H7',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Canonical URL issues causing duplicate content penalty',
     agentKey: 'nina',
     message: `Nina, Yuki found 30 pages with duplicate content issues — same content, different URLs without canonical tags. Elena needs to add canonical tags across the Next.js app and James needs to ensure the API doesn't serve duplicate slugs. Fix it.`,
@@ -640,7 +793,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H8', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H8',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Blog CMS migration requires SEO + eng coordination',
     agentKey: 'nina',
     message: `Nina, marketing wants to migrate the blog from a third-party CMS to our own platform. This is a big SEO risk. James needs to build the CMS backend, Elena the frontend, and Yuki needs to create a migration checklist to preserve rankings.`,
@@ -648,7 +803,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-H9', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H9',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Structured data for product pricing requires eng implementation',
     agentKey: 'nina',
     message: `Nina, Raj wants to add Product and Offer schema markup to pricing pages to get rich snippets. Elena needs to implement the JSON-LD, and Yuki needs to validate it in Google's Rich Results Test before it ships. Coordinate.`,
@@ -656,7 +813,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-H10', block: 'XD-H', blockName: 'SEO-Engineering Alignment',
+    id: 'XD-H10',
+    block: 'XD-H',
+    blockName: 'SEO-Engineering Alignment',
     title: 'Search Console alerts require immediate eng response',
     agentKey: 'marcus',
     message: `Marcus, Yuki got a Search Console alert — 400 pages returning 404 since yesterday's deployment. Omar's deployment broke the routing. Elena needs to fix the routes, James needs to add redirect rules, and Yuki needs to request re-indexing. Now.`,
@@ -666,7 +825,9 @@ export const scenarios = [
 
   // ─── XD-I: Growth-Engineering Experiments ────────────────────────────────
   {
-    id: 'XD-I1', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I1',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Pricing page A/B test requires eng + growth + data',
     agentKey: 'nadia',
     message: `Nadia, I want an A/B test on the pricing page — test annual vs monthly billing prominence. Maya designs the experiment, James implements the variant, Sam instruments tracking, and Ada validates statistical significance. Run it.`,
@@ -674,7 +835,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-I2', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I2',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Onboarding flow experiment needs 3-team alignment',
     agentKey: 'nadia',
     message: `Nadia, Maya wants to test a wizard-style onboarding vs the current blank slate. Elena builds the variant, Sam sets up the funnel tracking, and Ben analyzes the results. I want weekly readouts. Set up the cross-team experiment cadence.`,
@@ -682,7 +845,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-I3', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I3',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Referral program requires eng + growth + marketing',
     agentKey: 'nadia',
     message: `Nadia, I want to launch a referral program — give 3 months free for each new paying user you refer. Dante runs the campaign, James builds the referral backend, Sam tracks referral attribution, and Alex writes the in-app copy. Coordinate.`,
@@ -690,7 +855,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-I4', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I4',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Feature gating for upsell experiment',
     agentKey: 'nadia',
     message: `Nadia, Maya wants to test showing a paywall at 5 agent runs vs 10 agent runs for free tier users. James needs to implement the feature flag, Sam tracks conversion, and Ada analyzes which gate converts better. Scope and launch it.`,
@@ -698,7 +865,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-I5', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I5',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'In-app NPS triggers growth automation',
     agentKey: 'nadia',
     message: `Nadia, I want in-app NPS surveys at day 7 and day 30. James builds the survey widget, Sam tracks responses, and Felix automates the follow-up — promoters get a referral ask, detractors get a support outreach. Wire it up.`,
@@ -706,7 +875,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-I6', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I6',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Email sequence experiment measured by eng event data',
     agentKey: 'nadia',
     message: `Nadia, Lucas wants to test a 3-email onboarding sequence vs a 5-email sequence. The success metric is first agent run within 7 days — Carlos needs to build the event query, Sam needs to segment users, and Lucas runs the campaigns. Coordinate.`,
@@ -714,7 +885,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-I7', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I7',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Activation metric definition alignment',
     agentKey: 'ada',
     message: `Ada, growth and engineering are using different definitions of "activated user" — growth says it's first agent run, engineering's analytics says it's profile complete. I need Nadia, Sam, and Carlos to agree on one definition and update all dashboards.`,
@@ -722,7 +895,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-I8', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I8',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Viral loop experiment needs eng + growth + marketing',
     agentKey: 'nadia',
     message: `Nadia, I want to test embedding a "Made with Mission Control" badge in agent outputs that links back to our signup page. James builds the badge feature, Dante runs the campaign, and Sam measures viral coefficient. Design the experiment.`,
@@ -730,7 +905,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-I9', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I9',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Experiment velocity — shipping 2 tests per week',
     agentKey: 'riley',
     message: `Riley, I want to increase experiment velocity to 2 A/B tests per week. Maya designs them, James/Elena implement variants, Sam instruments, Ada analyzes. What's blocking this cadence? And what process do we need to hit the target?`,
@@ -738,7 +915,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-I10', block: 'XD-I', blockName: 'Growth-Engineering Experiments',
+    id: 'XD-I10',
+    block: 'XD-I',
+    blockName: 'Growth-Engineering Experiments',
     title: 'Experiment cleanup — removing old variants from codebase',
     agentKey: 'riley',
     message: `Riley, we have 14 old A/B test variants still in the codebase from experiments that concluded 2+ months ago. James needs to remove dead code, Sam needs to archive the experiment data, and Maya needs to document the learnings. Set up the cleanup sprint.`,
@@ -748,7 +927,9 @@ export const scenarios = [
 
   // ─── XD-J: Automation Cross-Dept ─────────────────────────────────────────
   {
-    id: 'XD-J1', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J1',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate sprint report delivery to all departments',
     agentKey: 'felix',
     message: `Felix, I want automated sprint reports delivered every Friday at 5pm to each department lead. Engineering gets velocity + bugs, marketing gets content published, growth gets conversion metrics, data gets pipeline health. Zara or Theo — who builds this?`,
@@ -756,7 +937,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J2', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J2',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate new user handoff from growth to marketing',
     agentKey: 'felix',
     message: `Felix, when a new user signs up, I want an automated sequence: Sam tags them in growth CRM, Lucas gets triggered for a welcome email, and Ben's dashboard updates in real time. Theo, can you build the integration between these three systems?`,
@@ -764,7 +947,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J3', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J3',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'CI/CD notification automation across Slack channels',
     agentKey: 'felix',
     message: `Felix, I want automated Slack notifications when deployments happen — engineering gets the full deploy log, marketing gets notified of feature deployments so they know to monitor, growth gets notified of experiment-related deploys. Zara, build this.`,
@@ -772,7 +957,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J4', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J4',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate content publishing pipeline',
     agentKey: 'felix',
     message: `Felix, marketing's content pipeline is manual — Alex writes, Nina reviews for SEO, then someone manually publishes. I want Zara to automate the approval workflow: Alex submits → Nina approves → auto-publish to CMS with tracking pixels from Sam.`,
@@ -780,7 +967,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J5', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J5',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate daily data digest to all department leads',
     agentKey: 'felix',
     message: `Felix, I want a daily 8am data digest sent to each department lead: key metrics relevant to their team, anomaly alerts, and yesterday's highlights. Carlos builds the query layer, Theo builds the delivery mechanism. Make it happen.`,
@@ -788,7 +977,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J6', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J6',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate QA test runs on feature branch merges',
     agentKey: 'felix',
     message: `Felix, every time a feature branch merges to main, I want Priya's QA suite to run automatically and send results to both the engineer who merged and to Riley's sprint board. Theo, wire up the GitHub webhook → QA runner → Slack notification.`,
@@ -796,7 +987,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J7', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J7',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate SEO monitoring alerts to marketing and eng',
     agentKey: 'felix',
     message: `Felix, Yuki manually checks Search Console every day. I want automated alerts: if any page drops more than 5 positions, notify Nina and Elena simultaneously. If a page gets deindexed, also alert Marcus. Zara, build the monitoring.`,
@@ -804,7 +997,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J8', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J8',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate experiment results reporting to growth + data',
     agentKey: 'felix',
     message: `Felix, when an A/B experiment reaches statistical significance, I want an automated summary sent to Maya (growth), Ada (data), and Sarah (product). The summary should include winner, lift percentage, and a recommendation. Theo, build this.`,
@@ -812,7 +1007,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-J9', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J9',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate cross-dept blocker escalation',
     agentKey: 'felix',
     message: `Felix, if a GitHub PR is blocked for more than 48 hours with no review, I want an automatic escalation: ping the reviewer in Slack, notify Riley, and add it to the sprint board as a blocker. Zara, set this up.`,
@@ -820,7 +1017,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-J10', block: 'XD-J', blockName: 'Automation Cross-Dept',
+    id: 'XD-J10',
+    block: 'XD-J',
+    blockName: 'Automation Cross-Dept',
     title: 'Automate Asana task creation from Slack decisions',
     agentKey: 'felix',
     message: `Felix, when someone says "let's do this" or reacts with a checkmark in key Slack channels, I want an Asana task auto-created and assigned to the right person. Theo, can you build a Slack-to-Asana automation that works across all department channels?`,
@@ -830,7 +1029,9 @@ export const scenarios = [
 
   // ─── XD-K: Budget & Resource Allocation ──────────────────────────────────
   {
-    id: 'XD-K1', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K1',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Engineering and marketing competing for same sprint capacity',
     agentKey: 'riley',
     message: `Riley, engineering has capacity for one major feature this sprint. Marketing wants a revamped landing page, product wants the agent batch processing feature. Both are claiming P1. I need you to facilitate the priority decision between Sarah and Diana.`,
@@ -838,7 +1039,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-K2', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K2',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Cloud cost budget allocation across teams',
     agentKey: 'riley',
     message: `Riley, our cloud bill is $4,200/month. Engineering uses 60%, data uses 30%, and growth's tracking infra uses 10%. I want each team to own their budget line and have Omar report monthly. Set up the ownership structure.`,
@@ -846,7 +1049,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-K3', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K3',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Growth wants engineering time for tracking — eng says no capacity',
     agentKey: 'riley',
     message: `Riley, Sam needs 3 new tracking events implemented for a critical growth experiment, but Marcus says engineering is fully booked for 3 weeks. Growth is blocked. Facilitate the negotiation — is there a workaround or does something else get cut?`,
@@ -854,7 +1059,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-K4', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K4',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Marketing tool budget requires security review',
     agentKey: 'riley',
     message: `Riley, Diana wants to add a $800/month analytics tool (Amplitude) but Marcus needs to do a security review before we add any new third-party tool. Diana says it's urgent for launch, Marcus says review takes 2 weeks. Mediate.`,
@@ -862,7 +1069,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-K5', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K5',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Shared infrastructure costs debate',
     agentKey: 'riley',
     message: `Riley, there's a dispute: the data team built a Kafka cluster that engineering and growth also use. Who pays? Ada says engineering and growth should share the cost. Omar thinks it should be centralized. I need a cost-sharing model agreed by all three.`,
@@ -870,7 +1079,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-K6', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K6',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'ProductHunt launch budget allocation',
     agentKey: 'riley',
     message: `Riley, I have $5,000 for ProductHunt launch. Diana wants $3,000 for ads, Dante wants $1,500 for campaign assets, and Nadia wants $2,000 for growth experiments. Total ask is $6,500 vs $5,000 budget. Facilitate the allocation decision.`,
@@ -878,7 +1089,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-K7', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K7',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'API token budget allocation for AI agents',
     agentKey: 'riley',
     message: `Riley, our Anthropic API budget is $2,000/month. Engineering uses $800 for dev/test, production agents use $1,000, and the automation team uses $200. We're at 95% utilization. I need a budget governance model before we go over.`,
@@ -886,7 +1099,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-K8', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K8',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'QA tool licensing needs multi-team justification',
     agentKey: 'riley',
     message: `Riley, Priya wants to buy a Playwright Cloud license for $400/month for faster E2E test runs. This benefits engineering but is paid by QA budget. I need a joint justification from Priya and Marcus to approve this.`,
@@ -894,7 +1109,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-K9', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K9',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'SEO tooling budget request',
     agentKey: 'riley',
     message: `Riley, Nina wants Ahrefs at $399/month. She says it benefits SEO, content, and growth. I want a shared cost model where each department that benefits contributes. Nina, Nadia, and Diana need to agree on the split.`,
@@ -902,7 +1119,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-K10', block: 'XD-K', blockName: 'Budget & Resource Allocation',
+    id: 'XD-K10',
+    block: 'XD-K',
+    blockName: 'Budget & Resource Allocation',
     title: 'Resource reallocation when priority shifts',
     agentKey: 'riley',
     message: `Riley, I'm shifting priority to ProductHunt launch. This means the SEO content sprint is paused, the data team's ML feature is deprioritized, and engineering focuses entirely on launch hardening. Communicate this to Nina, Ada, and Marcus without causing morale damage.`,
@@ -912,7 +1131,9 @@ export const scenarios = [
 
   // ─── XD-L: All-Hands & Team Sync ─────────────────────────────────────────
   {
-    id: 'XD-L1', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L1',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Monthly all-hands agenda preparation',
     agentKey: 'riley',
     message: `Riley, monthly all-hands is this Friday. I need each department lead to submit a 3-minute update: what shipped, what's next, one cross-dept dependency. Get Marcus, Diana, Nina, Felix, Ada, and Nadia all prepped.`,
@@ -920,7 +1141,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-L2', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L2',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Sprint planning across departments',
     agentKey: 'riley',
     message: `Riley, it's sprint planning week. I need cross-dept dependencies identified before anyone commits to sprint scope. Engineering depends on design from marketing, growth depends on eng tracking, data depends on eng events. Surface the deps.`,
@@ -928,7 +1151,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-L3', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L3',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Q2 goals alignment across all teams',
     agentKey: 'riley',
     message: `Riley, Q2 is starting. I need each department's Q2 goals to be cross-compatible — marketing's acquisition targets need to align with engineering's capacity, growth's experiment goals need data team bandwidth. Review all goals and flag conflicts.`,
@@ -936,7 +1161,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-L4', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L4',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Weekly cross-dept standup format',
     agentKey: 'riley',
     message: `Riley, I want a weekly 15-minute cross-dept standup every Monday at 9am. Only blockers and dependencies — no status updates. Design the format and get all leads to commit. If someone is blocked by another dept, it gets raised here.`,
@@ -944,7 +1171,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-L5', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L5',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Retrospective action items getting lost across teams',
     agentKey: 'riley',
     message: `Riley, retro action items keep getting forgotten between sprints, especially cross-team ones. Last retrospective, engineering agreed to fix a feedback loop with marketing, but it never happened. I need a system to track retro actions across departments.`,
@@ -952,7 +1181,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-L6', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L6',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Launch countdown sync — T-minus 2 weeks',
     agentKey: 'riley',
     message: `Riley, we're 2 weeks out from ProductHunt launch. I need a daily sync at 8am with all department leads — 5 minutes each, focused on blockers. Set it up and send invites to Marcus, Diana, Nina, Felix, Ada, Nadia.`,
@@ -960,7 +1191,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-L7', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L7',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Cross-dept OKR review mid-quarter',
     agentKey: 'riley',
     message: `Riley, it's mid-quarter. I want a health check on all OKRs. Each team rates their key results Red/Yellow/Green. Any Red that has a cross-dept dependency gets a 30-minute joint session with me to unblock. Coordinate the reviews.`,
@@ -968,7 +1201,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-L8', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L8',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Team-wide post-launch celebration and learnings share',
     agentKey: 'riley',
     message: `Riley, ProductHunt launch is done. I want a team retrospective where every department shares: biggest win, biggest miss, and one learning for next launch. Facilitate the session and turn it into a launch playbook.`,
@@ -976,7 +1211,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-L9', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L9',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'Cross-dept knowledge sharing session',
     agentKey: 'riley',
     message: `Riley, I want monthly "teach the team" sessions where one department presents to the others — engineering explains the tech stack, data explains the ML pipeline, growth explains A/B testing. Schedule the next 3 months.`,
@@ -984,7 +1221,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-L10', block: 'XD-L', blockName: 'All-Hands & Team Sync',
+    id: 'XD-L10',
+    block: 'XD-L',
+    blockName: 'All-Hands & Team Sync',
     title: 'End-of-sprint demo day across departments',
     agentKey: 'riley',
     message: `Riley, I want end-of-sprint demo days where every team shows what they shipped — not just engineering. Marketing shows new content, growth shows experiment results, data shows new dashboards. 5 minutes per team, every 2 weeks. Set it up.`,
@@ -994,7 +1233,9 @@ export const scenarios = [
 
   // ─── XD-M: Onboarding & Knowledge Transfer ───────────────────────────────
   {
-    id: 'XD-M1', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M1',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'New agent onboarding requires context from all departments',
     agentKey: 'riley',
     message: `Riley, we're bringing a new marketing automation agent online. They need context from: Felix (automation workflows), Diana (marketing goals), Sam (growth tracking setup), and Carlos (data pipeline access). Coordinate a structured onboarding.`,
@@ -1002,7 +1243,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-M2', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M2',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Engineering onboarding requires security + devops briefing',
     agentKey: 'riley',
     message: `Riley, a new backend engineer agent is starting. Before they write a single line, they need: Marcus's architecture overview, Omar's devops runbook, and the security requirements from SECURITY.md. Structure a 3-day onboarding plan.`,
@@ -1010,7 +1253,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-M3', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M3',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Cross-dept knowledge gaps after team restructure',
     agentKey: 'riley',
     message: `Riley, after the last restructure, the data team doesn't know the engineering codebase and engineering doesn't understand the data models. I need a knowledge exchange: Marcus briefs Ada's team, Carlos briefs Marcus's team. Schedule it.`,
@@ -1018,7 +1263,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-M4', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M4',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'SEO onboarding for all content creators',
     agentKey: 'riley',
     message: `Riley, Nina says Alex and the marketing team are writing content without understanding basic SEO principles — no keyword research, wrong heading structure. Schedule an SEO onboarding session: Nina trains Alex, Lucas, and Raj in one 90-minute session.`,
@@ -1026,7 +1273,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-M5', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M5',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Growth team educates engineering on experiment principles',
     agentKey: 'riley',
     message: `Riley, engineers keep shipping features without thinking about measurability. Maya should run a workshop for James, Elena, and Kai on A/B test design principles, proper event naming, and why it matters. Set it up.`,
@@ -1034,7 +1283,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-M6', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M6',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Documentation handoff when key agent unavailable',
     agentKey: 'riley',
     message: `Riley, Omar is going offline for 2 weeks. I need his devops knowledge documented — deployment procedures, incident runbooks, infrastructure map — so Marcus or James can cover emergencies. Coordinate the documentation sprint.`,
@@ -1042,7 +1293,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-M7', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M7',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'New team member needs product demo from all departments',
     agentKey: 'riley',
     message: `Riley, I'm onboarding a new Scrum Master agent. They need demos from all 6 departments — what each team does, their tools, their sprint cadence, their cross-dept dependencies. Schedule 6 x 20-minute sessions across the week.`,
@@ -1050,7 +1303,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-M8', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M8',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Data literacy training for marketing team',
     agentKey: 'riley',
     message: `Riley, Diana says her marketing team doesn't know how to read the analytics dashboards Ben built. Ben and Carlos should run a 2-hour data literacy session for Diana, Alex, Mia, and Lucas. Cover SQL basics, dashboard navigation, and how to request custom analyses.`,
@@ -1058,7 +1313,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-M9', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M9',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Security training for non-engineering teams',
     agentKey: 'marcus',
     message: `Marcus, Omar should run a security hygiene session for all non-engineering teams — marketing, growth, SEO — on: not clicking phishing links, not sharing API keys, secure password practices, and what to do if something looks suspicious.`,
@@ -1066,7 +1323,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-M10', block: 'XD-M', blockName: 'Onboarding & Knowledge Transfer',
+    id: 'XD-M10',
+    block: 'XD-M',
+    blockName: 'Onboarding & Knowledge Transfer',
     title: 'Cross-dept runbook for common handoff scenarios',
     agentKey: 'riley',
     message: `Riley, we keep re-figuring out the same cross-dept handoff processes every sprint. I want a runbook documenting: how engineering hands off to QA, QA to DevOps, DevOps to Growth, and Marketing to SEO. One doc, every team contributes their section.`,
@@ -1076,7 +1335,9 @@ export const scenarios = [
 
   // ─── XD-N: Compliance & Security Cross-Dept ──────────────────────────────
   {
-    id: 'XD-N1', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N1',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'GDPR audit requires all departments to review data handling',
     agentKey: 'marcus',
     message: `Marcus, we need a GDPR compliance review. Omar audits infrastructure data flows, James audits the API for PII handling, Diana audits marketing email data, and Sam audits growth tracking pixels. I need a joint compliance report.`,
@@ -1084,7 +1345,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-N2', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N2',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Third-party tool security review required before adoption',
     agentKey: 'marcus',
     message: `Marcus, I need a security review gate for all new third-party tools — marketing wants Intercom, growth wants Mixpanel, data wants Snowflake. Omar reviews each for data egress risk. No tool gets adopted without his sign-off. Set up the process.`,
@@ -1092,7 +1355,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-N3', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N3',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Secrets rotation across all teams',
     agentKey: 'omar',
     message: `Omar, it's quarterly secrets rotation. Engineering API keys, marketing platform tokens, data warehouse credentials, growth tool API keys — all need rotating. Coordinate with James, Diana, Ada, and Sam to rotate without breaking anything.`,
@@ -1100,7 +1365,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-N4', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N4',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'SOC2 preparation spans all departments',
     agentKey: 'marcus',
     message: `Marcus, we're starting SOC2 prep. Each department needs to document their data handling: engineering (access controls, audit logs), data (retention policies), marketing (consent management), growth (tracking opt-outs). Coordinate the evidence collection.`,
@@ -1108,7 +1375,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-N5', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N5',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Marketing cookie consent requires eng implementation',
     agentKey: 'marcus',
     message: `Marcus, Diana needs GDPR-compliant cookie consent on the marketing site before May. Elena needs to implement the consent banner, James needs to ensure analytics only fire after consent, and Sam needs to update growth tracking to respect opt-outs. Coordinate.`,
@@ -1116,7 +1385,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-N6', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N6',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Vulnerability disclosure process across teams',
     agentKey: 'marcus',
     message: `Marcus, a security researcher reported a potential XSS vulnerability via email to Diana's team (they didn't know it was a security issue). I need a formal vulnerability disclosure process so future reports go to security, not marketing. Build the process.`,
@@ -1124,7 +1395,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-N7', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N7',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Data retention policy requires cross-team agreement',
     agentKey: 'marcus',
     message: `Marcus, we have no formal data retention policy. Engineering keeps logs forever, data keeps everything for ML training, marketing keeps email lists indefinitely. I need Ada, James, Omar, and Diana to agree on retention periods by data type.`,
@@ -1132,7 +1405,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-N8', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N8',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Incident response plan spans all departments',
     agentKey: 'marcus',
     message: `Marcus, our incident response plan only covers engineering. I need a cross-dept plan: engineering handles technical remediation, marketing handles customer communication, data handles impact assessment, and Riley coordinates. Document and drill it.`,
@@ -1140,7 +1415,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-N9', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N9',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Marketing pixel audit for data leakage',
     agentKey: 'marcus',
     message: `Marcus, Omar noticed several third-party marketing pixels are loading on authenticated pages — potential PII leakage. Sam needs to audit all tracking pixels, Elena needs to scope their placement, and Omar needs to assess what data is being sent where.`,
@@ -1148,7 +1425,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-N10', block: 'XD-N', blockName: 'Compliance & Security Cross-Dept',
+    id: 'XD-N10',
+    block: 'XD-N',
+    blockName: 'Compliance & Security Cross-Dept',
     title: 'Annual security training mandatory for all agents',
     agentKey: 'omar',
     message: `Omar, I want mandatory annual security training for all 26 agents. Engineering gets the advanced track, all others get the general track. Track completion, report to me, and don't let anyone interact with production systems until they've completed it.`,
@@ -1158,7 +1437,9 @@ export const scenarios = [
 
   // ─── XD-O: Marketing-Growth Alignment ────────────────────────────────────
   {
-    id: 'XD-O1', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O1',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Marketing acquisition vs growth activation conflict',
     agentKey: 'diana',
     message: `Diana, there's a tension between your acquisition campaigns and Nadia's activation metrics — marketing is driving high sign-up volume but activation rate is 22%. I need Diana and Nadia to agree on a joint funnel metric and adjust their strategies accordingly.`,
@@ -1166,7 +1447,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-O2', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O2',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Content strategy aligns with growth funnel stages',
     agentKey: 'diana',
     message: `Diana, I want the content calendar explicitly mapped to the growth funnel: top-of-funnel blog posts for acquisition, middle-funnel case studies for activation, bottom-funnel comparison pages for conversion. Align Alex's content plan with Nadia's funnel map.`,
@@ -1174,7 +1457,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-O3', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O3',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Campaign UTM taxonomy agreed between marketing and growth',
     agentKey: 'nadia',
     message: `Nadia, Dante is running campaigns with inconsistent UTM parameters and Sam can't attribute traffic correctly. I need Diana and Nadia to agree on a UTM naming convention and Dante and Sam to both follow it. Get it documented this week.`,
@@ -1182,7 +1467,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-O4', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O4',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Email and in-app messaging coordination',
     agentKey: 'diana',
     message: `Diana, Lucas is sending emails at the same time Elena's in-app tooltips are firing — users are getting bombarded. I need Lucas (email) and Sam (in-app) to coordinate a unified messaging calendar so users don't get more than 2 touchpoints per day.`,
@@ -1190,7 +1477,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-O5', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O5',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Paid social content needs growth experiment data',
     agentKey: 'diana',
     message: `Diana, Mia's paid social ads should be informed by which messages convert best in Maya's A/B tests. I want a weekly sync between Mia and Maya: Maya shares winning copy variants, Mia adapts them for paid social. Set up the knowledge loop.`,
@@ -1198,7 +1487,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-O6', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O6',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Brand voice vs conversion copy tension',
     agentKey: 'riley',
     message: `Riley, Diana says Nadia's growth copy is "off brand" — too salesy. Nadia says Diana's brand copy doesn't convert. They're both right. I need them to agree on a brand voice that also converts — one set of guidelines both teams follow.`,
@@ -1206,7 +1497,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-O7', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O7',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'ProductHunt launch copy requires growth validation',
     agentKey: 'diana',
     message: `Diana, Alex drafted the ProductHunt tagline — "The AI team that works while you sleep." Maya ran a quick test on two variants and the data says a different tagline converts 31% better. I need Diana to evaluate and decide: brand gut or data?`,
@@ -1214,7 +1507,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-O8', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O8',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Joint marketing-growth weekly review',
     agentKey: 'riley',
     message: `Riley, I want a standing weekly 30-minute sync between marketing (Diana, Alex) and growth (Nadia, Sam) to review: campaign performance, funnel metrics, and upcoming tests. Set up the recurring meeting and template.`,
@@ -1222,7 +1517,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-O9', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O9',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'Attribution model dispute — last click vs multi-touch',
     agentKey: 'ada',
     message: `Ada, Diana claims marketing is responsible for 70% of conversions based on last-click attribution. Leo says multi-touch attribution shows marketing contributes 40% and growth automation contributes 35%. I need Ada to arbitrate the attribution model.`,
@@ -1230,7 +1527,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-O10', block: 'XD-O', blockName: 'Marketing-Growth Alignment',
+    id: 'XD-O10',
+    block: 'XD-O',
+    blockName: 'Marketing-Growth Alignment',
     title: 'New product feature messaging alignment',
     agentKey: 'diana',
     message: `Diana, we're shipping agent batch processing next week. I need the external messaging (blog, social, email — Diana's team) and the in-app messaging (tooltips, empty states, emails — Sam/Lucas) to be consistent. One brief, both teams execute from it.`,
@@ -1240,7 +1539,9 @@ export const scenarios = [
 
   // ─── XD-P: Data Infrastructure for All ───────────────────────────────────
   {
-    id: 'XD-P1', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P1',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Unified analytics schema agreed by all departments',
     agentKey: 'ada',
     message: `Ada, every department tracks different things in different schemas — marketing uses one event taxonomy, growth uses another, engineering logs a third. I need Carlos to define a unified event schema and get sign-off from Diana, Nadia, and Marcus before we migrate.`,
@@ -1248,7 +1549,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-P2', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P2',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Data warehouse access governance',
     agentKey: 'ada',
     message: `Ada, Diana's marketing team is querying the data warehouse directly and writing poorly optimized queries that affect Ben's analytics jobs. I need an access governance policy — who can query what, query review process, and how non-technical teams get data safely.`,
@@ -1256,7 +1559,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-P3', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P3',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Real-time pipeline for growth and marketing needs',
     agentKey: 'ada',
     message: `Ada, growth needs real-time user events (under 30s latency) and marketing needs daily batch reports. Currently Carlos's pipeline serves neither well — it's hourly. I need a pipeline architecture that satisfies both teams. Get Carlos, Sam, and Lucas's requirements.`,
@@ -1264,7 +1569,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-P4', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P4',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'ML model serving infrastructure for multiple teams',
     agentKey: 'ada',
     message: `Ada, Iris has three ML models that multiple teams want to use — churn prediction (growth), content recommendations (marketing), and anomaly detection (engineering). I need Carlos to build a shared model serving layer all three can call via API.`,
@@ -1272,7 +1579,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-P5', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P5',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Data SLA for cross-dept dashboards',
     agentKey: 'ada',
     message: `Ada, growth, marketing, and engineering all have dashboards that depend on Carlos's data pipelines. When pipelines fail, no one knows for hours. I need a data SLA: pipeline health monitoring, alerting when dashboards are stale, and an on-call rotation.`,
@@ -1280,7 +1589,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-P6', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P6',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Self-serve analytics for non-technical teams',
     agentKey: 'ada',
     message: `Ada, Ben gets 20+ ad-hoc data requests per week from marketing and growth. He's a bottleneck. I need Carlos to build a self-serve analytics layer — curated datasets, a query builder UI, and pre-built dashboard templates for common marketing and growth queries.`,
@@ -1288,7 +1599,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-P7', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P7',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Event tracking standards enforced at engineering level',
     agentKey: 'ada',
     message: `Ada, Sam keeps finding events that were tracked incorrectly by engineering — wrong names, missing properties, inconsistent types. I need Carlos to write an event schema validator, James to integrate it into the CI pipeline, and Sam to be the approver for new events.`,
@@ -1296,7 +1609,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-P8', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P8',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Data backup and recovery plan includes all team data',
     agentKey: 'ada',
     message: `Ada, Omar's backup plan only covers application databases. Marketing has campaign data in a SaaS tool, growth has experiment history in another, and data has dbt models on a third service. I need a cross-dept backup inventory and recovery plan.`,
@@ -1304,7 +1619,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-P9', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P9',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Cross-dept data request process',
     agentKey: 'ada',
     message: `Ada, there's no formal process for cross-dept data requests. Marketing emails Ben directly, growth texts Sam, engineering just queries the DB. I need a ticketing system for data requests with SLAs: standard (48h), urgent (4h), ad-hoc analysis (1 week).`,
@@ -1312,7 +1629,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-P10', block: 'XD-P', blockName: 'Data Infrastructure for All',
+    id: 'XD-P10',
+    block: 'XD-P',
+    blockName: 'Data Infrastructure for All',
     title: 'Launch day data infrastructure scaling plan',
     agentKey: 'ada',
     message: `Ada, on ProductHunt launch day we might get 10x normal traffic. The data pipeline needs to handle 10x event volume, dashboards need to stay fast, and growth's real-time tracking cannot lag. Get Carlos, Ben, and Sam to capacity plan for launch day.`,
@@ -1322,7 +1641,9 @@ export const scenarios = [
 
   // ─── XD-Q: Mobile Launch Coordination ────────────────────────────────────
   {
-    id: 'XD-Q1', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q1',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile app launch requires 5-team coordination',
     agentKey: 'kai',
     message: `Kai, mobile app v1 launch needs: you finishing the app, James ready with the mobile API, Priya doing mobile-specific QA, Diana drafting App Store copy, and Sam setting up mobile tracking. I want a joint timeline from all five.`,
@@ -1330,7 +1651,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-Q2', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q2',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Backend API must be mobile-ready before Kai starts',
     agentKey: 'sarah',
     message: `Sarah, Kai can't start the mobile app until the backend has mobile-optimized endpoints — paginated responses, offline-friendly error codes, and push notification support. James needs to scope this work. Get them aligned on what's needed and when.`,
@@ -1338,7 +1661,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-Q3', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q3',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile QA requires different test strategy',
     agentKey: 'riley',
     message: `Riley, Priya's web QA strategy doesn't cover mobile-specific cases: network degradation, low battery mode, offline sync. I need Kai and Priya to jointly define a mobile QA checklist before Kai starts development so quality is baked in from the start.`,
@@ -1346,7 +1671,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-Q4', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q4',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'App Store listing requires marketing + SEO + engineering',
     agentKey: 'sarah',
     message: `Sarah, the App Store listing needs: marketing copy from Alex (screenshots, description), ASO optimization from Nina (keyword research for App Store), and privacy manifest from James (required by Apple). Coordinate the three-team effort.`,
@@ -1354,7 +1681,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-Q5', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q5',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Push notification system requires eng + growth + marketing',
     agentKey: 'kai',
     message: `Kai, I want a push notification system in the mobile app. James builds the notification service, Sam sets up segmentation (growth), and Lucas owns the notification copy and send schedule (marketing). You need to make sure the mobile side handles all their use cases.`,
@@ -1362,7 +1691,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-Q6', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q6',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile analytics parity with web tracking',
     agentKey: 'kai',
     message: `Kai, Sam needs mobile events to match the web event taxonomy exactly — same event names, same properties, same user identity stitching. Before you implement any tracking, Sam needs to sign off on the mobile event spec. Get the two aligned.`,
@@ -1370,7 +1701,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-Q7', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q7',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile deployment pipeline with TestFlight + Play beta',
     agentKey: 'riley',
     message: `Riley, Omar's CI/CD pipeline doesn't cover mobile. I need a mobile deployment pipeline: Kai's builds → TestFlight (iOS) + Play beta (Android) → Priya's QA → App Store. Omar needs to build this, Kai needs to integrate it. Scope and assign.`,
@@ -1378,7 +1711,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-Q8', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q8',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile-specific marketing campaign coordination',
     agentKey: 'diana',
     message: `Diana, the mobile app needs its own launch campaign separate from the web launch. I want Mia on social (App Store-focused content), Dante on paid campaigns (install ads), and Lucas on email (to existing users to download). Coordinate a mobile-specific marketing sprint.`,
@@ -1386,7 +1721,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-Q9', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q9',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Feature parity decision between mobile and web',
     agentKey: 'sarah',
     message: `Sarah, Kai says he can ship mobile with 70% of web features in the timeline, or 100% of features 6 weeks late. Marketing wants a full-featured launch, growth wants early access to drive mobile installs. I need Sarah to make the call with input from all three.`,
@@ -1394,7 +1731,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-Q10', block: 'XD-Q', blockName: 'Mobile Launch Coordination',
+    id: 'XD-Q10',
+    block: 'XD-Q',
+    blockName: 'Mobile Launch Coordination',
     title: 'Mobile crash reporting and response process',
     agentKey: 'riley',
     message: `Riley, when the mobile app crashes, who responds? I need: Kai triages crashes from Sentry, James checks if it's an API issue, Omar checks infrastructure, and Diana drafts App Store review responses if users complain. Define the mobile incident process.`,
@@ -1404,7 +1743,9 @@ export const scenarios = [
 
   // ─── XD-R: Investor & External Coordination ──────────────────────────────
   {
-    id: 'XD-R1', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R1',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Investor demo requires live product + polished metrics',
     agentKey: 'sarah',
     message: `Sarah, I have an investor demo in 2 weeks. I need: Elena to build a polished demo flow, Ben to pull impressive metrics, Marcus to ensure stability on demo day, and Diana to prepare a one-pager. Coordinate the 4-team prep.`,
@@ -1412,7 +1753,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-R2', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R2',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Press coverage requires coordinated messaging',
     agentKey: 'diana',
     message: `Diana, TechCrunch reached out about a potential story. I need Alex to draft the press kit, Marcus to validate any technical claims, Ben to pull supporting metrics, and everyone to maintain message consistency. Coordinate the response.`,
@@ -1420,7 +1763,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R3', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R3',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Due diligence data room requires all departments',
     agentKey: 'sarah',
     message: `Sarah, an investor requested a data room. I need: Ben to compile financial/usage metrics, Marcus to document the tech stack and security posture, Diana to provide marketing metrics, and Omar to provide infrastructure documentation. 1-week deadline.`,
@@ -1428,7 +1773,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-R4', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R4',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Partnership proposal requires product and marketing alignment',
     agentKey: 'sarah',
     message: `Sarah, a potential partner wants to integrate Mission Control into their platform. I need Marcus to assess the technical feasibility, Diana to evaluate the marketing opportunity, and Nadia to model the growth impact. Get all three to me by Friday.`,
@@ -1436,7 +1783,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R5', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R5',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Conference talk requires eng + marketing coordination',
     agentKey: 'diana',
     message: `Diana, Marcus is giving a conference talk in 3 weeks. He needs a professional slide deck (Alex), sharp demo environment (Elena + James), and a social campaign around his talk (Mia). Coordinate the prep across engineering and marketing.`,
@@ -1444,7 +1793,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R6', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R6',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Monthly investor update email from all departments',
     agentKey: 'sarah',
     message: `Sarah, I send a monthly investor update email. I need Ben's metrics section, Marcus's product progress section, Diana's marketing highlights, and Nadia's growth summary. Set up a recurring process where each person submits their section by the 28th.`,
@@ -1452,7 +1803,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R7', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R7',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'ProductHunt launch generates press interest — coordinate response',
     agentKey: 'diana',
     message: `Diana, if ProductHunt launch goes well, we'll get press inquiries. I need a pre-prepared press kit (Alex), a spokesperson briefing (Marcus for technical questions), and a social rapid-response plan (Mia). All ready before launch day.`,
@@ -1460,7 +1813,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R8', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R8',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'External API partners need security review',
     agentKey: 'marcus',
     message: `Marcus, two potential API integration partners want to review our API documentation and security posture before partnering. James prepares the API docs, Omar prepares the security overview, and Diana prepares the partnership pitch. Coordinate.`,
@@ -1468,7 +1823,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-R9', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R9',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Benchmark comparison publication requires all teams',
     agentKey: 'sarah',
     message: `Sarah, I want to publish a public benchmark comparing Mission Control agent performance vs competitors. Marcus runs the benchmarks, Ben validates the data, Alex writes the analysis, and Nina optimizes it for SEO. Set up the cross-team content project.`,
@@ -1476,7 +1833,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-R10', block: 'XD-R', blockName: 'Investor & External Coordination',
+    id: 'XD-R10',
+    block: 'XD-R',
+    blockName: 'Investor & External Coordination',
     title: 'Fundraising sprint — whole team in execution mode',
     agentKey: 'riley',
     message: `Riley, I'm in fundraising mode for the next 6 weeks. Engineering stays heads-down on ProductHunt prep, marketing helps with press and social proof, data provides weekly metric snapshots, and growth focuses on improving key metrics that investors care about. Coordinate everyone.`,
@@ -1486,7 +1845,9 @@ export const scenarios = [
 
   // ─── XD-S: Process Improvement ───────────────────────────────────────────
   {
-    id: 'XD-S1', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S1',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Cross-dept PR review process is a bottleneck',
     agentKey: 'riley',
     message: `Riley, PRs that touch multiple teams — frontend + backend, or eng + data — are sitting unreviewed for days because no one is sure who's responsible. I need a clear multi-team PR review protocol: who reviews what, SLAs, and escalation.`,
@@ -1494,7 +1855,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S2', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S2',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Adopt a shared project management tool across departments',
     agentKey: 'riley',
     message: `Riley, engineering uses Asana, marketing uses Notion, growth uses a spreadsheet. I want everything in Asana. Facilitate the migration: each department migrates their tasks, connects to cross-dept dependencies, and adopts the shared sprint board by end of month.`,
@@ -1502,7 +1865,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S3', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S3',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Documentation standards across all departments',
     agentKey: 'riley',
     message: `Riley, documentation quality is inconsistent — engineering has detailed technical docs, marketing has almost nothing, data has partial schemas. I need a cross-dept documentation standard: what every team must document, format, and where it lives.`,
@@ -1510,7 +1875,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S4', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S4',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Slack channel structure is chaotic — reorganize',
     agentKey: 'riley',
     message: `Riley, we have 40 Slack channels and no one knows where to post cross-dept questions. I want a restructured channel map: dept channels, project channels, escalation channels, and a clear "where to post X" guide. All teams need to adopt it.`,
@@ -1518,7 +1885,9 @@ export const scenarios = [
     difficulty: 'basic',
   },
   {
-    id: 'XD-S5', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S5',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Cross-dept dependency tracking process',
     agentKey: 'riley',
     message: `Riley, cross-dept dependencies are invisible until they block. I need a formal dependency tracking process: when any agent creates a task that depends on another department, it gets logged in a shared "dependencies" board in Asana with the owning agent tagged.`,
@@ -1526,7 +1895,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S6', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S6',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Handoff checklist templates for common transitions',
     agentKey: 'felix',
     message: `Felix, Zara should build automated handoff checklists for the 5 most common cross-dept transitions: eng→QA, QA→DevOps, marketing→SEO review, data→growth reporting, and growth→marketing campaign brief. Template per handoff type, triggered automatically.`,
@@ -1534,7 +1905,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S7', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S7',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Meeting culture audit — too many cross-dept syncs',
     agentKey: 'riley',
     message: `Riley, we're spending too much time in cross-dept sync meetings. Do an audit: which recurring meetings have clear outcomes, which don't. Kill any meeting that can be replaced by a Slack update or async doc. I want 30% fewer meetings by next quarter.`,
@@ -1542,7 +1915,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S8', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S8',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Decision log for cross-dept decisions',
     agentKey: 'riley',
     message: `Riley, cross-dept decisions keep getting re-litigated because there's no record. I want every cross-dept decision logged with: who decided, what was decided, why, and what alternatives were rejected. Set up the decision log process and get all leads to adopt it.`,
@@ -1550,7 +1925,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-S9', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S9',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'OKR setting process spans all departments',
     agentKey: 'riley',
     message: `Riley, Q3 OKR setting is coming. I want a structured process: each department proposes OKRs, cross-dept dependencies are flagged, I review for conflicts, and final OKRs are agreed before the quarter starts. Run the 3-week process.`,
@@ -1558,7 +1935,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-S10', block: 'XD-S', blockName: 'Process Improvement',
+    id: 'XD-S10',
+    block: 'XD-S',
+    blockName: 'Process Improvement',
     title: 'Tool rationalization — eliminate redundant tooling',
     agentKey: 'riley',
     message: `Riley, we have tool sprawl — 3 different tools doing similar things across departments. I want Felix to audit all tools by department, identify overlaps, and propose a rationalized toolset. Target: reduce tool count by 25% while keeping all department needs met.`,
@@ -1568,7 +1947,9 @@ export const scenarios = [
 
   // ─── XD-T: Chaos & Conflict ───────────────────────────────────────────────
   {
-    id: 'XD-T1', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T1',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Engineering and marketing in direct conflict over launch date',
     agentKey: 'riley',
     message: `Riley, Marcus says the product isn't ready to ship — 3 critical bugs, performance issues, and missing tests. Diana already announced the launch date publicly and ads are scheduled. They're in direct conflict. I need you to mediate and give me a recommendation.`,
@@ -1576,7 +1957,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T2', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T2',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Blocked handoff — QA refuses to sign off without tests',
     agentKey: 'riley',
     message: `Riley, Priya is refusing to sign off on the authentication feature because James said there's "no time" to write tests. The deploy window is in 4 hours. I need a decision: delay the deployment, ship without full test coverage, or find a middle ground.`,
@@ -1584,7 +1967,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T3', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T3',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Scope creep from marketing eating engineering sprint',
     agentKey: 'riley',
     message: `Riley, Diana keeps adding "small requests" to engineering mid-sprint — this sprint it's 7 unplanned tasks totaling 14 story points. Marcus is frustrated, team velocity is tanking. I need you to establish a mid-sprint change freeze and handle Diana's requests.`,
@@ -1592,7 +1977,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T4', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T4',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Data team output is wrong — growth trusting bad data',
     agentKey: 'ada',
     message: `Ada, Sam discovered that the conversion metrics he's been making decisions on for 3 weeks have been wrong — an off-by-factor-of-10 bug in Carlos's pipeline. Nadia made $1,200 in ad spend decisions on that data. What do we do?`,
@@ -1600,7 +1987,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T5', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T5',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Two agents both claim ownership of the same task',
     agentKey: 'riley',
     message: `Riley, both Alex (marketing) and Raj (SEO) are both working on the same blog post about agent performance — neither knew the other started it. They've each spent 3 hours. How do we resolve the duplication and prevent this in the future?`,
@@ -1608,7 +1997,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-T6', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T6',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Growth experiment breaks production feature',
     agentKey: 'marcus',
     message: `Marcus, Maya's A/B test variant — which James deployed last night — introduced a bug that's breaking the main navigation for 10% of users. Maya says the experiment is critical, Marcus says the variant must be rolled back. Adjudicate.`,
@@ -1616,7 +2007,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T7', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T7',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'SEO and marketing disagree on content direction',
     agentKey: 'riley',
     message: `Riley, Nina says the blog content calendar needs to shift to long-tail keywords and technical tutorials, but Diana wants brand storytelling and product announcements. Both can't be the primary strategy. Facilitate the decision.`,
@@ -1624,7 +2017,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-T8', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T8',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Miscommunication causes double email send to entire user base',
     agentKey: 'riley',
     message: `Riley, Lucas sent the same announcement email twice to all 2,400 users because he thought Zara's automation had failed, but it hadn't. Users are complaining. Marketing needs a damage control response, automation needs a safeguard, and I need a root cause analysis.`,
@@ -1632,7 +2027,9 @@ export const scenarios = [
     difficulty: 'advanced',
   },
   {
-    id: 'XD-T9', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T9',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'Sprint ends with critical cross-dept task incomplete',
     agentKey: 'riley',
     message: `Riley, sprint ended and the data pipeline that growth was counting on for their launch experiment is only 60% done. Carlos says he needs 2 more days, but the growth experiment was supposed to start Monday. Do we delay the experiment or find a workaround?`,
@@ -1640,7 +2037,9 @@ export const scenarios = [
     difficulty: 'intermediate',
   },
   {
-    id: 'XD-T10', block: 'XD-T', blockName: 'Chaos & Conflict',
+    id: 'XD-T10',
+    block: 'XD-T',
+    blockName: 'Chaos & Conflict',
     title: 'All-hands priorities suddenly invalidated by market event',
     agentKey: 'riley',
     message: `Riley, a major competitor just launched a directly competing product this morning and it's getting massive coverage. Our entire sprint plan may need to change — do we shift engineering to competitive response, rush marketing to publish a comparison, and delay the mobile launch? I need a decision framework fast.`,

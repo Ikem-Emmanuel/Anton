@@ -3,10 +3,10 @@
 // WAL mode for concurrent reads during writes.
 // FTS5 for full-text search across all memories.
 
-import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import Database from 'better-sqlite3';
 
 let db: InstanceType<typeof Database> | null = null;
 
