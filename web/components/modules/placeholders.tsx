@@ -44,38 +44,6 @@ function Placeholder({
   );
 }
 
-export function Travel() {
-  return (
-    <Placeholder
-      label="TRAVEL"
-      sub="Trip planning + status"
-      source="tier2.jsx"
-      preview={[
-        'Upcoming + past trips with flight/hotel/expense ties',
-        'Agent-assisted: "find a 3-night stop between X and Y"',
-        'Automated out-of-office coordination with team agents',
-        'Receipt capture → linked to Expenses automatically',
-      ]}
-    />
-  );
-}
-
-export function Usage() {
-  return (
-    <Placeholder
-      label="USAGE"
-      sub="System telemetry + model spend"
-      source="tier2.jsx"
-      preview={[
-        'Token usage per agent per day (local vs Claude split)',
-        'Latency percentiles, circuit-breaker events',
-        'Memory growth, skill success-rate trends',
-        'Budget alerts when Claude quota approaches cap',
-      ]}
-    />
-  );
-}
-
 export function IntegrationsHub() {
   return (
     <Placeholder

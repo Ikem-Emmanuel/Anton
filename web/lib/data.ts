@@ -1057,6 +1057,124 @@ export const TRANSACTIONS: Transaction[] = [
   { date: 'Apr 06', vendor: 'Datadog', cat: 'infra', amt: 210, anton: 'auto-filed', flag: 'ok' },
 ];
 
+export type TripStatus = 'booked' | 'planning' | 'proposed';
+
+export type TripItinerary = {
+  /** When (e.g. "Apr 22, 6:20a"). */
+  t: string;
+  /** What (e.g. "SFO → JFK"). */
+  a: string;
+  /** Detail (e.g. "Delta 402 · seat 3A · confirmation VFX2K7"). */
+  b: string;
+};
+
+export type FlightOption = {
+  carrier: string;
+  depart: string;
+  price: string;
+  recommended: boolean;
+};
+
+export type Trip = {
+  id: number;
+  where: string;
+  dates: string;
+  purpose: string;
+  status: TripStatus;
+  cost: number | null;
+  progress: string[];
+  itinerary?: TripItinerary[];
+  flightOptions?: FlightOption[];
+};
+
+export const TRIPS: Trip[] = [
+  {
+    id: 0,
+    where: 'New York',
+    dates: 'Apr 22 — Apr 25',
+    purpose: 'Board dinner + 3 investor meets',
+    status: 'booked',
+    cost: 1840,
+    progress: ['Delta SFO→JFK (seat 3A)', 'Soho Grand — 3 nights', 'Uber credits applied'],
+    itinerary: [
+      { t: 'Apr 22, 6:20a', a: 'SFO → JFK', b: 'Delta 402 · seat 3A · confirmation VFX2K7' },
+      { t: 'Apr 22, 3:40p', a: 'Check in', b: 'Soho Grand · 310 W Broadway · confirmed' },
+      { t: 'Apr 23, 9:00a', a: 'Board dinner', b: 'Balthazar · private room · 14 people' },
+      { t: 'Apr 24, 2:00p', a: 'Meeting · Sequoia', b: '550 Madison Ave · Anton added to calendar' },
+      { t: 'Apr 25, 4:50p', a: 'JFK → SFO', b: 'Delta 415 · seat 7F' },
+    ],
+  },
+  {
+    id: 1,
+    where: 'Austin',
+    dates: 'May 8 — May 11',
+    purpose: 'Team offsite',
+    status: 'planning',
+    cost: null,
+    progress: ['Comparing flight options', 'Hotel block held'],
+    flightOptions: [
+      { carrier: 'United 724', depart: '6:00a', price: '$340', recommended: true },
+      { carrier: 'Delta 1104', depart: '9:15a', price: '$380', recommended: false },
+      { carrier: 'Southwest', depart: '11:30a', price: '$290', recommended: false },
+    ],
+  },
+  {
+    id: 2,
+    where: 'London',
+    dates: 'Jun — TBD',
+    purpose: 'Early-stage summit',
+    status: 'proposed',
+    cost: null,
+    progress: ['3 conference options identified', 'Awaiting your priority call'],
+  },
+];
+
+export type UsageMetric = {
+  k: string;
+  v: string;
+  sub: string;
+  trend: string;
+};
+
+export const USAGE_METRICS: UsageMetric[] = [
+  { k: 'LLM tokens', v: '4.2M', sub: '3.8M local · 430K cloud', trend: '+18%' },
+  { k: 'Tool calls', v: '14,328', sub: 'reads 8.1K · writes 2.2K', trend: '+5%' },
+  { k: 'Anton wake time', v: '41h', sub: 'of 168h possible', trend: '−3%' },
+  { k: 'Cloud cost', v: '$47.20', sub: 'claude · deep research only', trend: '+12%' },
+];
+
+export type UsageByAgent = {
+  a: string;
+  tok: number;
+  calls: number;
+  cost: number;
+  /** 0-100 bar width. */
+  bar: number;
+};
+
+export const USAGE_BY_AGENT: UsageByAgent[] = [
+  { a: 'Marcus', tok: 980, calls: 4200, cost: 12.4, bar: 95 },
+  { a: 'Kai', tok: 640, calls: 2100, cost: 8.1, bar: 65 },
+  { a: 'Alex', tok: 520, calls: 1900, cost: 11.8, bar: 58 },
+  { a: 'Priya', tok: 410, calls: 1400, cost: 4.2, bar: 44 },
+  { a: 'Sarah', tok: 380, calls: 1100, cost: 3.8, bar: 40 },
+  { a: 'Ada', tok: 320, calls: 980, cost: 2.1, bar: 34 },
+  { a: 'James', tok: 240, calls: 620, cost: 1.9, bar: 25 },
+  { a: 'others', tok: 720, calls: 2028, cost: 2.9, bar: 52 },
+];
+
+export type UsageDay = { d: string; v: number };
+
+export const USAGE_DAYS: UsageDay[] = [
+  { d: 'Mon', v: 620 },
+  { d: 'Tue', v: 840 },
+  { d: 'Wed', v: 710 },
+  { d: 'Thu', v: 980 },
+  { d: 'Fri', v: 540 },
+  { d: 'Sat', v: 240 },
+  { d: 'Sun', v: 270 },
+];
+
 export const APPROVALS: Approval[] = [
   {
     id: 1,

@@ -16,11 +16,13 @@ import Inbox from '@/components/modules/inbox';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
 import People from '@/components/modules/people';
-import { ApprovalsHub, IntegrationsHub, Travel, Usage } from '@/components/modules/placeholders';
+import { ApprovalsHub, IntegrationsHub } from '@/components/modules/placeholders';
 import Research from '@/components/modules/research';
 import Settings from '@/components/modules/settings';
 import Tasks from '@/components/modules/tasks';
 import DeptChart from '@/components/modules/team';
+import Travel from '@/components/modules/travel';
+import Usage from '@/components/modules/usage';
 import type { Route } from './nav';
 
 export type TrayMode = 'normal' | 'hidden';
