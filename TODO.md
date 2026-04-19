@@ -582,43 +582,45 @@ Upgrade path = edit `config/models.ts` only.
 
 ## 14. Progress Log
 
-| Date       | What                                                                                                                                        | Phase    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                        | V1       |
-| 2026-04-14 | V2 architecture researched and documented                                                                                                   | Planning |
-| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                         | Planning |
-| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                    | Hardware |
-| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                           | 0        |
-| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                   | 0        |
-| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                    | 0        |
-| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                       | 1        |
-| 2026-04-14 | Brain wired into Slack + web paths                                                                                                          | 1        |
-| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                      | 1        |
-| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                     | 1        |
-| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                               | 2        |
-| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                     | 2        |
-| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                     | 1        |
-| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                       | 2.5      |
-| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                           | 2.5      |
-| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                             | 2.5      |
-| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                              | 4        |
-| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                        | —        |
-| 2026-04-18 | Phase 3.5 skill loop shipped — skills + evaluate + feedback-capture + user_model + skill-extract modules all landed with tests              | 3.5      |
-| 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                          | 2.5      |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
-| 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints | 4.5      |
-| 2026-04-19 | `/event/[id]` route made dynamic — timeline deep-links every row; SSG dropped; EventDetail hydrates from useEvents                          | 4.5      |
-| 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
-| 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
-| 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
-| 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                   | 3        |
-| 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                | 3        |
-| 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests         | 3        |
-| 2026-04-19 | §4.5.6 cross-agent skill sharing — discovery + proposal flow via `src/heart/skill-sharing.js`, 4h scan wired into proactive; +6 tests       | 3        |
-| 2026-04-19 | docs/PROGRESS.md refreshed — Phase 3 work log, updated test counts, fixed-in-Phase-3 bugs table, new Next Work Session                      | —        |
-| 2026-04-19 | Repo pushed to `github.com/Ikem-Emmanuel/Anton` (public) — pre-push hook grandfathered 4 pre-existing attribution SHAs                      | —        |
-| 2026-04-19 | **PR #1 MERGED** — Phase 3 (8 commits) → `phase4/web-ui` via merge commit `4300627`; source branch deleted                                  | 3        |
-|            | **PHASE 3 COMPLETE.** NEXT: consider `phase4/web-ui` → `main` PR, or start Phase 5/6, or pick up deferred follow-ups.                       | —        |
+| Date       | What                                                                                                                                                | Phase    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 2026-04-14 | V1 built: notify, watcher, briefing, events, trust, audit, handoffs, context, web UI                                                                | V1       |
+| 2026-04-14 | V2 architecture researched and documented                                                                                                           | Planning |
+| 2026-04-14 | V2 implementation plan created (8 phases, 12 weeks)                                                                                                 | Planning |
+| 2026-04-14 | Mac Studio 128GB ordered                                                                                                                            | Hardware |
+| 2026-04-14 | Organ system + READMEs (brain, memory, nervous, heart, voice, eyes, hands, spine)                                                                   | 0        |
+| 2026-04-14 | Ollama 0.20.7 + 3 models + localhost bind                                                                                                           | 0        |
+| 2026-04-14 | TypeScript scaffold + `config/models.ts`                                                                                                            | 0        |
+| 2026-04-14 | Brain core: ollama-client.ts + classifier.ts + brain.ts + thinking.ts                                                                               | 1        |
+| 2026-04-14 | Brain wired into Slack + web paths                                                                                                                  | 1        |
+| 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                              | 1        |
+| 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                             | 1        |
+| 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                                       | 2        |
+| 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                             | 2        |
+| 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                             | 1        |
+| 2026-04-18 | **Audit**: identified 11 broken/disconnected pieces in phase 1+2 code                                                                               | 2.5      |
+| 2026-04-18 | Research: local LLM orchestration, UX/UI 2026 patterns — complete                                                                                   | 2.5      |
+| 2026-04-18 | Revised plan written: `docs/BRAIN-V2.1-PLAN.md`                                                                                                     | 2.5      |
+| 2026-04-18 | Design prompt written: `docs/DESIGN-PROMPT.md`                                                                                                      | 4        |
+| 2026-04-18 | TODO rewritten to reflect reality + Phase 2.5 insert                                                                                                | —        |
+| 2026-04-18 | Phase 3.5 skill loop shipped — skills + evaluate + feedback-capture + user_model + skill-extract modules all landed with tests                      | 3.5      |
+| 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                                  | 2.5      |
+| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                            | 4.5      |
+| 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints         | 4.5      |
+| 2026-04-19 | `/event/[id]` route made dynamic — timeline deep-links every row; SSG dropped; EventDetail hydrates from useEvents                                  | 4.5      |
+| 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                                  | —        |
+| 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                                 | 2.5      |
+| 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests                     | 3        |
+| 2026-04-19 | §4.6 dual-write shipped — V1 journals now land in SQLite + markdown; CHECK(type) dropped via one-shot migration; +3 tests                           | 3        |
+| 2026-04-19 | §4.2 sqlite-vec shipped — vec0 table, hybrid FTS5+vector retrieval with RRF, brain uses query-aware memory context; +6 tests                        | 3        |
+| 2026-04-19 | §4.3 proactive trigger loop shipped — EOD/event-scan/stalled-task in `src/heart/proactive.js`, wired via `initProactive`; +11 tests                 | 3        |
+| 2026-04-19 | §4.5.6 cross-agent skill sharing — discovery + proposal flow via `src/heart/skill-sharing.js`, 4h scan wired into proactive; +6 tests               | 3        |
+| 2026-04-19 | docs/PROGRESS.md refreshed — Phase 3 work log, updated test counts, fixed-in-Phase-3 bugs table, new Next Work Session                              | —        |
+| 2026-04-19 | Repo pushed to `github.com/Ikem-Emmanuel/Anton` (public) — pre-push hook grandfathered 4 pre-existing attribution SHAs                              | —        |
+| 2026-04-19 | **PR #1 MERGED** — Phase 3 (8 commits) → `phase4/web-ui`; source branch deleted                                                                     | 3        |
+| 2026-04-19 | History rewrite via `git filter-repo` — stripped Claude `Co-Authored-By` trailers from 4 historical commits; all 114 commits re-SHA'd; force-pushed | —        |
+| 2026-04-19 | **PR #2 MERGED** — `phase4/web-ui` (56 commits) → `main` via merge commit `afe2a05`. `main` now holds Phase 2.5 + 3 + 3A + 3B + 3.5 + 4 + 4.5       | —        |
+|            | **ALL MERGED TO MAIN.** NEXT: Phase 5 (hardware — blocked on Studio), Phase 6 (self-training), or deferred follow-ups.                              | —        |
 
 ---
 
