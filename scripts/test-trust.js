@@ -12,8 +12,8 @@ import {
   logAction,
   updateOutcome,
   verifyChain,
-} from '../src/audit.js';
-import { classifyAction, getAllActions, TIER } from '../src/trust.js';
+} from '../src/hands/audit.js';
+import { classifyAction, getAllActions } from '../src/hands/trust.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');

@@ -2,7 +2,7 @@
 // Plain Markdown files for cross-agent knowledge sharing.
 // No database, no graph — just files that agents can read.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 let _antonRoot;

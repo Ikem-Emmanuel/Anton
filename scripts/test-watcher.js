@@ -8,7 +8,7 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from '../src/watcher.js';
+import { checkGitState, getHealthSnapshot, initWatcher, shutdownWatcher } from '../src/heart/watcher.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');

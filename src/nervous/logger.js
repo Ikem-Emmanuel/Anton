@@ -1,7 +1,7 @@
 // ─── Agent Activity Logger ───────────────────────────────────
 // Per-agent log files tracking everything: messages, tool calls, files edited, tokens
 
-import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 let logsDir;
@@ -36,7 +36,7 @@ function logEntry(agentName, entry) {
 export function logMessage(agentName, message, source) {
   logEntry(agentName, {
     type: 'message_received',
-    source,          // 'dm', 'anton-engineering', etc
+    source, // 'dm', 'anton-engineering', etc
     message: message.slice(0, 500),
   });
 }
@@ -96,7 +96,7 @@ export function logHandoff(fromAgent, toAgent, reason) {
 export function logAsanaAction(agentName, action, taskId, details) {
   logEntry(agentName, {
     type: 'asana_action',
-    action,      // 'created', 'updated', 'moved', 'commented'
+    action, // 'created', 'updated', 'moved', 'commented'
     task_id: taskId,
     details: details?.slice(0, 200),
   });
@@ -111,22 +111,45 @@ export function getAgentSummary(agentName) {
 
   try {
     const lines = readFileSync(file, 'utf-8').split('\n').filter(Boolean);
-    const entries = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    const entries = lines
+      .map((l) => {
+        try {
+          return JSON.parse(l);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
 
-    const messages = entries.filter(e => e.type === 'message_received').length;
-    const responses = entries.filter(e => e.type === 'response');
-    const errors = entries.filter(e => e.type === 'error').length;
-    const tools = entries.filter(e => e.type === 'tool_use');
-    const handoffs = entries.filter(e => e.type === 'handoff_sent').length;
-    const asanaActions = entries.filter(e => e.type === 'asana_action').length;
+    const messages = entries.filter((e) => e.type === 'message_received').length;
+    const responses = entries.filter((e) => e.type === 'response');
+    const errors = entries.filter((e) => e.type === 'error').length;
+    const tools = entries.filter((e) => e.type === 'tool_use');
+    const handoffs = entries.filter((e) => e.type === 'handoff_sent').length;
+    const asanaActions = entries.filter((e) => e.type === 'asana_action').length;
 
     const totalTokens = responses.reduce((sum, r) => sum + (r.tokens_est || 0), 0);
-    const avgDuration = responses.length > 0
-      ? Math.round(responses.reduce((sum, r) => sum + (r.duration_ms || 0), 0) / responses.length)
-      : 0;
+    const avgDuration =
+      responses.length > 0
+        ? Math.round(responses.reduce((sum, r) => sum + (r.duration_ms || 0), 0) / responses.length)
+        : 0;
 
-    const filesEdited = [...new Set(tools.filter(t => t.tool === 'Write' || t.tool === 'Edit').map(t => t.file).filter(Boolean))];
-    const filesRead = [...new Set(tools.filter(t => t.tool === 'Read').map(t => t.file).filter(Boolean))];
+    const filesEdited = [
+      ...new Set(
+        tools
+          .filter((t) => t.tool === 'Write' || t.tool === 'Edit')
+          .map((t) => t.file)
+          .filter(Boolean)
+      ),
+    ];
+    const filesRead = [
+      ...new Set(
+        tools
+          .filter((t) => t.tool === 'Read')
+          .map((t) => t.file)
+          .filter(Boolean)
+      ),
+    ];
 
     return {
       agent: agentName,

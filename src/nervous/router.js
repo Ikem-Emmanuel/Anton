@@ -1,15 +1,24 @@
 // ─── Smart Router ────────────────────────────────────────────
 // Routes messages to the right team member
 
-import { TEAM, findByName, getDeptLead } from './team.js';
+import { findByName, getDeptLead, TEAM } from '../brain/team.js';
 
 const CHANNEL_TO_DEPT = {
-  'anton-engineering': 'eng', 'anton-pull-requests': 'eng', 'anton-qa-results': 'eng',
-  'anton-deployments': 'eng', 'anton-sprint-updates': 'eng', 'anton-feature-requests': 'eng',
-  'anton-marketing': 'mktg', 'anton-seo': 'seo', 'anton-automation': 'auto',
-  'anton-data': 'data', 'anton-growth': 'growth',
-  'anton-standup': 'coord', 'anton-blockers': 'all', 'anton-cross-dept': 'all',
-  'dm': 'all',  // DMs default to cross-dept routing
+  'anton-engineering': 'eng',
+  'anton-pull-requests': 'eng',
+  'anton-qa-results': 'eng',
+  'anton-deployments': 'eng',
+  'anton-sprint-updates': 'eng',
+  'anton-feature-requests': 'eng',
+  'anton-marketing': 'mktg',
+  'anton-seo': 'seo',
+  'anton-automation': 'auto',
+  'anton-data': 'data',
+  'anton-growth': 'growth',
+  'anton-standup': 'coord',
+  'anton-blockers': 'all',
+  'anton-cross-dept': 'all',
+  dm: 'all', // DMs default to cross-dept routing
 };
 
 const ROLE_PATTERNS = [
@@ -47,17 +56,15 @@ export function route(text, channelName) {
 
   // 1. Direct address at message start — "Riley, ..." / "Hey James, ..." / "James:"
   for (const member of Object.values(TEAM)) {
-    if (new RegExp(`^(?:hey\\s+)?${member.name}[,!:]`, 'i').test(text))
-      return member;
+    if (new RegExp(`^(?:hey\\s+)?${member.name}[,!:]`, 'i').test(text)) return member;
   }
 
   // 2. Explicit delegation — "ask James", "ping Marcus", "loop in Elena", "tell Omar"
   for (const member of Object.values(TEAM)) {
     if (
-      new RegExp(
-        `\\b(?:ask|tell|ping|get|have|cc|loop\\s+in|notify|message|contact)\\s+${member.name}\\b`,
-        'i',
-      ).test(text)
+      new RegExp(`\\b(?:ask|tell|ping|get|have|cc|loop\\s+in|notify|message|contact)\\s+${member.name}\\b`, 'i').test(
+        text
+      )
     )
       return member;
   }
@@ -78,9 +85,7 @@ export function route(text, channelName) {
   }
 
   // 6. Ambiguity check — if 2+ names are mentioned with no strong keyword context, return null
-  const mentionedAgents = Object.values(TEAM).filter((m) =>
-    new RegExp(`\\b${m.name}\\b`, 'i').test(text),
-  );
+  const mentionedAgents = Object.values(TEAM).filter((m) => new RegExp(`\\b${m.name}\\b`, 'i').test(text));
   if (mentionedAgents.length >= 2) return null;
 
   // 7. Default dept lead (coord → Riley, all → Marcus)
@@ -89,7 +94,9 @@ export function route(text, channelName) {
 }
 
 export function isEveryoneRequest(text) {
-  return /\b(every\s*(one|body|member|team\s*member)|all\s*(of\s*you|agents|members|team)|each\s*(of\s*you|person|member)|introduce\s*(your|them)sel(f|ves)|take\s*turns)\b/i.test(text);
+  return /\b(every\s*(one|body|member|team\s*member)|all\s*(of\s*you|agents|members|team)|each\s*(of\s*you|person|member)|introduce\s*(your|them)sel(f|ves)|take\s*turns)\b/i.test(
+    text
+  );
 }
 
 export function detectCollaboration(text) {

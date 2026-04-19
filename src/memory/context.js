@@ -13,7 +13,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { getDailyNote, readDeptMemory, readSharedMemory } from './memory.js';
+import { getDailyNote, readDeptMemory, readSharedMemory } from './memory-v1.js';
 
 let _dataDir = null;
 let _summariesDir = null;

@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  initMemory,
-  readSharedMemory,
-  appendSharedMemory,
-  readDeptMemory,
-  appendDeptMemory,
-  getDailyNote,
   appendDailyNote,
-} from './memory.js';
+  appendDeptMemory,
+  appendSharedMemory,
+  getDailyNote,
+  initMemory,
+  readDeptMemory,
+  readSharedMemory,
+} from './memory-v1.js';
 
 describe('memory', () => {
   let tempDir;

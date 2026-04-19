@@ -5,16 +5,12 @@ const { App } = pkg;
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
-import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
-import { getReport, initAnalytics, trackRequest } from './src/v1-archive/analytics.js';
-import { initAudit } from './src/v1-archive/audit.js';
-import { initBriefing } from './src/v1-archive/briefing.js';
-import { initContext } from './src/v1-archive/context.js';
-// V1 handle.js removed — brain handles classification now
-import { initLogger, logError, logMessage, logResponse } from './src/v1-archive/logger.js';
-import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/v1-archive/memory.js';
-import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/v1-archive/notify.js';
+import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/brain/team.js';
+import { describeImages, initVision } from './src/eyes/vision.js';
+import { initAudit } from './src/hands/audit.js';
+import { openDM, postAs, postTyping, replaceTyping } from './src/hands/slack.js';
+import { initBriefing } from './src/heart/briefing.js';
+import { consumeBriefingBuffer, initNotify, notifyNoel } from './src/heart/notify.js';
 import {
   detectCommand,
   initOrchestrator,
@@ -22,10 +18,7 @@ import {
   startTeam,
   stopTeam,
   teamStatus,
-} from './src/v1-archive/orchestrator.js';
-import { initPriority } from './src/v1-archive/priority.js';
-import { channelToDept } from './src/v1-archive/router.js';
-// V1 route, isEveryoneRequest, detectCollaboration removed — brain handles routing
+} from './src/heart/orchestrator.js';
 import {
   cancelJob,
   formatTime,
@@ -36,13 +29,18 @@ import {
   loadPersistedTimes,
   parseTimeStr,
   scheduleJob,
-} from './src/v1-archive/scheduler.js';
-import { ask, consumeHandoffs, init as initSessions } from './src/v1-archive/sessions.js';
-import { openDM, postAs, postTyping, replaceTyping } from './src/v1-archive/slack.js';
-import { getBoardReport, initTaskQueue } from './src/v1-archive/taskqueue.js';
-import { findByName, getDeptMembers, HANDOFF_RULES, TEAM } from './src/v1-archive/team.js';
-import { describeImages, initVision } from './src/v1-archive/vision.js';
-import { checkGitState, getHealthSnapshot, initWatcher } from './src/v1-archive/watcher.js';
+} from './src/heart/scheduler.js';
+import { checkGitState, getHealthSnapshot, initWatcher } from './src/heart/watcher.js';
+import { initContext } from './src/memory/context.js';
+import { appendDailyNote, appendDeptMemory, appendSharedMemory, initMemory } from './src/memory/memory-v1.js';
+import { ask, consumeHandoffs, init as initSessions } from './src/memory/sessions.js';
+import { listMemories, listTasks, seedTasksIfEmpty } from './src/memory/sqlite.js';
+import { getReport, initAnalytics, trackRequest } from './src/nervous/analytics.js';
+import { initLogger, logError, logMessage, logResponse } from './src/nervous/logger.js';
+import { initPriority } from './src/nervous/priority.js';
+import { channelToDept } from './src/nervous/router.js';
+import { getBoardReport, initTaskQueue } from './src/spine/taskqueue.js';
+import { emitApprovalCreated, emitApprovalResolved, initWeb } from './src/spine/web.js';
 
 // ─── Paths & Config ──────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));

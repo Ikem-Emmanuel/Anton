@@ -11,10 +11,10 @@
  *     full pipeline end-to-end.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { writeFile, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // vi.hoisted ensures mockQuery is created before the mock factory is registered.
 // This is the correct ESM pattern in Vitest — vi.fn() inside the factory
@@ -25,10 +25,12 @@ vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: mockQuery,
 }));
 
-import { extFromMime, buildVisionPrompt, describeImages, describeImage } from './vision.js';
+import { buildVisionPrompt, describeImage, describeImages, extFromMime } from './vision.js';
 
 // Top-level reset — ensures mockQuery call count is clean for every test
-beforeEach(() => { mockQuery.mockClear(); });
+beforeEach(() => {
+  mockQuery.mockClear();
+});
 
 // ─────────────────────────────────────────────────────────────
 // extFromMime — MIME type → file extension
@@ -93,7 +95,9 @@ describe('describeImages — mocked SDK', () => {
 
     // Default mock: query yields one result message
     mockQuery.mockImplementation(async function* () {
-      yield { result: 'Receipt from Starbucks for $12.50 on 2026-04-13.\nAWAITING_APPROVAL: purchase — Starbucks $12.50' };
+      yield {
+        result: 'Receipt from Starbucks for $12.50 on 2026-04-13.\nAWAITING_APPROVAL: purchase — Starbucks $12.50',
+      };
     });
   });
 
@@ -149,7 +153,7 @@ describe('describeImages — mocked SDK', () => {
     await describeImages(
       [{ url_private: 'https://slack.com/x.jpg', mimetype: 'image/jpeg' }],
       'tok',
-      'this is a Starbucks receipt',
+      'this is a Starbucks receipt'
     );
 
     const prompt = mockQuery.mock.calls[0][0].prompt;
@@ -162,14 +166,14 @@ describe('describeImages — mocked SDK', () => {
       arrayBuffer: async () => Buffer.from('data').buffer,
     });
 
-    mockQuery.mockImplementation(async function* () {
+    mockQuery.mockImplementation(() => {
       throw new Error('SDK error');
     });
 
     const result = await describeImages(
       [{ url_private: 'https://slack.com/fail.jpg', mimetype: 'image/jpeg' }],
       'tok',
-      '',
+      ''
     );
 
     expect(result).toBeNull();
@@ -181,7 +185,7 @@ describe('describeImages — mocked SDK', () => {
     const result = await describeImages(
       [{ url_private: 'https://slack.com/private.jpg', mimetype: 'image/jpeg' }],
       'INVALID_TOKEN',
-      '',
+      ''
     );
 
     expect(result).toBeNull();
@@ -193,11 +197,7 @@ describe('describeImages — mocked SDK', () => {
       arrayBuffer: async () => Buffer.from('img').buffer,
     });
 
-    await describeImages(
-      [{ url_private: 'https://slack.com/x.jpg', mimetype: 'image/jpeg' }],
-      'tok',
-      '',
-    );
+    await describeImages([{ url_private: 'https://slack.com/x.jpg', mimetype: 'image/jpeg' }], 'tok', '');
 
     const options = mockQuery.mock.calls[0][0].options;
     expect(options.model).toBe('sonnet');
@@ -234,10 +234,12 @@ describe.skipIf(!process.env.LIVE_SDK)('LIVE SDK smoke test', () => {
     const imgPath = join(tmpdir(), 'test-vision-smoke.png');
     const PNG_1x1 = Buffer.from(
       '89504e470d0a1a0a0000000d4948445200000001000000010802000000' +
-      '9001' + '2e0000000c49444154789c6260600000000004' +
-      '0001' + '4b9842000000000049454e44ae426082',
-      'hex',
-    ).subarray(0, 67);  // minimal valid PNG header (real SDK will handle it)
+        '9001' +
+        '2e0000000c49444154789c6260600000000004' +
+        '0001' +
+        '4b9842000000000049454e44ae426082',
+      'hex'
+    ).subarray(0, 67); // minimal valid PNG header (real SDK will handle it)
 
     await writeFile(imgPath, PNG_1x1);
 
@@ -252,7 +254,10 @@ describe.skipIf(!process.env.LIVE_SDK)('LIVE SDK smoke test', () => {
     mockQuery.mockImplementation(async function* () {
       // Delegate to real SDK — dynamically import to bypass the module-level mock
       const { query: realQuery } = await import('@anthropic-ai/claude-agent-sdk?real');
-      yield* realQuery({ prompt: 'Describe this image briefly.', options: { model: 'sonnet', allowedTools: ['Read'], permissionMode: 'bypassPermissions' } });
+      yield* realQuery({
+        prompt: 'Describe this image briefly.',
+        options: { model: 'sonnet', allowedTools: ['Read'], permissionMode: 'bypassPermissions' },
+      });
     });
 
     const files = [{ url_private: imgPath, mimetype: 'image/png' }];

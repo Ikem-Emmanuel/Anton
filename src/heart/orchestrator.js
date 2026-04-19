@@ -1,13 +1,13 @@
 // ─── Sprint Orchestrator ─────────────────────────────────────
 // Kicks off autonomous work from Slack commands
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { TEAM, getDeptMembers, getDeptLead } from './team.js';
-import { ask } from './sessions.js';
-import { postAs, postTyping, replaceTyping } from './slack.js';
-import { trackRequest } from './analytics.js';
+import { getDeptLead, getDeptMembers, TEAM } from '../brain/team.js';
+import { postAs, postTyping, replaceTyping } from '../hands/slack.js';
+import { ask } from '../memory/sessions.js';
+import { trackRequest } from '../nervous/analytics.js';
 
 // Track active sprints — persisted across restarts
 const activeSprints = new Map(); // dept → { started, agents, lead }
@@ -51,25 +51,35 @@ export function detectCommand(text) {
   const lower = text.toLowerCase();
 
   // Start team
-  const startMatch = lower.match(/\b(start|kick off|launch|spin up|boot)\s+(the\s+)?(engineering|marketing|seo|data|growth|automation|all)\s*(team|sprint|agents?)?/);
+  const startMatch = lower.match(
+    /\b(start|kick off|launch|spin up|boot)\s+(the\s+)?(engineering|marketing|seo|data|growth|automation|all)\s*(team|sprint|agents?)?/
+  );
   if (startMatch) return { type: 'start', dept: startMatch[3] };
 
   // Run sprint
   if (/\b(run|start|begin)\s+(a\s+)?sprint\b/i.test(text)) return { type: 'sprint' };
 
   // Status of running agents
-  if (/\b(who.?s (working|active|running)|active agents|team status|what.?s running)\b/i.test(text)) return { type: 'status' };
+  if (/\b(who.?s (working|active|running)|active agents|team status|what.?s running)\b/i.test(text))
+    return { type: 'status' };
 
   // Stop
-  const stopMatch = lower.match(/\b(stop|shut down|kill|end)\s+(the\s+)?(engineering|marketing|seo|data|growth|automation|all)\s*(team|sprint|agents?)?/);
+  const stopMatch = lower.match(
+    /\b(stop|shut down|kill|end)\s+(the\s+)?(engineering|marketing|seo|data|growth|automation|all)\s*(team|sprint|agents?)?/
+  );
   if (stopMatch) return { type: 'stop', dept: stopMatch[3] };
 
   return null;
 }
 
 const DEPT_NAMES = {
-  engineering: 'eng', marketing: 'mktg', seo: 'seo',
-  data: 'data', growth: 'growth', automation: 'auto', all: 'all',
+  engineering: 'eng',
+  marketing: 'mktg',
+  seo: 'seo',
+  data: 'data',
+  growth: 'growth',
+  automation: 'auto',
+  all: 'all',
 };
 
 // ─── Start a department team ─────────────────────────────────
@@ -79,8 +89,13 @@ export async function startTeam(dept, channelId, ts, client) {
   // "Start all teams" — cascade to every department
   if (deptKey === 'all') {
     const depts = ['eng', 'mktg', 'seo', 'auto', 'data', 'growth'];
-    await postAs(client, { name: 'Anton' }, channelId, ts,
-      `Starting all 6 departments (${Object.keys(TEAM).length} agents total). This will take a few minutes.`);
+    await postAs(
+      client,
+      { name: 'Anton' },
+      channelId,
+      ts,
+      `Starting all 6 departments (${Object.keys(TEAM).length} agents total). This will take a few minutes.`
+    );
     for (const d of depts) {
       const dName = Object.entries(DEPT_NAMES).find(([_, v]) => v === d)?.[0] || d;
       await startTeam(dName, channelId, ts, client);
@@ -92,19 +107,29 @@ export async function startTeam(dept, channelId, ts, client) {
   const lead = deptKey === 'all' ? TEAM.marcus : getDeptLead(deptKey);
 
   if (activeSprints.has(deptKey)) {
-    await postAs(client, { name: 'Anton' }, channelId, ts,
-      `${dept} team is already running. Use "stop ${dept} team" first.`);
+    await postAs(
+      client,
+      { name: 'Anton' },
+      channelId,
+      ts,
+      `${dept} team is already running. Use "stop ${dept} team" first.`
+    );
     return;
   }
 
   console.log(`[Orchestrator] Starting ${dept} team (${members.length} agents)`);
 
-  await postAs(client, { name: 'Anton' }, channelId, ts,
-    `Starting ${dept} team with ${members.length} agents. ${lead.name} will coordinate.`);
+  await postAs(
+    client,
+    { name: 'Anton' },
+    channelId,
+    ts,
+    `Starting ${dept} team with ${members.length} agents. ${lead.name} will coordinate.`
+  );
 
   activeSprints.set(deptKey, {
     started: new Date().toISOString(),
-    agents: members.map(m => m.name),
+    agents: members.map((m) => m.name),
     lead: lead.name,
   });
   persistSprints();
@@ -112,10 +137,12 @@ export async function startTeam(dept, channelId, ts, client) {
   // Step 1: Lead reads Asana and plans
   const h1 = await postTyping(client, lead, channelId, ts);
   const start1 = Date.now();
-  const plan = await ask(lead,
+  const plan = await ask(
+    lead,
     `Noel just started the ${dept} team sprint. Read the current Asana tasks for our projects and create a sprint plan. ` +
-    `List what each team member should work on. Be specific — task names, priorities, assignments. ` +
-    `Then assign the top priority tasks. Keep it concise.`);
+      `List what each team member should work on. Be specific — task names, priorities, assignments. ` +
+      `Then assign the top priority tasks. Keep it concise.`
+  );
   trackRequest(lead.name, start1, !!plan, plan?.length || 0);
   await replaceTyping(client, lead, h1, plan || `I'll get the team organized. Checking Asana now.`);
 
@@ -125,54 +152,80 @@ export async function startTeam(dept, channelId, ts, client) {
 
     const h = await postTyping(client, member, channelId, ts);
     const start = Date.now();
-    const response = await ask(member,
+    const response = await ask(
+      member,
       `Sprint is starting. ${lead.name} is coordinating. Check your Asana tasks and pick up your highest priority item. ` +
-      `Tell the team what you're working on. If you don't have assigned tasks, ask ${lead.name} what to pick up.`);
+        `Tell the team what you're working on. If you don't have assigned tasks, ask ${lead.name} what to pick up.`
+    );
     trackRequest(member.name, start, !!response, response?.length || 0);
     await replaceTyping(client, member, h, response || `checking my tasks now`);
   }
 
-  await postAs(client, { name: 'Anton' }, channelId, ts,
-    `${dept} team is up and running. ${members.length} agents active. Ask anyone for updates or type "team status" to check.`);
+  await postAs(
+    client,
+    { name: 'Anton' },
+    channelId,
+    ts,
+    `${dept} team is up and running. ${members.length} agents active. Ask anyone for updates or type "team status" to check.`
+  );
 }
 
 // ─── Run a full sprint ───────────────────────────────────────
 export async function runSprint(channelId, ts, userId, client) {
-  await postAs(client, { name: 'Anton' }, channelId, ts,
-    `Starting sprint planning. Sarah will pull the backlog and assign work.`);
+  await postAs(
+    client,
+    { name: 'Anton' },
+    channelId,
+    ts,
+    `Starting sprint planning. Sarah will pull the backlog and assign work.`
+  );
 
   // Sarah plans
   const h1 = await postTyping(client, TEAM.sarah, channelId, ts);
   const start1 = Date.now();
-  const plan = await ask(TEAM.sarah,
+  const plan = await ask(
+    TEAM.sarah,
     `<@${userId}> wants to start a new sprint. ` +
-    `Pull the current Asana backlog across all projects. ` +
-    `Pick the highest priority unstarted tasks. ` +
-    `Assign them: backend to James, frontend to Elena, mobile to Kai, devops to Omar. ` +
-    `Create a sprint summary with task assignments and story points. ` +
-    `Move assigned tasks to "Todo" in Asana.`);
+      `Pull the current Asana backlog across all projects. ` +
+      `Pick the highest priority unstarted tasks. ` +
+      `Assign them: backend to James, frontend to Elena, mobile to Kai, devops to Omar. ` +
+      `Create a sprint summary with task assignments and story points. ` +
+      `Move assigned tasks to "Todo" in Asana.`
+  );
   trackRequest(TEAM.sarah.name, start1, !!plan, plan?.length || 0);
   await replaceTyping(client, TEAM.sarah, h1, plan || `pulling the backlog now...`);
 
   // Marcus reviews
   const h2 = await postTyping(client, TEAM.marcus, channelId, ts);
   const start2 = Date.now();
-  const review = await ask(TEAM.marcus,
+  const review = await ask(
+    TEAM.marcus,
     `Sarah just planned the sprint. Review the assignments and priorities. ` +
-    `Flag any concerns about workload balance or technical dependencies. ` +
-    `If it looks good, approve it.`);
+      `Flag any concerns about workload balance or technical dependencies. ` +
+      `If it looks good, approve it.`
+  );
   trackRequest(TEAM.marcus.name, start2, !!review, review?.length || 0);
   await replaceTyping(client, TEAM.marcus, h2, review || `reviewing the plan...`);
 
-  await postAs(client, { name: 'Anton' }, channelId, ts,
-    `Sprint planned. Ask individual agents to start work, or say "start engineering team" to kick everyone off.`);
+  await postAs(
+    client,
+    { name: 'Anton' },
+    channelId,
+    ts,
+    `Sprint planned. Ask individual agents to start work, or say "start engineering team" to kick everyone off.`
+  );
 }
 
 // ─── Team status ─────────────────────────────────────────────
 export async function teamStatus(channelId, ts, client) {
   if (activeSprints.size === 0) {
-    await postAs(client, { name: 'Anton' }, channelId, ts,
-      `No teams currently running. Say "start engineering team" or "run a sprint" to begin.`);
+    await postAs(
+      client,
+      { name: 'Anton' },
+      channelId,
+      ts,
+      `No teams currently running. Say "start engineering team" or "run a sprint" to begin.`
+    );
     return;
   }
 

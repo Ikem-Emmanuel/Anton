@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the Claude Agent SDK
 vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
@@ -13,23 +13,23 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => false),
 }));
 
-// Mock ./logger.js so no file I/O during tests
-vi.mock('./logger.js', () => ({
+// Mock logger so no file I/O during tests
+vi.mock('../nervous/logger.js', () => ({
   logSession: vi.fn(),
   logToolUse: vi.fn(),
   logHandoff: vi.fn(),
 }));
 
-// Mock ./analytics.js
-vi.mock('./analytics.js', () => ({
+// Mock analytics
+vi.mock('../nervous/analytics.js', () => ({
   trackSession: vi.fn(),
   trackRequest: vi.fn(),
   initAnalytics: vi.fn(),
   getReport: vi.fn(),
 }));
 
-// Mock ./team.js
-vi.mock('./team.js', () => ({
+// Mock team
+vi.mock('../brain/team.js', () => ({
   findByName: vi.fn(() => null),
 }));
 

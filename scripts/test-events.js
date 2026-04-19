@@ -1,19 +1,19 @@
 #!/usr/bin/env node
+
 // Manual test for the event bus + priority engine
 // Usage: node scripts/test-events.js
 //
 // Fires sample events and shows how they'd be classified and routed.
 
-import { eventBus } from '../src/eventbus.js';
-import { initNotify, shutdownNotify } from '../src/notify.js';
-import { emitEvent, getRules, getSeverity, initPriority, shutdownPriority } from '../src/priority.js';
+import { eventBus } from '../src/nervous/eventbus.js';
+import { emitEvent, initPriority, shutdownPriority } from '../src/nervous/priority.js';
 
 console.log('--- Anton Event System Manual Test ---\n');
 
 // Track what would be sent
 const sent = [];
 initPriority({
-  notifyNoel: async (severity, message, opts) => {
+  notifyNoel: async (severity, message, _opts) => {
     sent.push({ severity, message });
     console.log(`  [${severity}] ${message}`);
   },
