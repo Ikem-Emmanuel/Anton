@@ -21,8 +21,86 @@ const PUBLIC_DIR = join(__dirname, '..', '..', 'public');
 let _server = null;
 let _wss = null;
 
+// CORS preflight + common headers so the Next.js dev server (typically on port
+// 3001) can POST to /api/chat without browser-side CORS rejection. In prod
+// both surfaces live on the same origin and these headers are harmless.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function readJsonBody(req, maxBytes = 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf-8')) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 export function initWeb({ askAgent, port = 3000 }) {
-  _server = createServer((req, res) => {
+  _server = createServer(async (req, res) => {
+    // CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, CORS_HEADERS);
+      res.end();
+      return;
+    }
+
+    // JSON chat endpoint — used by the Next.js UI (and anything else that
+    // wants a programmatic chat surface). Same underlying askAgent pipeline
+    // as the WS handler below, just request/response instead of streaming.
+    if (req.method === 'POST' && req.url === '/api/chat') {
+      try {
+        const body = await readJsonBody(req);
+        const agent = typeof body.agent === 'string' && body.agent.trim() ? body.agent.trim() : 'Anton';
+        const text = typeof body.text === 'string' ? body.text.trim() : '';
+        if (!text) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+          res.end(JSON.stringify({ error: 'Missing text' }));
+          return;
+        }
+
+        // Collect handoff dispatches so the caller can render them too.
+        const handoffs = [];
+        const onHandoff = (targetAgent, handoffText) => {
+          handoffs.push({ agent: targetAgent, text: handoffText, timestamp: new Date().toISOString() });
+        };
+
+        const response = await askAgent(agent, text, onHandoff);
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(
+          JSON.stringify({
+            agent,
+            text: response || 'No response.',
+            handoffs,
+            timestamp: new Date().toISOString(),
+          })
+        );
+      } catch (e) {
+        console.error('[Web] /api/chat error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
     if (req.url === '/' || req.url === '/index.html') {
       // No cache in dev — always serve fresh
       res.writeHead(200, {
