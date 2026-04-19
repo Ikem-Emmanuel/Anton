@@ -14,8 +14,11 @@
 // on conversations we'd either re-distill duplicates or need a schema
 // change with ambiguous value. Added back when inline failures surface.
 
+import { runSkillShareScan } from './skill-sharing.js';
+
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 /**
  * Run the EOD summary trigger once. Pulls today's conversation/task deltas,
@@ -116,27 +119,41 @@ export function runStalledTaskSurfacer(deps, options = {}) {
  *   brainProcess                 — for EOD
  *   getEventHistory              — for event scan
  *   findStalledTasks             — for stalled surfacer
- *   notifyNoel                   — output for all three
+ *   findShareableSkills          — for skill-share scan (§4.5.6)
+ *   notifyNoel                   — output for all triggers
  *
  * options.hoursStale overrides the 24h default.
  */
 export function initProactive(deps, options = {}) {
-  const { scheduleJob, cancelJob } = deps;
+  const { scheduleJob, cancelJob, findShareableSkills } = deps;
 
   scheduleJob('eod-summary', 18, 0, () => runEodSummary(deps));
 
   const eventScanInterval = setInterval(() => runEventScan(deps, options), FIFTEEN_MINUTES_MS);
   const stalledInterval = setInterval(() => runStalledTaskSurfacer(deps, options), ONE_HOUR_MS);
 
+  // Skill-share scan — only register when the host actually provides the
+  // source. Keeps existing boot paths that don't know about skills working.
+  let skillShareInterval = null;
+  if (findShareableSkills) {
+    skillShareInterval = setInterval(() => runSkillShareScan(deps, options), FOUR_HOURS_MS);
+    skillShareInterval.unref?.();
+  }
+
   // Unref so these intervals don't keep Node alive at shutdown.
   eventScanInterval.unref?.();
   stalledInterval.unref?.();
 
-  console.log('[Proactive] Triggers armed — EOD 18:00, event scan 15m, stalled-task 1h');
+  console.log(
+    `[Proactive] Triggers armed — EOD 18:00, event scan 15m, stalled-task 1h${
+      skillShareInterval ? ', skill-share 4h' : ''
+    }`
+  );
 
   return function shutdownProactive() {
     clearInterval(eventScanInterval);
     clearInterval(stalledInterval);
+    if (skillShareInterval) clearInterval(skillShareInterval);
     if (cancelJob) cancelJob('eod-summary');
   };
 }
