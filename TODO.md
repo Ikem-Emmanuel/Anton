@@ -79,16 +79,16 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] `src/memory/sqlite.ts` with ACID transactions
 - [x] FTS5 keyword search implemented
 - [x] Memory injection wired into brain (`buildMemoryContext` called per turn)
-- [ ] **Migrate existing V1 markdown memories to SQLite** — Phase 2.5
-- [ ] **Auto-summarize after every conversation** — Phase 3
-- [ ] **Cache Claude results** — Phase 3
-- [ ] ChromaDB / RAG — **replaced with sqlite-vec in Phase 3 (cheaper)**
+- [x] Migrate existing V1 markdown memories to SQLite — `scripts/migrate-v1-memory.ts` + §4.6 dual-write
+- [x] Auto-summarize after every conversation — `distillConversation()` in `src/brain/distill.ts`, fire-and-forget from brain
+- [x] ChromaDB / RAG — **replaced by sqlite-vec** (shipped §4.2 on 2026-04-19)
+- [x] Memory injection scanning / spotlighting — `src/memory/spotlighting.ts` + tests
+- [ ] Cache Claude results — Phase 3 (no item scheduled yet)
 - [ ] LightRAG knowledge graph — **deferred to Phase 5 (overkill for single user)**
 - [ ] Obsidian vault — Phase 3
 - [ ] Vault file watcher — Phase 3
 - [ ] Daily / weekly note generation — Phase 3
 - [ ] Vault Git commits — Phase 3
-- [ ] **Memory injection scanning / spotlighting** — Phase 2.5
 
 ---
 
@@ -183,7 +183,7 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] Schema: `{type, text, confidence}` with types 'fact'|'decision'|'preference'|'commitment'
 - [x] `distill.test.ts` covers the extraction and storage path
 - [x] FTS5 retrieval of top memories injected into next turn via `buildMemoryContext()`
-- [ ] Vector (sqlite-vec) retrieval — §4.2 below
+- [x] Vector (sqlite-vec) retrieval — shipped §4.2
 
 ### 4.2 sqlite-vec hybrid retrieval — DONE
 
@@ -192,12 +192,11 @@ The earlier "Reality Check" (dated 2026-04-18) described a broken-but-scaffolded
 - [x] Extension loads on `initSqliteMemory`; failures degrade to FTS5-only gracefully (`isVecEnabled()`)
 - [x] `storeMemory` now fires background `indexMemoryEmbedding` via setImmediate — no caller change, no latency tax
 - [x] `semanticSearchMemories` / `hybridSearchMemories` (RRF with k=60) / `buildRelevantMemoryContext` exported from `src/memory/sqlite.ts`
-- [x] `brain.process()` now calls `buildRelevantMemoryContext(message, agent)` when the message is ≥3 chars; falls back to time-based view for stubs
+- [x] `brain.process()` calls `buildRelevantMemoryContext(message, agent)` when the message is ≥3 chars; falls back to time-based view for stubs
+- [x] RRF merge of BM25 (FTS5) + vector similarity — returns top-5, in-process, no Docker
+- [x] New memories embedded on every `storeMemory` insert (fire-and-forget)
 - [x] 6 tests in `src/memory/sqlite-vec.test.ts` cover indexing, semantic ranking, RRF merging, limit, FTS5 fallback
 - [ ] Nightly re-embed cron if the embedding model changes — deferred, single-model for now
-- [ ] Nightly embeds new memories
-- [ ] RRF-merge BM25 (FTS5) + vector similarity
-- [ ] Returns top-5 in <1ms — no separate service, no Docker
 
 ### 4.3 Proactive trigger loop (the Jarvis feel)
 
@@ -590,7 +589,6 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-14 | Brain wired into Slack + web paths                                                                                                          | 1        |
 | 2026-04-14 | `@claude` / `@local` override prefixes                                                                                                      | 1        |
 | 2026-04-14 | V1 code moved to `src/v1-archive/` (43 files preserved)                                                                                     | 1        |
-| 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
 | 2026-04-15 | Phase 2: SQLite memory with FTS5 + WAL + ACID                                                                                               | 2        |
 | 2026-04-15 | SQLite integrated — `storeConversation` + `buildMemoryContext` per turn                                                                     | 2        |
 | 2026-04-15 | Agent personas in brain (15 agents, `buildAgentPrompt`)                                                                                     | 1        |
@@ -603,6 +601,7 @@ Upgrade path = edit `config/models.ts` only.
 | 2026-04-18 | Phase 2.5 stabilization largely absorbed during Phase 3.5 work — 9 of 10 items done (§3.8 eval harness still open)                          | 2.5      |
 | 2026-04-19 | V1 code reorganized into organ folders (brain/memory/nervous/heart/hands/eyes/spine); v1-archive removed                                    | 4.5      |
 | 2026-04-19 | Phase 4.5 Live Data Transport shipped: REST hydrate + WebSocket deltas, approvals/memories/tasks/events live, approve-reject POST endpoints | 4.5      |
+| 2026-04-19 | `/event/[id]` route made dynamic — timeline deep-links every row; SSG dropped; EventDetail hydrates from useEvents                          | 4.5      |
 | 2026-04-19 | TODO reconciled with code — corrected ~40 stale unchecked items to reflect what's actually shipped                                          | —        |
 | 2026-04-19 | §3.8 brain eval harness shipped — `tests/brain.eval.test.ts`, 31 assertable cases, closes Phase 2.5                                         | 2.5      |
 | 2026-04-19 | §4.5 persona unification shipped — `config/agents/*.ts` (Zod), `personas.json` deleted, V1+V2 share the loader, +8 loader tests             | 3        |
