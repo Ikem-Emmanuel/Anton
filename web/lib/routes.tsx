@@ -7,16 +7,17 @@
 
 import type { ReactNode } from 'react';
 import ActivityTimeline from '@/components/modules/activity-timeline';
+import ApprovalsHub from '@/components/modules/approvals';
 import Briefing from '@/components/modules/briefing';
 import Calendar from '@/components/modules/calendar';
 import Chat from '@/components/modules/chat';
 import Documents from '@/components/modules/documents';
 import Expenses from '@/components/modules/expenses';
 import Inbox from '@/components/modules/inbox';
+import IntegrationsHub from '@/components/modules/integrations';
 import MemoryBrowser from '@/components/modules/memory-browser';
 import MissionControl from '@/components/modules/mission-control';
 import People from '@/components/modules/people';
-import { ApprovalsHub, IntegrationsHub } from '@/components/modules/placeholders';
 import Research from '@/components/modules/research';
 import Settings from '@/components/modules/settings';
 import Tasks from '@/components/modules/tasks';
