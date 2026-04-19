@@ -44,38 +44,6 @@ function Placeholder({
   );
 }
 
-export function Tasks() {
-  return (
-    <Placeholder
-      label="TASKS"
-      sub="Kanban + list view of everything open"
-      source="tier1.jsx"
-      preview={[
-        'Board view: Planned → In Progress → Review → Done columns',
-        'Agent assignment + state transitions driven by the Phase 3A state machine',
-        'Links to source: handoffs, ASK chains, BLOCK/APPROVE events',
-        'Retry-count + hop-count budgets surfaced per task',
-      ]}
-    />
-  );
-}
-
-export function Inbox() {
-  return (
-    <Placeholder
-      label="INBOX"
-      sub="Messages needing Noel's attention"
-      source="tier1.jsx"
-      preview={[
-        'Unified feed: Slack mentions, agent asks, blocker escalations',
-        'Swipe-triage gestures (archive, snooze, reply)',
-        'Grouped by sender + urgency',
-        'Jump straight into chat thread or approval detail',
-      ]}
-    />
-  );
-}
-
 export function Calendar() {
   return (
     <Placeholder
