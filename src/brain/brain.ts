@@ -16,6 +16,7 @@ import { distillConversation } from './distill.js';
 import { CircuitOpenError, chat, getCircuitState, isHealthy, listModels } from './ollama-client.js';
 import { buildAgentPrompt, buildTeamDirectory } from './personas.js';
 import { type AdaptiveDepth, preGate } from './pre-gate.js';
+import { isSimModeActive, nextSimResponse } from './sim-mode.js';
 import { extractResponse, getMaxTokensForDepth, getTemperatureForDepth, type ThinkingDepth } from './thinking.js';
 
 export interface BrainResponse {
@@ -157,10 +158,30 @@ export async function process(
     agent?: string;
   }
 ): Promise<BrainResponse> {
-  if (!_initialized) await initBrain();
-
   const start = Date.now();
   const agentName = options?.agent || 'Anton';
+
+  // Simulation mode short-circuit — consume pre-recorded fixture response.
+  // Used for deterministic multi-agent scenario testing without Ollama.
+  if (isSimModeActive()) {
+    const sim = nextSimResponse(message, agentName);
+    if (sim) {
+      return {
+        text: sim.text,
+        model: sim.model || 'sim',
+        tokensIn: sim.tokensIn ?? 0,
+        tokensOut: sim.tokensOut ?? 0,
+        durationMs: sim.latencyMs ?? Date.now() - start,
+        handledLocally: sim.handledLocally ?? true,
+        needsClaude: sim.needsClaude ?? false,
+        handoffs: sim.handoffs ?? [],
+        classification: sim.classification,
+      };
+    }
+  }
+
+  if (!_initialized) await initBrain();
+
   const sessionId = `${agentName}-${Date.now()}`;
 
   // LAYER 0: Deterministic pre-gate.
