@@ -132,11 +132,46 @@ const DEFAULT_MEMORIES = [
   },
 ];
 
-export function initWeb({ askAgent, approvalsSource, memoriesSource, port = 3000 }) {
+// Fallback tasks — seed so the kanban shows a plausible mix of columns.
+const DEFAULT_TASKS = [
+  {
+    id: 0,
+    title: 'Review launch email copy',
+    owner: 'Noel',
+    actor: 'Sarah',
+    col: 'incoming',
+    age: '22m',
+    risk: 'M',
+    why: 'Waiting on your approval before send',
+  },
+  {
+    id: 3,
+    title: 'Draft PRD · onboarding v3',
+    owner: 'Marcus',
+    actor: 'Marcus',
+    col: 'flight',
+    age: '1h',
+    pct: 68,
+    step: 'writing §5 error flows',
+  },
+  { id: 7, title: 'Pushed v1.2 to staging', owner: 'James', actor: 'James', col: 'done', age: '6m' },
+  {
+    id: 11,
+    title: 'Deploy v1.2 to production',
+    owner: 'James',
+    actor: 'James',
+    col: 'blocked',
+    age: '42m',
+    why: 'needs your approval (red tier)',
+  },
+];
+
+export function initWeb({ askAgent, approvalsSource, memoriesSource, tasksSource, port = 3000 }) {
   // Each source is an optional async callback returning the current records.
   // Omit and the fallback mock is used — keeps the UI live during dev.
   const readApprovals = approvalsSource || (() => DEFAULT_APPROVALS);
   const readMemories = memoriesSource || (() => DEFAULT_MEMORIES);
+  const readTasks = tasksSource || (() => DEFAULT_TASKS);
 
   _server = createServer(async (req, res) => {
     // CORS preflight
@@ -170,6 +205,21 @@ export function initWeb({ askAgent, approvalsSource, memoriesSource, port = 3000
         res.end(JSON.stringify({ memories: memories || [] }));
       } catch (e) {
         console.error('[Web] /api/memories error:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
+      return;
+    }
+
+    // GET /api/tasks — kanban items across FOR YOU / IN FLIGHT / DONE / BLOCKED.
+    // Shape mirrors web/lib/data/tasks.ts `Task` type.
+    if (req.method === 'GET' && req.url === '/api/tasks') {
+      try {
+        const tasks = await readTasks();
+        res.writeHead(200, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+        res.end(JSON.stringify({ tasks: tasks || [] }));
+      } catch (e) {
+        console.error('[Web] /api/tasks error:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json', ...CORS_HEADERS });
         res.end(JSON.stringify({ error: 'Internal error' }));
       }
